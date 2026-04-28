@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attitude Determination — MEKF & Sequential Estimation (Part 3)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0c0f1a; color: #e2e8f0; min-height: 100vh; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo } = React;
+
+const MODULES = [
+  {
+    id: "mekf", num: "16", title: "Multiplicative EKF for Attitude", pages: "pp. 105–118", icon: "🧮",
+    overview: { why: "The multiplicative EKF (MEKF) is the GOLD STANDARD algorithm for sequential attitude estimation. It combines star tracker + gyro data optimally. Unlike QUEST (single frame), the EKF accumulates information over time, achieving ~10× better accuracy.", objective: "Understand WHY additive quaternion EKF fails (normalisation), the multiplicative error quaternion trick, the 6-state formulation δx = [δθ; δb], the F and G matrices, and the covariance propagation with process noise Q.", realMission: "Every modern 3-axis-stabilised satellite uses a MEKF. The EKF estimates both attitude (δθ) and gyro bias (δb) simultaneously — this is possible ONLY because star tracker data provide an absolute attitude reference to anchor the bias estimation." },
+    equations: [
+      { name: "Multiplicative error quaternion", eq: "δq = q ⊗ q̂⁻¹", explain: "The error is defined MULTIPLICATIVELY, not additively. This keeps the estimated quaternion on the unit sphere. The vector part δq⃗ ≈ δθ/2 gives the 3-component attitude error." },
+      { name: "Linearised state equation (θ-form)", eq: "d(δθ)/dt = −[ω̂×]δθ − δb + η₁\nd(δb)/dt = η₂", explain: "State vector δx = [δθ; δb] has dimension 6 (not 7!). The 4th quaternion component δq₄≈1 is dropped. [ω̂×] is the skew-symmetric matrix of the estimated angular velocity." },
+      { name: "State-space form", eq: "δẋ = F(t)δx + G(t)η", explain: "F = [[ω̂×], −I₃; 0₃, 0₃] (6×6). G = [−I₃, 0₃; 0₃, I₃] (6×6). η = [η₁; η₂] (6×1). This is the standard linear form for the EKF prediction step." },
+      { name: "Covariance propagation", eq: "P_{k|k-1} = Φ_{k,k-1} P_{k-1} Φᵀ_{k,k-1} + Q_{k-1}", explain: "The gyro noise enters through Q (process noise covariance). Without Q, the covariance would shrink monotonically — Q prevents this and models the gyro drift." },
+      { name: "STM block structure", eq: "Φ = [Θ, Ψ; 0₃, I₃]", explain: "Θ satisfies dΘ/dt = −[ω×]Θ, Θ(0)=I₃. Ψ satisfies dΨ/dt = −[ω×]Ψ − I₃, Ψ(0)=0₃. The bias block is identity (bias drifts but is not propagated by dynamics)." },
+    ],
+    derivation: `**Multiplicative EKF — Why and How (pp. 105-118)**
+
+**The problem with additive quaternion EKF (pp. 106-107):**
+If we write the standard KF update: q̂⁺ = q̄ + K(y − Hq̄)
+Then q̂⁺ and q̄ cannot BOTH have unit norm. Even worse: if we require the estimate to be unbiased (E[δq]=0 where δq = q − q̂), then E[||q̂||] ≠ 1 — an unbiased estimate is INCOMPATIBLE with unit norm.
+
+**The multiplicative EKF solution:**
+Use the FULL quaternion for the global attitude representation, but parameterise the LOCAL error using only the 3-vector part of the error quaternion:
+  δq = q ⊗ q̂⁻¹ = [δq⃗; δq₄]
+Under the first-order approximation (true close to estimated): δq₄ ≈ 1, and δq⃗ ≈ δθ/2.
+
+This reduces the state dimension from 7 (full quaternion + bias) to 6:
+  δx = [δθ; δb] — 3 attitude error angles + 3 gyro bias errors
+
+**Derivation of the linearised dynamics (pp. 108-117):**
+
+Step 1 — Kinematic equations:
+  True: q̇ = ½Ω(ω)q          (eq. 1.1)
+  Estimated: q̂̇ = ½Ω(ω̂)q̂    (eq. 1.2)
+  Error: δq = q⊗q̂⁻¹          (eq. 1.3)
+
+Step 2 — Differentiate the error quaternion:
+  δq̇ = q̇⊗q̂⁻¹ + q⊗(q̂⁻¹)̇   (eq. 1.4)
+
+Step 3 — After algebraic manipulation (eqs. 1.5–1.15), the EXACT error dynamics are:
+  δq̇ = −[ω̂×]·[δq⃗; 0] + ½·[δω; 0]⊗δq   (eq. 1.15)
+
+Step 4 — LINEARISE (drop 2nd-order terms in eq. 1.17):
+  δq̇⃗ ≈ −[ω̂×]δq⃗ + ½δω
+  δq̇₄ = 0   ← the scalar part is CONSTANT → drop it!
+
+Step 5 — Substitute Farrenkopf model: ω = g − b − η₁, ω̂ = g − b̂
+  → δω = −δb + η₁
+
+Step 6 — Use the small-angle approximation δq⃗ ≈ δθ/2:
+  d(δθ)/dt = −[ω̂×]δθ − δb + η₁
+  d(δb)/dt = η₂
+
+**F and G matrices (eq. 1.23):**
+F(t) = [ [ω_{k-1|k-1}×],  −I₃×₃ ]   (6×6)
+       [    0₃×₃,          0₃×₃  ]
+
+G(t) = [ −I₃×₃,  0₃×₃ ]   (6×6)
+       [  0₃×₃,  I₃×₃  ]
+
+**KEY INSIGHT: Why the state has dimension 6, not 7:**
+The 4th error quaternion component δq₄ ≈ 1 (constant), so it carries no information. Dropping it gives a 6-state system with DIRECT physical meaning: δθ = attitude error angles, δb = gyro bias error.`,
+    matlab: `% Multiplicative EKF for Attitude — Core Prediction Step
+% State: dx = [dtheta(3x1); db(3x1)] — 6 states
+
+function [dx_pred, P_pred, q_pred] = mekf_predict(q_est, b_est, g_meas, P, Q, dt)
+    % q_est: estimated quaternion [4x1, scalar last]
+    % b_est: estimated gyro bias [3x1]
+    % g_meas: gyro measurement [3x1]
+    % P: state covariance [6x6]
+    % Q: process noise covariance [6x6]
+    % dt: time step [s]
+
+    % Estimated angular velocity
+    omega_hat = g_meas - b_est;
+
+    % Skew-symmetric matrix
+    Wx = [0 -omega_hat(3) omega_hat(2);
+          omega_hat(3) 0 -omega_hat(1);
+         -omega_hat(2) omega_hat(1) 0];
+
+    % F matrix (6x6)
+    F = [-Wx, -eye(3); zeros(3), zeros(3)];
+
+    % State transition matrix (first-order approximation)
+    Phi = eye(6) + F * dt; % or use matrix exponential: expm(F*dt)
+
+    % Propagate quaternion using kinematic equation
+    Omega = [0 omega_hat(3) -omega_hat(2) omega_hat(1);
+            -omega_hat(3) 0 omega_hat(1) omega_hat(2);
+             omega_hat(2) -omega_hat(1) 0 omega_hat(3);
+            -omega_hat(1) -omega_hat(2) -omega_hat(3) 0];
+    q_pred = q_est + 0.5 * Omega * q_est * dt;
+    q_pred = q_pred / norm(q_pred); % re-normalise!
+
+    % Propagate covariance
+    P_pred = Phi * P * Phi' + Q;
+
+    % Predicted state deviation is zero (by construction)
+    dx_pred = zeros(6,1);
+end
+
+% ─── Demo ───
+fprintf('=== MEKF Prediction Step Demo ===\\n');
+q0 = [0;0;0;1]; % identity quaternion
+b0 = [0.001; -0.0005; 0.002]; % small bias [rad/s]
+g = [0.01; -0.005; 0.003]; % gyro measurement [rad/s]
+P0 = blkdiag(1e-6*eye(3), 1e-8*eye(3)); % initial covariance
+sigma_v = 0.05/206265; sigma_u = 3.19e-5/206265; dt = 0.1;
+Q = blkdiag(sigma_v^2*dt*eye(3), sigma_u^2*dt*eye(3));
+
+[~, P1, q1] = mekf_predict(q0, b0, g, P0, Q, dt);
+fprintf('Predicted quaternion: [%.6f, %.6f, %.6f, %.6f]\\n', q1);
+fprintf('P diagonal (attitude): [%.2e, %.2e, %.2e] rad^2\\n', P1(1,1), P1(2,2), P1(3,3));
+fprintf('P diagonal (bias):     [%.2e, %.2e, %.2e] rad^2/s^2\\n', P1(4,4), P1(5,5), P1(6,6));`,
+    examTraps: [
+      "The professor asks: 'Why not use an additive quaternion EKF?' → Because the sum of two unit quaternions is NOT a unit quaternion. An unbiased additive estimate is incompatible with unit norm. The MEKF uses multiplicative error: δq = q⊗q̂⁻¹.",
+      "The state vector has dimension 6, NOT 7. The 4th error quaternion component δq₄≈1 is dropped. If the professor asks 'what is the dimension of the EKF state?', answer 6: [δθ(3); δb(3)].",
+      "F matrix: the (1,1) block is [ω̂×] (skew-symmetric of estimated angular velocity), the (1,2) block is −I₃. The bias dynamics are trivial: ḃ = η₂, so the lower blocks are [0₃, 0₃].",
+      "The process noise Q comes from the gyro noise (Farrenkopf model). Without Q, the EKF would become overconfident and diverge."
+    ],
+    drill: [
+      { q: "Why does the multiplicative EKF use δq = q⊗q̂⁻¹ instead of δq = q − q̂?", a: "Because quaternion addition does not preserve unit norm. If q and q̂ are both unit quaternions, q−q̂ is NOT a unit quaternion. The multiplicative form δq = q⊗q̂⁻¹ IS a unit quaternion, and its vector part δq⃗ ≈ δθ/2 gives a well-defined 3-parameter attitude error." },
+      { q: "What is the dimension of the MEKF state vector and what are its components?", a: "Dimension 6: δx = [δθ; δb] where δθ (3×1) is the attitude error (roll, pitch, yaw) and δb (3×1) is the gyro bias error. The 4th quaternion error component δq₄≈1 is dropped because it's constant to first order." },
+      { q: "Write the F and G matrices for the attitude MEKF.", a: "F = [[ω̂×], −I₃; 0₃, 0₃] (6×6). G = [−I₃, 0₃; 0₃, I₃] (6×6). [ω̂×] is the skew-symmetric matrix of the estimated angular velocity ω̂ = g − b̂." }
+    ]
+  },
+  {
+    id: "ekf_obs", num: "17", title: "EKF Observation Models & Update", pages: "pp. 121–129", icon: "📡",
+    overview: { why: "The observation model determines HOW sensor measurements are incorporated into the EKF. Two models are used: the Unit Vector Filter (UVF) using raw star vectors, and the QUEST observation model using the QUEST quaternion as a 'super-measurement'. The QUEST model is simpler and more common.", objective: "Know both observation models (UVF and QUEST), write the sensitivity matrix H, understand the innovation, and apply the Kalman update equations for attitude and bias.", realMission: "The QUEST observation model is preferred in practice: run QUEST on the star tracker data, then feed the QUEST quaternion into the EKF as a measurement. This decouples star identification from the EKF and simplifies the filter." },
+    equations: [
+      { name: "QUEST observation model", eq: "z = [z⃗ₖ; 1] = pₖ ⊗ q̂⁻¹_{k|k-1}\nHₖ = [I₃, 0₃]", explain: "The QUEST quaternion pₖ is treated as the measurement. The innovation is z⃗ₖ (only the 3-vector part). The sensitivity matrix Hₖ = [I₃, 0₃] is trivially simple! Measurement covariance Rₖ = QUEST covariance P_qq." },
+      { name: "Kalman gain", eq: "Kₖ = P̄ₖ Hᵀₖ (Hₖ P̄ₖ Hᵀₖ + Rₖ)⁻¹", explain: "Standard Kalman gain formula. With Hₖ = [I₃, 0₃], this simplifies considerably." },
+      { name: "State update", eq: "δx̂ₖ = Kₖ z⃗ₖ", explain: "The state correction: δθ̂ₖ and δb̂ₖ are extracted from δx̂ₖ." },
+      { name: "Quaternion update", eq: "q̂ₖ = [δq̂⃗ₖ; 1] ⊗ q̂_{k|k-1}", explain: "Apply the estimated error quaternion multiplicatively to the predicted quaternion. This maintains unit norm (to first order)." },
+      { name: "Bias update", eq: "b̂ₖ = b̂_{k|k-1} + δb̂ₖ", explain: "The bias update is additive (biases are not constrained to a manifold)." },
+      { name: "Covariance update (Joseph form)", eq: "Pₖ = (I−KₖHₖ)P̄ₖ(I−KₖHₖ)ᵀ + KₖRₖKᵀₖ", explain: "Joseph form is numerically more stable than the standard P = (I−KH)P̄. Always use this form in implementation." },
+    ],
+    derivation: `**EKF Observation Models and Update (pp. 121-128)**
+
+**Two observation models:**
+
+**1. Unit Vector Filter (UVF) — pp. 121:**
+Uses raw star unit vectors as measurements.
+• Measurement: zₖ = Ŵₖ − Ŵ_{k|k-1} (difference between measured and predicted star vectors)
+• Linearisation: zₖ ≈ [Ŵ_{k|k-1}×]δθₖ + noise
+• Sensitivity: Hₖ = [[Ŵ_{k|k-1}×], 0₃] — depends on star direction!
+• Pro: uses raw measurements directly
+• Con: Hₖ changes with each star, more complex
+
+**2. QUEST Observation Model (preferred) — p. 122:**
+Uses the QUEST quaternion as a "super-measurement".
+• Run QUEST on all star observations → get quaternion pₖ and covariance P_qq
+• Compute innovation: z = pₖ ⊗ q̂⁻¹_{k|k-1} → take 3-vector part z⃗ₖ
+• Sensitivity: Hₖ = [I₃×₃, 0₃×₃] — TRIVIALLY SIMPLE!
+• Measurement covariance: Rₖ = QUEST covariance P_qq
+• Pro: simple Hₖ, decouples star ID from EKF
+• Con: requires QUEST to run first
+
+**Update equations (pp. 127-128):**
+
+1. Kalman gain:
+   Kₖ = P̄ₖ Hᵀₖ (Hₖ P̄ₖ Hᵀₖ + Rₖ)⁻¹
+
+2. State correction:
+   δx̂ₖ = [δθ̂ₖ; δb̂ₖ] = Kₖ z⃗ₖ
+
+3. Covariance update:
+   Pₖ = (I − KₖHₖ)P̄ₖ(I − KₖHₖ)ᵀ + KₖRₖKᵀₖ
+
+4. Quaternion update (MULTIPLICATIVE):
+   q̂ₖ = [δq̂⃗ₖ; 1] ⊗ q̂_{k|k-1}
+
+5. Bias update (ADDITIVE):
+   b̂ₖ = b̂_{k|k-1} + δb̂ₖ
+
+**EKF vs QUEST comparison (p. 129):**
+The EKF 1-σ estimate is about ONE-TENTH of the QUEST 1-σ for each attitude angle. This dramatic improvement comes from:
+1. The EKF accumulates information over time (QUEST uses only one frame)
+2. The EKF estimates and removes gyro bias
+3. The gyro provides continuous attitude between star tracker updates
+
+Note: the simulated results are more optimistic than real systems achieve.`,
+    matlab: `% MEKF Update Step with QUEST observation model
+
+function [q_upd, b_upd, P_upd] = mekf_update(q_pred, b_pred, P_pred, q_quest, R_quest)
+    % q_pred: predicted quaternion [4x1]
+    % b_pred: predicted bias [3x1]
+    % P_pred: predicted covariance [6x6]
+    % q_quest: QUEST quaternion measurement [4x1]
+    % R_quest: QUEST covariance [3x3]
+
+    % Observation matrix
+    H = [eye(3), zeros(3)]; % H = [I3, 03] for QUEST model
+
+    % Innovation: z = q_quest * q_pred^(-1), take vector part
+    q_pred_inv = [-q_pred(1:3); q_pred(4)]; % quaternion inverse
+    z_full = qmult(q_quest, q_pred_inv);
+    z = z_full(1:3); % 3-vector innovation
+
+    % Kalman gain
+    S = H * P_pred * H' + R_quest; % innovation covariance
+    K = P_pred * H' / S;
+
+    % State update
+    dx = K * z; % [dtheta; db]
+    dtheta = dx(1:3);
+    db = dx(4:6);
+
+    % Quaternion update (multiplicative!)
+    dq = [dtheta; 1]; % error quaternion [dq_vec; 1]
+    dq = dq / norm(dq);
+    q_upd = qmult(dq, q_pred);
+    q_upd = q_upd / norm(q_upd);
+
+    % Bias update (additive)
+    b_upd = b_pred + db;
+
+    % Covariance update (Joseph form)
+    IKH = eye(6) - K*H;
+    P_upd = IKH * P_pred * IKH' + K * R_quest * K';
+end
+
+function r = qmult(p, q)
+    r = [p(4)*q(1:3) + q(4)*p(1:3) + cross(p(1:3),q(1:3));
+         p(4)*q(4) - dot(p(1:3),q(1:3))];
+end
+
+% ─── Demo: One EKF cycle ───
+fprintf('=== MEKF Update Step Demo ===\\n');
+q_pred = [0.001; -0.002; 0.003; 1]; q_pred = q_pred/norm(q_pred);
+b_pred = [1e-4; -5e-5; 2e-4];
+P_pred = blkdiag(1e-5*eye(3), 1e-7*eye(3));
+q_quest = [0.0015; -0.0018; 0.0035; 1]; q_quest = q_quest/norm(q_quest);
+R_quest = 1e-6*eye(3);
+
+[q_u, b_u, P_u] = mekf_update(q_pred, b_pred, P_pred, q_quest, R_quest);
+fprintf('Updated quaternion: [%.6f, %.6f, %.6f, %.6f]\\n', q_u);
+fprintf('Updated bias: [%.2e, %.2e, %.2e] rad/s\\n', b_u);
+fprintf('P diag (att): [%.2e, %.2e, %.2e]\\n', P_u(1,1), P_u(2,2), P_u(3,3));
+fprintf('P diag (bias): [%.2e, %.2e, %.2e]\\n', P_u(4,4), P_u(5,5), P_u(6,6));
+fprintf('\\nCovariance REDUCED by update (EKF learns from QUEST).\\n');`,
+    examTraps: [
+      "With the QUEST observation model, Hₖ = [I₃, 0₃]. The professor may ask: 'What is H?' — this simple answer is what they want. Don't complicate it with the UVF model unless specifically asked.",
+      "The quaternion update is MULTIPLICATIVE: q̂ₖ = [δq̂; 1] ⊗ q̂_{k|k-1}. The bias update is ADDITIVE: b̂ₖ = b̂_{k|k-1} + δb̂. Don't mix them up!",
+      "EKF is ~10× more accurate than QUEST alone. The professor asks: 'Why is EKF better than QUEST?' → Because EKF accumulates information over time AND estimates the gyro bias.",
+      "Use the Joseph form for the covariance update: P = (I−KH)P̄(I−KH)ᵀ + KRKᵀ. The standard form P = (I−KH)P̄ can lose positive-definiteness due to numerical errors."
+    ],
+    drill: [
+      { q: "In the QUEST observation model for the attitude EKF, what is the sensitivity matrix H?", a: "Hₖ = [I₃×₃, 0₃×₃] (3×6 matrix). This is because the QUEST quaternion directly measures the attitude error δθ, and is independent of the bias error δb." },
+      { q: "How is the quaternion updated in the MEKF? Why is it different from the bias update?", a: "Quaternion: multiplicative update q̂ₖ = [δq̂⃗; 1] ⊗ q̂_{k|k-1}. Bias: additive update b̂ₖ = b̂_{k|k-1} + δb̂. The quaternion lives on a unit sphere (manifold), so addition would break the norm constraint. The bias is an unconstrained vector, so addition is fine." },
+      { q: "Why is the EKF ~10× more accurate than QUEST alone?", a: "Three reasons: 1) EKF accumulates information from many time steps (QUEST uses only one frame), 2) EKF estimates and removes the gyro bias (QUEST can't see it), 3) The gyro provides continuous attitude between star tracker updates, filling the gaps." }
+    ]
+  },
+  {
+    id: "ekf_misalign", num: "18", title: "EKF with Gyro Misalignment Calibration", pages: "pp. 130–137", icon: "🔧",
+    overview: { why: "In-flight calibration of gyro misalignment and scale factor errors is essential for high-accuracy missions. The EKF state vector is extended from 6 to 15 components to include these parameters. This is the most advanced AOCS algorithm in the course.", objective: "Understand the extended state vector [δq; δb; δg], the modified F and G matrices, the Ω matrix, and how misalignment/scale factor enter the gyro model.", realMission: "Post-launch calibration is performed sequentially via the EKF. This is preferred over batch calibration because the parameters can drift over time (thermal cycling, radiation), and it minimises ground crew intervention." },
+    equations: [
+      { name: "Extended gyro model", eq: "g = (I−Δ)(I−Λ)ω + b + η₁\nω ≈ (I+M)(g − b − η₁)", explain: "M ≈ Δ+Λ combines misalignment (Δ) and scale factor (Λ). The 9 elements of M (3 scale factors + 6 misalignment angles) become additional states." },
+      { name: "Extended state vector", eq: "δx = [δq⃗; δb; δg]ᵀ  (15×1)", explain: "3 attitude errors + 3 bias errors + 9 misalignment/scale factor errors = 15 states total." },
+      { name: "Extended F matrix", eq: "F = [[ω×], −½(I+M), ½Ω;  0₃, 0₃, 0₉;  0₉, 0₉, 0₉]  (15×15)", explain: "Ω is a 3×9 matrix constructed from the gyro measurement vector g. The misalignment states are assumed constant (zero dynamics)." },
+      { name: "Extended sensitivity matrix", eq: "Hₖ = [I₃, 0₃×₁₂]  (3×15)", explain: "Same QUEST model: only the attitude part is observed. The bias and misalignment are estimated indirectly through their coupling to the attitude dynamics." },
+    ],
+    derivation: `**EKF with Gyro Misalignment Calibration (pp. 130-137)**
+
+**Motivation (p. 130):**
+• High-accuracy missions require post-launch sensor alignment calibration
+• Launch vibration and in-space thermal disturbances change misalignment
+• Sequential filtering (EKF) is preferred: parameters can drift over time
+• Minimises ground crew intervention
+
+**Extended gyro model:**
+  g = (I−Δ)(I−Λ)ω + b + η₁
+
+where:
+  (I−Δ) = misalignment matrix: [1, δyz, −δzy; −δxz, 1, δzx; δzy, −δzx, 1]
+  (I−Λ) = scale factor matrix: diag(1−λx, 1−λy, 1−λz)
+
+Inverting: ω ≈ (I+Λ)(I+Δ)(g − b − η₁) ≈ (I+M)(g − b − η₁)
+where M ≈ Δ + Λ (first-order approximation).
+
+**Extended state vector (15 states):**
+  δx = [δq⃗(3); δb(3); δg(9)]ᵀ
+
+where δg contains the 9 elements of M (vectorised row by row).
+
+**Error angular velocity with misalignment:**
+  δω = −(I+M)δb + Ω·δg − (I+M)η₁
+
+where Ω is a 3×9 matrix:
+  Ω = [gᵀ, 0, 0; 0, gᵀ, 0; 0, 0, gᵀ]
+
+**Extended F matrix (15×15):**
+  F = [ [ω×],    −½(I+M),   ½Ω    ]
+      [ 0₃×₃,    0₃×₃,      0₃×₉  ]
+      [ 0₉×₃,    0₉×₃,      0₉×₉  ]
+
+**Extended G matrix (15×6):**
+  G = [ −½(I+M),  0₃×₃  ]
+      [  0₃×₃,    I₃×₃  ]
+      [  0₉×₃,    0₉×₃  ]
+
+**Extended STM (15×15):**
+  Φ = [ Θ,    Ψ,    Σ     ]
+      [ 0₃,   I₃,   0₃×₉  ]
+      [ 0₉,   0₉,   I₉×₉  ]
+
+with additional equation: dΣ/dt = −[ω×]Σ + ½Ω, Σ(0) = 0₉×₉.
+
+**Observation and update:**
+Same as before with Hₖ = [I₃, 0₃×₁₂] (3×15).
+The update now estimates δq̂, δb̂, AND δĝ simultaneously.
+Misalignment is estimated INDIRECTLY: it affects the attitude dynamics through M, and the star tracker data provide the information to separate its contribution from the bias.`,
+    matlab: `% Extended EKF with Gyro Misalignment — State Dimensions Demo
+fprintf('=== EKF with Gyro Misalignment ===\\n\\n');
+
+% Standard EKF: 6 states
+fprintf('Standard MEKF:\\n');
+fprintf('  State: dx = [dtheta(3); db(3)] = 6 states\\n');
+fprintf('  F: 6x6,  G: 6x6,  H: 3x6,  Phi: 6x6\\n\\n');
+
+% Extended EKF: 15 states
+fprintf('Extended MEKF (with misalignment):\\n');
+fprintf('  State: dx = [dtheta(3); db(3); dg(9)] = 15 states\\n');
+fprintf('  F: 15x15,  G: 15x6,  H: 3x15,  Phi: 15x15\\n\\n');
+
+% Build the Omega matrix from a gyro measurement
+g = [0.01; -0.005; 0.003]; % gyro measurement [rad/s]
+Omega = [g', zeros(1,3), zeros(1,3);
+         zeros(1,3), g', zeros(1,3);
+         zeros(1,3), zeros(1,3), g'];
+fprintf('Omega matrix (3x9) for g = [%.3f, %.3f, %.3f]:\\n', g);
+disp(Omega);
+
+% Misalignment and scale factor matrices
+Delta = [0, 0.001, -0.0005; -0.0008, 0, 0.0003; 0.0005, -0.0003, 0];
+Lambda = diag([0.0001, -0.00015, 0.00008]);
+M = Delta + Lambda;
+
+fprintf('Misalignment matrix Delta (off-diagonal):\\n'); disp(Delta);
+fprintf('Scale factor matrix Lambda (diagonal):\\n'); disp(Lambda);
+fprintf('Combined M = Delta + Lambda:\\n'); disp(M);
+fprintf('M has %d independent parameters -> 9 extra states\\n', numel(M));`,
+    examTraps: [
+      "From oral exams: the professor asks about the extended state — know it's 15 states: 3 attitude + 3 bias + 9 misalignment/scale factor.",
+      "Misalignment is estimated INDIRECTLY. The star tracker doesn't see misalignment directly — it sees attitude errors. The EKF uses the coupling in the F matrix to separate bias from misalignment contributions.",
+      "The Ω matrix is 3×9 and is built from the gyro measurement vector g. It's NOT the kinematic Ω matrix (4×4) used in quaternion propagation — different symbols!",
+      "The misalignment states have ZERO dynamics (constant assumption): dδg/dt = 0. They only change at the update step."
+    ],
+    drill: [
+      { q: "What is the dimension of the extended EKF state vector when estimating gyro misalignment?", a: "15: δx = [δq⃗(3×1), δb(3×1), δg(9×1)]ᵀ. The 9 misalignment/scale factor parameters come from vectorising the 3×3 matrix M = Δ+Λ." },
+      { q: "How are the gyro misalignment parameters estimated if the star tracker doesn't directly observe them?", a: "Indirectly, through the coupling in the dynamics. The misalignment M affects the error angular velocity: δω = −(I+M)δb + Ωδg − (I+M)η₁. This propagates into the attitude error, which IS observed by the star tracker via the QUEST quaternion. The EKF uses this coupling to separate the misalignment contribution." },
+      { q: "Write the Ω matrix for the misalignment EKF.", a: "Ω is 3×9: Ω = [gᵀ 0 0; 0 gᵀ 0; 0 0 gᵀ] where g is the 1×3 gyro measurement vector. It maps the 9 misalignment parameters to their effect on the error angular velocity." }
+    ]
+  },
+  {
+    id: "appendix", num: "19", title: "Appendices: Quaternions & Process Noise", pages: "App. A+B (pp. 138–175)", icon: "📚",
+    overview: { why: "Appendix A gives the complete algebraic structure of quaternions (essential for implementation). Appendix B derives the state-space formulation, state transition matrix properties, and process noise covariance propagation — all foundations for the attitude EKF.", objective: "Know quaternion multiplication, inverse, rotation formula, the homomorphism to SO(3), the kinematic equation. Know the state transition matrix properties, forced systems, and the process noise propagation formula.", realMission: "Every AOCS software implementation needs quaternion arithmetic (Appendix A) and discrete-time EKF with process noise (Appendix B). These are the building blocks." },
+    equations: [
+      { name: "Quaternion rotation of a vector", eq: "a' = q ⊗ [a; 0] ⊗ q⁻¹", explain: "To rotate vector a by the rotation represented by q, form the pure quaternion [a; 0] and apply the similarity transformation. The result a' is the rotated vector." },
+      { name: "Quaternion ↔ rotation matrix", eq: "A(q) = (q₄²−q⃗ᵀq⃗)I + 2q⃗q⃗ᵀ + 2q₄[q⃗×]", explain: "And the reverse: q₄ = ½√(1+tr(A)), q⃗ from the antisymmetric part of A." },
+      { name: "STM properties", eq: "Φ(tₖ,tₖ) = I\nΦ(tᵢ,tₖ) = Φ(tᵢ,tⱼ)Φ(tⱼ,tₖ)\nΦ(tᵢ,tₖ) = Φ⁻¹(tₖ,tᵢ)", explain: "Three fundamental properties of the state transition matrix." },
+      { name: "Process noise covariance propagation", eq: "P_{k+1} = Φ_{k+1,k} Pₖ Φᵀ_{k+1,k} + Γ_{k+1,k} Qₖ Γᵀ_{k+1,k}", explain: "Γ is the process noise transition matrix: Γ(t_{k+1},tₖ) = ∫ Φ(t_{k+1},τ)B(τ)dτ. This is the KEY equation for propagating uncertainty through a noisy linear system." },
+      { name: "Continuous covariance ODE", eq: "Ṗ = AP + PAᵀ + BQBᵀ", explain: "The continuous-time Lyapunov equation for covariance propagation. The discrete form is obtained by integrating this over one time step." },
+    ],
+    derivation: `**Appendix A — Quaternion Properties (pp. 138-162)**
+
+Key results (summary):
+
+1. **Quaternion = extension of complex numbers to 4D**
+   Basis: {1, i, j, k} with i²=j²=k²=ijk=−1
+   q = a + bi + cj + dk = (scalar) + (vector part)
+
+2. **Multiplication:** p⊗q = [p₄q⃗+q₄p⃗+p⃗×q⃗; p₄q₄−p⃗·q⃗]
+   NON-COMMUTATIVE (due to cross product)
+   ASSOCIATIVE: (p⊗q)⊗r = p⊗(q⊗r)
+   Neutral element: [0,0,0,1]
+   Inverse: q⁻¹ = q*/|q|² = q* for unit quaternions
+
+3. **2:1 homomorphism** with SO(3): q and −q give the same rotation
+   q → A(q): the map preserves multiplication (A(p⊗q) = A(p)A(q))
+
+4. **Kinematic equation:**
+   dq/dt = ½Ω(ω)q where Ω is the 4×4 matrix from angular velocity
+
+5. **Small rotations:** q ≈ [δθ/2; 1] (vector part ≈ half-angle)
+
+**Appendix B — Dynamical Systems and Process Noise (pp. 163-175)**
+
+Key results:
+
+1. **Linear system:** ẋ = A(t)x + B(t)u, y = H(t)x
+
+2. **Homogeneous solution:** x(t) = Φ(t,t₀)x(t₀)
+   where dΦ/dt = A(t)Φ, Φ(t₀,t₀) = I
+
+3. **Forced solution:** x(t) = Φ(t,t₀)x(t₀) + ∫Φ(t,τ)B(τ)u(τ)dτ
+
+4. **Covariance propagation (no noise):**
+   P(t) = Φ(t,tⱼ) P(tⱼ) Φᵀ(t,tⱼ)
+
+5. **With process noise (u ~ white, E[uuᵀ]=Qδ):**
+   Ṗ = AP + PAᵀ + BQBᵀ
+   Discrete: P_{k+1} = ΦₖPₖΦᵀₖ + ΓₖQₖΓᵀₖ
+   where Γₖ = ∫Φ(t_{k+1},τ)B(τ)dτ
+
+6. **State estimate propagation (zero-mean noise):**
+   x̂(t) = Φ(t,t_{k-1})x̂_{k-1}
+   (same as without noise — because E[u]=0!)`,
+    matlab: `% Process Noise Propagation — Appendix B Demo
+
+% Simple 2-state system: position + velocity with process noise on velocity
+A = [0, 1; 0, 0]; % state matrix
+B = [0; 1];        % noise input
+Q_c = 0.01;        % continuous process noise variance [m²/s⁴]
+dt = 1.0;           % time step [s]
+
+% State transition matrix
+Phi = expm(A*dt); % exact matrix exponential
+
+% Process noise transition matrix (analytical for this simple case)
+Gamma = [dt^2/2; dt]; % ∫ Phi(dt,tau)*B dtau from 0 to dt
+
+% Discrete process noise covariance
+Q_d = Gamma * Q_c * Gamma';
+
+% Initial covariance
+P0 = [1, 0; 0, 0.1]; % position and velocity uncertainties
+
+% Propagate
+fprintf('=== Process Noise Propagation (Appendix B) ===\\n\\n');
+fprintf('System: position + velocity, noise on acceleration\\n');
+fprintf('A = [0 1; 0 0], B = [0; 1], Q_c = %.3f\\n\\n', Q_c);
+
+P = P0;
+fprintf('%5s  %10s  %10s  %10s\\n', 'Step', 'sig_pos', 'sig_vel', 'correlation');
+for k = 0:10
+    sig_pos = sqrt(P(1,1));
+    sig_vel = sqrt(P(2,2));
+    corr = P(1,2)/sqrt(P(1,1)*P(2,2));
+    fprintf('%5d  %10.4f  %10.4f  %10.4f\\n', k, sig_pos, sig_vel, corr);
+    P = Phi * P * Phi' + Q_d; % propagate with process noise
+end
+fprintf('\\nKey: without Q_d, covariance would grow unboundedly.\\n');
+fprintf('With Q_d, it reaches a steady-state balance.\\n');`,
+    examTraps: [
+      "Quaternion multiplication is NON-COMMUTATIVE. The professor may ask: 'Is p⊗q = q⊗p?' → No, because of the cross product term p⃗×q⃗ = −q⃗×p⃗.",
+      "The process noise covariance formula P = ΦPΦᵀ + ΓQΓᵀ is the foundation of the EKF prediction. Know the difference between Φ (state transition) and Γ (noise transition).",
+      "The state estimate propagation is the SAME with or without process noise (when noise has zero mean): x̂(t) = Φx̂_{k-1}. The noise affects only the COVARIANCE, not the estimate.",
+      "STM properties: Φ(t,t)=I, Φ(tᵢ,tₖ)=Φ(tᵢ,tⱼ)Φ(tⱼ,tₖ), Φ(tᵢ,tₖ)=Φ⁻¹(tₖ,tᵢ). These are heavily used in orbit determination too."
+    ],
+    drill: [
+      { q: "Write the discrete-time covariance propagation with process noise.", a: "P_{k+1} = Φ_{k+1,k} Pₖ Φᵀ_{k+1,k} + Γ_{k+1,k} Qₖ Γᵀ_{k+1,k}, where Φ is the state transition matrix, Γ is the process noise transition matrix (Γ = ∫Φ(t,τ)B(τ)dτ), and Q is the process noise covariance." },
+      { q: "Why does the state estimate propagation not change when process noise is added (zero-mean case)?", a: "Because E[u(t)] = 0 and u is independent of past observations. Taking expectations: E[x(t)] = Φ(t,t_{k-1})x̂_{k-1} + ∫Φ(t,τ)B(τ)E[u(τ)]dτ = Φx̂_{k-1} + 0. The noise has zero mean, so it doesn't bias the estimate — it only increases the uncertainty (covariance)." },
+      { q: "State the three properties of the state transition matrix.", a: "1) Φ(tₖ,tₖ) = I (identity at same time). 2) Φ(tᵢ,tₖ) = Φ(tᵢ,tⱼ)Φ(tⱼ,tₖ) (composition/chain rule). 3) Φ(tᵢ,tₖ) = Φ⁻¹(tₖ,tᵢ) (invertibility — propagate backwards)." }
+    ]
+  },
+  {
+    id: "final_exam", num: "20", title: "🎯 FINAL EXAM Practice — Chapter 2", pages: "Full chapter", icon: "🏆",
+    overview: { why: "This module contains 15 comprehensive practice questions modelled on Prof. Iess's oral exam style (from SMS_oral_questions.pdf). Each question includes the ideal oral answer structure, key derivations, numerical exercises, and common traps.", objective: "Achieve exam readiness by practising the full range of Chapter 2 topics under exam conditions. Each question mirrors what the professor actually asks.", realMission: "Your oral exam — the most important mission of all!" },
+    equations: [],
+    derivation: `**FINAL EXAM PRACTICE — 15 Questions with Full Solutions**
+
+═══════════════════════════════════════════════════
+Q1: "Describe the TRIAD algorithm. What are its advantages and disadvantages? What other algorithm can you use?"
+═══════════════════════════════════════════════════
+
+**Opening statement:** TRIAD is a deterministic algebraic method for computing the attitude matrix from exactly two vector observations.
+
+**Algorithm (write on board):**
+1. Body triad: r₁=W₁, r₂=(W₁×W₂)/|W₁×W₂|, r₃=r₁×r₂
+2. Reference triad: s₁=V₁, s₂=(V₁×V₂)/|V₁×V₂|, s₃=s₁×s₂  
+3. A = [r₁ r₂ r₃][s₁ s₂ s₃]ᵀ
+
+**Advantages:** Simple, fast, no iteration, easy to implement.
+
+**Disadvantages:**
+• NOT optimal — treats W₁ as exact, absorbs all error into W₂
+• Different results depending on which vector is primary
+• Cannot use >2 observations
+• Sensitive to nearly-parallel vectors
+
+**Alternative:** QUEST — solves the Wahba problem optimally using ALL observations. It builds the 4×4 K matrix and finds the quaternion as the eigenvector for the largest eigenvalue.
+
+**Exam trap:** Never say TRIAD is optimal!
+
+═══════════════════════════════════════════════════
+Q2: "Write the Wahba problem. How do we solve it with QUEST? Write the K matrix."
+═══════════════════════════════════════════════════
+
+**Opening:** Wahba's problem: find the proper orthogonal A minimising L(A) = ½Σᵢ aᵢ|Wᵢ−AVᵢ|².
+
+**Reduction:** With Σaᵢ=1: L=1−g(A), where g(A)=tr(ABᵀ) and B=Σᵢ aᵢWᵢVᵢᵀ.
+
+**QUEST transforms g(A) to quaternion form:**
+g(q) = qᵀKq, maximised subject to |q|=1 → eigenvalue problem Kq=λq.
+
+**K matrix (write on board):**
+K = [S−σI₃, Z; Zᵀ, σ]  (4×4)
+where S=B+Bᵀ, σ=tr(B), Z=Σᵢ aᵢ(Wᵢ×Vᵢ).
+
+**Solution:** q_opt = eigenvector of K for largest eigenvalue λ_max≈1. Found by Newton-Raphson starting from λ₀=1.
+
+**Covariance:** P_qq = (λ²_max−σ²)⁻¹(I₃−ΣᵢaᵢWᵢWᵢᵀ).
+
+═══════════════════════════════════════════════════
+Q3: "Why do we use quaternions instead of Euler angles?"
+═══════════════════════════════════════════════════
+
+**Three reasons:**
+1. **No singularity** — Euler angles have gimbal lock at θ=±90°; quaternions represent all orientations
+2. **No trigonometric functions** — faster computation onboard
+3. **Linear kinematic equation** — dq/dt = ½Ω(ω)q is linear; Euler angle kinematics are nonlinear
+
+**Also:** quaternion composition (p⊗q) directly gives the combined rotation. 2:1 homomorphism with SO(3) — ±q give the same rotation, easily handled.
+
+═══════════════════════════════════════════════════
+Q4: "Explain all types of gyroscopes. Why can't they be used alone?"
+═══════════════════════════════════════════════════
+
+**Types:**
+• **RLG** — Ring Laser Gyro: Sagnac effect in a laser cavity. Δν=4AΩ/(λP). No moving parts.
+• **FOG** — Fiber Optic Gyro: Sagnac in fiber coil. Sensitivity ×n for n coils. Compact.
+• **HRG** — Hemispherical Resonating Gyro: Coriolis on vibrating hemisphere. Gain factor ≈0.3. Used on Cassini, Messenger.
+• (Mechanical — obsolete, has moving parts)
+
+**Why not alone?** The Farrenkopf model: g = ω + b + η₁, db/dt = η₂.
+The bias b(t) follows a random walk → angular error grows as t^(3/2).
+Over time, the measured attitude drifts systematically.
+Need star trackers to provide absolute reference → EKF estimates bias.
+
+═══════════════════════════════════════════════════
+Q5: "Star sensors: what do they provide? How do we use the data? What corrections are needed for the star catalog?"
+═══════════════════════════════════════════════════
+
+**What they provide:** Unit vectors Wᵢ in the body/OBF frame for identified stars. These are the MEASUREMENTS in the Wahba problem.
+
+**How we use them:**
+• TRIAD (2 vectors → deterministic attitude)
+• QUEST (n vectors → optimal quaternion)
+• EKF (QUEST quaternion as measurement → sequential estimation)
+
+**Catalog corrections (three):**
+1. Proper motion (several arcsec over decades)
+2. Parallax (<0.8 arcsec, nearby stars only)
+3. Aberration (6 arcsec LEO, 20 arcsec planetary)
+
+Also: precession + nutation to convert from J2000 to epoch of observation.
+"True" = both corrections applied. "Mean" = only precession.
+
+═══════════════════════════════════════════════════
+Q6: "Derive the Sagnac frequency shift for a laser gyroscope."
+═══════════════════════════════════════════════════
+
+**Setup:** Circular path radius R, rotation rate Ω. Two counter-propagating photons.
+
+**Co-rotating:** ct₊ + RΩt₊ = 2πR → t₊ = 2πR/(c+RΩ)
+**Counter-rotating:** ct₋ − RΩt₋ = 2πR → t₋ = 2πR/(c−RΩ)
+
+**Path difference:**
+ΔL = c(t₋−t₊) = c·2πR·2RΩ/(c²−R²Ω²) ≈ 4πR²Ω/c = **4AΩ/c**
+
+**Frequency shift (Doppler):**
+Δν = ν·2RΩ/c = **4AΩ/(λP)** where P=2πR, λ=c/ν.
+
+**Fringes:** N = 4Aθ/(λP). Count fringes → rotation angle θ.
+
+**Key:** Formula holds for ANY closed path (not just circular).
+
+═══════════════════════════════════════════════════
+Q7: "Write the Farrenkopf gyro noise model. What are ARW and RRW?"
+═══════════════════════════════════════════════════
+
+**Model:** g = ω + b + η₁, db/dt = η₂
+
+E[η₁η₁ᵀ]=σᵥ²δ(t−t')I₃, E[η₂η₂ᵀ]=σᵤ²δ(t−t')I₃, E[η₁η₂ᵀ]=0.
+
+**ARW** (σᵥ): Angle Random Walk. Rate white noise. σ_θ,ARW ∝ ARW·√t. Dominates SHORT times. Typical: 0.05 arcsec/√s.
+
+**RRW** (σᵤ): Rate Random Walk. Bias drift. σ_θ,RRW ∝ RRW·t^(3/2). Dominates LONG times. Typical: 3.19×10⁻⁵ arcsec/s^(3/2).
+
+**Total:** σ²_θ = σ²_ARW + σ²_RRW.
+
+═══════════════════════════════════════════════════
+Q8: "Earth sensors: how do they work? Limitations? Compare with star trackers."
+═══════════════════════════════════════════════════
+
+**Principle:** Rotating prism scans a cone. IR bolometer detects horizon crossings (δ₁,δ₂). Roll∝(δ₁−δ₂), pitch from (δ₁+δ₂). Single-beam needs altitude info; dual-beam doesn't.
+
+**Limitations:** Fuzzy horizon (main error), Earth oblateness, radiance variations, Sun/Moon interference. Accuracy: 0.02–0.5°.
+
+**Comparison:** Star trackers: 1-6 arcsec ≈ 0.0003-0.002°. ES are 10-1000× less accurate. But ES are simpler, cheaper, and don't need star catalogs or computing power.
+
+═══════════════════════════════════════════════════
+Q9: "Explain the multiplicative EKF. Why not use additive quaternion errors?"
+═══════════════════════════════════════════════════
+
+**Problem with additive:** q̂+δq breaks unit norm. Unbiased estimate E[δq]=0 → E[||q̂||]≠1. Incompatible!
+
+**MEKF solution:** Define error MULTIPLICATIVELY: δq = q⊗q̂⁻¹. Then δq₄≈1 (first order), and δq⃗≈δθ/2.
+
+**State:** δx = [δθ(3); δb(3)] — dimension 6, not 7.
+
+**F = [[ω̂×], −I₃; 0₃, 0₃].** G = [−I₃, 0₃; 0₃, I₃].
+
+**Update:** quaternion multiplicative (q̂=[δq̂;1]⊗q̂_{pred}), bias additive (b̂=b̂_{pred}+δb̂).
+
+═══════════════════════════════════════════════════
+Q10: "What observation model do you use in the attitude EKF?"
+═══════════════════════════════════════════════════
+
+**QUEST observation model (preferred):**
+Run QUEST → get quaternion pₖ and covariance P_qq.
+Innovation: z = pₖ⊗q̂⁻¹_{k|k-1} → vector part z⃗ₖ.
+**H = [I₃, 0₃]** — trivially simple!
+R = P_qq (QUEST covariance).
+
+**Alternative: UVF** (Unit Vector Filter) — uses raw star vectors. H depends on star direction. More complex.
+
+═══════════════════════════════════════════════════
+Q11 (NUMERICAL): "A star has magnitude +3. How many times brighter is Vega (m=0)?"
+═══════════════════════════════════════════════════
+
+m₂−m₁ = −2.5 log₁₀(S₂/S₁)
+3−0 = −2.5 log₁₀(S_star/S_Vega)
+log₁₀(S_star/S_Vega) = −1.2
+S_star/S_Vega = 10⁻¹·² = 0.063
+
+**Vega is 10^1.2 ≈ 15.8 times brighter** than a magnitude +3 star.
+
+═══════════════════════════════════════════════════
+Q12 (NUMERICAL): "FOG with R=10 cm, n=1000 coils, λ=633 nm, Ω=0.1 deg/h. Compute Δν and phase in 50 ms."
+═══════════════════════════════════════════════════
+
+Convert: Ω = 0.1×π/(180×3600) = 4.85×10⁻⁷ rad/s
+A_single = πR² = π×0.01 = 0.0314 m²
+A_total = n×A_single = 31.4 m²
+P_total = n×2πR = 628.3 m
+
+Δν = 4AΩ/(λP) = 4×31.4×4.85e-7/(633e-9×628.3) = **0.153 Hz**
+
+Phase in 50 ms: ΔΦ = 2π×Δν×0.050 = 2π×0.153×0.05 = **0.048 rad ≈ 2.8°**
+
+═══════════════════════════════════════════════════
+Q13: "How many reaction wheels do you need and how do you arrange them?"
+═══════════════════════════════════════════════════
+
+**Minimum 3** (one per axis) for full 3-axis control. **Standard: 4** in a tetrahedral arrangement for redundancy — if one fails, the remaining 3 still provide full control.
+
+**Why not thrusters alone?** Wheels provide continuous, fine-grained torque without consuming propellant. Thrusters are used for desaturation and large manoeuvres.
+
+═══════════════════════════════════════════════════
+Q14: "Sun sensors: how do they determine direction? Analogies with star sensors?"
+═══════════════════════════════════════════════════
+
+**Principle:** Cosine detector: I(α)=I(0)cos(α). Two detectors at ±α₀ give ΔI=Csinα (more linear). Need 2 orthogonal axes for full Sun vector.
+
+**Analogies with ST:** Both measure unit vector directions. ST measures MANY stars → attitude. SS measures ONE source → only direction (2 angles, not full 3-DOF attitude). ST needs catalog; SS doesn't (only one Sun!).
+
+**Key difference:** ST gives full attitude (3 DOF from ≥2 stars). SS gives only 2 angles. Need additional sensor (ES or 2nd SS) for full attitude.
+
+═══════════════════════════════════════════════════
+Q15: "EKF vs QUEST: which is better and why?"
+═══════════════════════════════════════════════════
+
+**EKF is ~10× more accurate** (for each attitude angle).
+
+**Why:**
+1. EKF accumulates information over many time steps (QUEST = single frame)
+2. EKF estimates gyro bias → removes systematic errors
+3. Gyro provides continuous rate between ST updates → better time resolution
+4. EKF combines multiple sensor types optimally
+
+**But QUEST is still essential:** it provides the observation (measurement) for the EKF. The workflow is: star tracker → QUEST → EKF. QUEST cannot be eliminated.`,
+    matlab: `% FULL Chapter 2 Exam Practice — Numerical Computations
+
+fprintf('=== CHAPTER 2 NUMERICAL EXAM PRACTICE ===\\n\\n');
+
+% ─── Q11: Magnitude computation ───
+fprintf('--- Q11: Magnitude ---\\n');
+m1 = 0; m2 = 3;
+ratio = 10^((m1-m2)/2.5);
+fprintf('Vega (m=0) vs m=+3 star: flux ratio = %.1f\\n', ratio);
+fprintf('Vega is %.1f times brighter.\\n\\n', ratio);
+
+% ─── Q12: FOG Sagnac ───
+fprintf('--- Q12: FOG Sagnac Effect ---\\n');
+R = 0.10; n = 1000; lambda = 633e-9; c = 3e8;
+Omega = 0.1 * pi/180/3600; % 0.1 deg/h in rad/s
+A = n * pi * R^2;
+P = n * 2 * pi * R;
+Dnu = 4*A*Omega/(lambda*P);
+DL = 4*A*Omega/c;
+Dphi_50ms = 2*pi*Dnu*0.050;
+fprintf('R=%.0f cm, n=%d, Omega=0.1 deg/h\\n', R*100, n);
+fprintf('Dnu = %.4f Hz\\n', Dnu);
+fprintf('DL = %.2e m\\n', DL);
+fprintf('Phase in 50 ms = %.4f rad = %.2f deg\\n\\n', Dphi_50ms, rad2deg(Dphi_50ms));
+
+% ─── Q11b: Full Moon magnitude ───
+fprintf('--- Q11b: Full Moon Magnitude ---\\n');
+R_moon = 1737e3; d_moon = 384400e3;
+R_sun = 696000e3; d_sun = 1.496e11;
+albedo = 0.15;
+% Approximate: S_moon/S_sun = albedo * (R_moon/d_moon)^2 / (pi)
+% Accounting for geometry properly:
+solid_moon = pi*(R_moon/d_moon)^2;
+solid_sun = pi*(R_sun/d_sun)^2;
+flux_ratio = albedo * solid_moon / solid_sun / pi; 
+m_sun = -26.8;
+m_moon = m_sun - 2.5*log10(flux_ratio);
+fprintf('Full Moon magnitude estimate: %.1f\\n', m_moon);
+
+% ─── Aberration ───
+fprintf('\\n--- Aberration at Different Speeds ---\\n');
+speeds = struct('name', {'LEO','Earth orbit','Planetary'}, ...
+                'v', {7.5e3, 30e3, 40e3});
+for i = 1:3
+    dtheta = atan(speeds(i).v/c);
+    fprintf('%s (v=%.0f km/s): aberration = %.1f arcsec\\n', ...
+        speeds(i).name, speeds(i).v/1e3, rad2deg(dtheta)*3600);
+end
+
+% ─── TRIAD numerical example ───
+fprintf('\\n--- TRIAD Numerical Example ---\\n');
+phi = deg2rad(25); e = [1;1;1]/sqrt(3);
+ex = [0 -e(3) e(2); e(3) 0 -e(1); -e(2) e(1) 0];
+A_true = cos(phi)*eye(3)+(1-cos(phi))*(e*e')+sin(phi)*ex;
+V1=[1;0;0]; V2=[0;0;1];
+W1=A_true*V1; W2=A_true*V2;
+r1=W1; r2=cross(W1,W2)/norm(cross(W1,W2)); r3=cross(r1,r2);
+s1=V1; s2=cross(V1,V2)/norm(cross(V1,V2)); s3=cross(s1,s2);
+A_triad=[r1,r2,r3]*[s1,s2,s3]';
+fprintf('True rotation: 25 deg about [1,1,1]/sqrt(3)\\n');
+fprintf('TRIAD error (Frobenius): %.2e\\n', norm(A_triad-A_true,'fro'));
+fprintf('det(A_triad) = %.8f\\n', det(A_triad));
+
+% ─── Gyro error growth ───
+fprintf('\\n--- Gyro Error Growth (Farrenkopf) ---\\n');
+ARW = 0.05; RRW = 3.19e-5; % arcsec units
+times = [1, 10, 60, 300, 600, 1800, 3600];
+fprintf('%8s  %10s  %10s  %10s\\n','Time[s]','ARW[as]','RRW[as]','Total[as]');
+for t = times
+    s_arw = ARW*sqrt(t);
+    s_rrw = RRW*t^1.5/sqrt(3);
+    s_tot = sqrt(s_arw^2+s_rrw^2);
+    fprintf('%8d  %10.3f  %10.3f  %10.3f\\n', t, s_arw, s_rrw, s_tot);
+end
+fprintf('\\nAfter 1 hour: ARW=%.1f as, RRW=%.1f as, Total=%.1f as\\n',...
+    ARW*sqrt(3600), RRW*3600^1.5/sqrt(3), ...
+    sqrt((ARW*sqrt(3600))^2+(RRW*3600^1.5/sqrt(3))^2));`,
+    examTraps: [
+      "The professor often chains questions: 'What is TRIAD?' → you answer → 'Is it optimal?' → No → 'What is optimal?' → QUEST → 'Write the K matrix' → you write → 'Why quaternions?' → 3 reasons. Be ready for this chain.",
+      "Numerical questions are common: magnitude ratios, Sagnac frequency shifts, aberration values, gyro error after N seconds. Practice computing these FAST.",
+      "The professor values STRUCTURE in your oral answer: opening statement → key equation → real example → conclusion. Don't ramble.",
+      "From SMS oral questions: the most frequently asked topics are (in order): TRIAD+QUEST+Wahba, gyroscopes (all types), star sensors, reaction wheels, EKF, sun/earth sensors. TRIAD-QUEST is asked to EVERY student.",
+      "If you don't know something, say: 'I'm not sure about the exact formula, but the physical principle is...' — partial credit is better than silence."
+    ],
+    drill: [
+      { q: "The professor says: 'Walk me through the complete attitude determination pipeline from raw sensor data to final attitude estimate.'", a: "1) Star tracker acquires star images on CCD, 2) Star identification (direct match or angular separation match), 3) Convert CCD coordinates to unit vectors Wᵢ via (u,v,f) mapping, 4) Correct catalog vectors Vᵢ for proper motion, parallax, aberration, 5) Run QUEST: build B→K→eigenvalue→optimal quaternion pₖ with covariance P_qq, 6) Feed pₖ into MEKF as observation: innovation z=pₖ⊗q̂⁻¹, H=[I₃,0₃], 7) EKF update: estimate attitude error δθ and gyro bias error δb, 8) Between ST updates: propagate with gyro (kinematic equation + Farrenkopf model)." },
+      { q: "In 30 seconds, explain why the EKF state has 6 dimensions, not 7.", a: "The error quaternion δq=q⊗q̂⁻¹ has 4 components [δq⃗; δq₄], but to first order δq₄≈1 (constant). Since the scalar part carries no information, we drop it and work with only δq⃗≈δθ/2 (3 components) plus δb (3 bias errors) = 6 states total." },
+      { q: "Quick: ARW=0.05 arcsec/√s. What's the angular error after 100 seconds?", a: "σ_θ,ARW = ARW×√t = 0.05×√100 = 0.05×10 = 0.5 arcsec. (Quick mental math: √100=10.)" }
+    ]
+  },
+];
+
+// ─── STYLES ─────────────────────────────────────────────────────────────────
+const styles = {
+  shell: { display: "flex", height: "100vh", fontFamily: "'Inter', -apple-system, sans-serif", fontSize: 14, color: "var(--color-text-primary, #1a1a2e)", background: "var(--color-background-tertiary, #f0f0f5)" },
+  sidebar: { width: 240, background: "var(--color-background-primary, #fff)", borderRight: "1px solid var(--color-border-tertiary, #e2e2e8)", display: "flex", flexDirection: "column", flexShrink: 0, overflow: "hidden" },
+  sidebarHead: { padding: "14px 16px", borderBottom: "1px solid var(--color-border-tertiary, #e2e2e8)" },
+  sidebarList: { overflowY: "auto", flex: 1, padding: 6 },
+  sItem: (active) => ({ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 8, cursor: "pointer", border: "none", background: active ? "var(--color-background-secondary, #eef)" : "transparent", borderLeft: active ? "3px solid #c0392b" : "3px solid transparent", width: "100%", textAlign: "left" }),
+  main: { flex: 1, overflowY: "auto", padding: "24px 32px 48px" },
+  tabBar: { display: "flex", gap: 2, marginTop: 20, borderBottom: "2px solid #e2e2e8", flexWrap: "wrap" },
+  tab: (a) => ({ padding: "8px 14px", cursor: "pointer", border: "none", background: "none", fontSize: 12, fontWeight: a ? 600 : 400, color: a ? "#c0392b" : "#555", borderBottom: a ? "2px solid #c0392b" : "2px solid transparent", marginBottom: -2 }),
+  card: { background: "var(--color-background-primary, #fff)", border: "1px solid #e2e2e8", borderRadius: 10, padding: "18px 20px", marginTop: 16 },
+  eqBox: { background: "#f5f5fa", borderRadius: 8, padding: "12px 16px", margin: "10px 0", fontFamily: "monospace", fontSize: 13, whiteSpace: "pre-wrap", lineHeight: 1.6 },
+  codeBlock: { background: "#1e1e2e", color: "#cdd6f4", borderRadius: 8, padding: "14px 18px", margin: "10px 0", fontFamily: "'JetBrains Mono', monospace", fontSize: 11.5, whiteSpace: "pre-wrap", lineHeight: 1.5 },
+  trapBox: { background: "#fff3e0", border: "1px solid #ffcc80", borderRadius: 8, padding: "10px 14px", margin: "8px 0", fontSize: 13 },
+  drillQ: { background: "#e3f2fd", borderRadius: 8, padding: "10px 14px", margin: "8px 0", fontSize: 13, cursor: "pointer" },
+  drillA: { background: "#e8f5e9", borderRadius: 8, padding: "10px 14px", margin: "4px 0 8px", fontSize: 13 },
+  overviewBox: { background: "linear-gradient(135deg, #c0392b12, #e7494918)", border: "1px solid #c0392b25", borderRadius: 10, padding: "16px 20px", marginTop: 12 },
+};
+const TABS = [
+  { key: "overview", label: "📋 Overview" }, { key: "equations", label: "📐 Equations" },
+  { key: "derivation", label: "📝 Derivation" }, { key: "matlab", label: "💻 MATLAB" },
+  { key: "traps", label: "⚠️ Exam Traps" }, { key: "drill", label: "🏋️ Drill" },
+];
+
+export default function App() {
+  const [activeModule, setActiveModule] = useState("mekf");
+  const [activeTab, setActiveTab] = useState("overview");
+  const [drillRevealed, setDrillRevealed] = useState({});
+  const toggleDrill = (id, i) => { const k = `${id}-${i}`; setDrillRevealed(p => ({ ...p, [k]: !p[k] })); };
+  const mod = MODULES.find(m => m.id === activeModule);
+
+  return (
+    <div style={styles.shell}>
+      <div style={styles.sidebar}>
+        <div style={styles.sidebarHead}>
+          <div style={{ fontSize: 10, color: "#8888a0", fontFamily: "monospace", letterSpacing: 1, textTransform: "uppercase" }}>SMS • CH.2 — PART 3</div>
+          <div style={{ fontSize: 14, fontWeight: 600, marginTop: 3 }}>EKF & Final Exam</div>
+          <div style={{ fontSize: 11, color: "#8888a0", marginTop: 2 }}>Prof. Iess — pp. 105–175</div>
+        </div>
+        <div style={styles.sidebarList}>
+          {MODULES.map(m => (
+            <button key={m.id} style={styles.sItem(activeModule === m.id)} onClick={() => { setActiveModule(m.id); setActiveTab("overview"); }}>
+              <span style={{ fontSize: 15, width: 20, textAlign: "center" }}>{m.icon}</span>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.num}. {m.title}</div>
+                <div style={{ fontSize: 10, color: "#8888a0", fontFamily: "monospace" }}>{m.pages}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={styles.main}>
+        {mod && (
+          <div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+              <span style={{ fontSize: 28 }}>{mod.icon}</span>
+              <div>
+                <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Module {mod.num}: {mod.title}</h1>
+                <div style={{ fontSize: 12, color: "#8888a0", fontFamily: "monospace", marginTop: 4 }}>{mod.pages}</div>
+              </div>
+            </div>
+            <div style={styles.tabBar}>
+              {TABS.map(t => (
+                <button key={t.key} style={styles.tab(activeTab === t.key)} onClick={() => setActiveTab(t.key)}>{t.label}</button>
+              ))}
+            </div>
+            {activeTab === "overview" && (
+              <div style={styles.overviewBox}>
+                <div style={{ fontWeight: 600, fontSize: 13, color: "#c0392b", marginBottom: 6 }}>🎯 Why?</div>
+                <p style={{ margin: 0, lineHeight: 1.6 }}>{mod.overview.why}</p>
+                <div style={{ fontWeight: 600, fontSize: 13, color: "#059669", marginTop: 14, marginBottom: 6 }}>📌 Objective</div>
+                <p style={{ margin: 0, lineHeight: 1.6 }}>{mod.overview.objective}</p>
+                <div style={{ fontWeight: 600, fontSize: 13, color: "#d97706", marginTop: 14, marginBottom: 6 }}>🛰️ Mission</div>
+                <p style={{ margin: 0, lineHeight: 1.6 }}>{mod.overview.realMission}</p>
+              </div>
+            )}
+            {activeTab === "equations" && mod.equations.length > 0 && (
+              <div>{mod.equations.map((eq, i) => (
+                <div key={i} style={styles.card}>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: "#c0392b", marginBottom: 6 }}>{eq.name}</div>
+                  <div style={styles.eqBox}>{eq.eq}</div>
+                  <p style={{ margin: "8px 0 0", lineHeight: 1.6, fontSize: 13, color: "#555" }}>{eq.explain}</p>
+                </div>
+              ))}</div>
+            )}
+            {activeTab === "equations" && mod.equations.length === 0 && (
+              <div style={styles.card}><p>This module's equations are embedded in the Derivation tab (full solutions).</p></div>
+            )}
+            {activeTab === "derivation" && (
+              <div style={styles.card}><div style={{ whiteSpace: "pre-wrap", lineHeight: 1.7, fontSize: 13 }}>{mod.derivation}</div></div>
+            )}
+            {activeTab === "matlab" && (
+              <div><div style={{ fontSize: 12, color: "#888", marginTop: 12 }}>Copy into MATLAB:</div><div style={styles.codeBlock}>{mod.matlab}</div></div>
+            )}
+            {activeTab === "traps" && (
+              <div>{mod.examTraps.map((t, i) => (
+                <div key={i} style={styles.trapBox}><span style={{ fontWeight: 600 }}>⚠️ #{i+1}:</span> {t}</div>
+              ))}</div>
+            )}
+            {activeTab === "drill" && (
+              <div>
+                <p style={{ fontSize: 12, color: "#888", margin: "12px 0 8px" }}>Click to reveal answers:</p>
+                {mod.drill.map((d, i) => {
+                  const k = `${mod.id}-${i}`;
+                  return (<div key={i}>
+                    <div style={styles.drillQ} onClick={() => toggleDrill(mod.id, i)}>
+                      <b>Q{i+1}:</b> {d.q} <span style={{ float: "right", fontSize: 11, color: "#1565c0" }}>{drillRevealed[k] ? "▲" : "▼"}</span>
+                    </div>
+                    {drillRevealed[k] && <div style={styles.drillA}><b style={{ color: "#2e7d32" }}>✅</b> {d.a}</div>}
+                  </div>);
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(App));
+</script>
+</body>
+</html>

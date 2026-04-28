@@ -1,0 +1,1426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attitude Determination — Sensors & Hardware (Part 2)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0c0f1a; color: #e2e8f0; min-height: 100vh; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo } = React;
+
+// ─── NOTATION DATA ──────────────────────────────────────────────────────────
+const NOTATION_GROUPS = [
+  {
+    title: "Star Sensor Quantities", emoji: "⭐", color: "#3b82f6",
+    rows: [
+      { sym: "S", dim: "3×1", desc: "Star unit vector in sensor frame (SCF)", detail: "S = [−sin φ cos λ, cos φ cos λ, −sin λ]ᵀ. Computed from CCD pixel coordinates (u,v) and focal length f via tan φ = u/f, tan λ = (v/f)cos φ.", trap: "This is in the SENSOR frame — must be transformed to OBF/body frame to get Wᵢ for Wahba." },
+      { sym: "f", dim: "scalar", desc: "Focal length of star tracker optics", detail: "Determines the mapping from star direction to CCD pixel position. Longer f → narrower FOV, higher accuracy.", trap: "" },
+      { sym: "m₁ − m₂", dim: "scalar", desc: "Stellar magnitude difference", detail: "m₂ − m₁ = −2.5 log₁₀(S₂/S₁). Vega is defined as magnitude 0. Larger magnitude = fainter star. Sun ≈ −26.8, Sirius ≈ −1.5.", trap: "Magnitude scale is LOGARITHMIC and INVERTED: brighter objects have SMALLER (even negative) magnitudes." },
+      { sym: "FOV", dim: "deg²", desc: "Field of view of star tracker", detail: "Typical: 8°×8° to 10°×10°. Determines how many stars are visible at once. Need ≥2 stars for attitude (TRIAD) or ≥3 for redundancy (QUEST).", trap: "Wider FOV = more stars visible, but lower per-star accuracy. Tradeoff!" },
+      { sym: "mᵥ", dim: "scalar", desc: "Visual magnitude", detail: "Stellar magnitude in the visible portion of the spectrum. The sensitivity range of a typical star tracker is mᵥ = +1 to +6 (or up to +7.5 for advanced units).", trap: "" },
+    ]
+  },
+  {
+    title: "Gyroscope Quantities (Farrenkopf Model)", emoji: "🌀", color: "#8b5cf6",
+    rows: [
+      { sym: "gᵢ", dim: "scalar", desc: "Gyro measurement (i-th axis)", detail: "gᵢ = (1+kᵢ)ωᵢ + b₀ᵢ + bᵢ + η₁ᵢ. Includes scale factor error k, initial bias b₀, slowly varying bias b, and white noise η₁.", trap: "The gyro measures angular RATE, not angle. Integration is needed to get rotation." },
+      { sym: "ω", dim: "3×1", desc: "True angular velocity", detail: "The actual angular velocity of the spacecraft. This is what the gyro tries to measure, but noise and biases corrupt the measurement.", trap: "" },
+      { sym: "b₀", dim: "3×1", desc: "Initial gyro bias", detail: "Constant bias present at startup. Can be calibrated pre-launch but may change after launch (thermal effects, radiation).", trap: "" },
+      { sym: "b(t)", dim: "3×1", desc: "Slowly varying gyro bias (random walk)", detail: "db/dt = η₂, where η₂ is white noise. This is the DRIFT RATE RAMP. It causes systematic deviation over time → why gyros can't work alone.", trap: "This is WHY gyros need star trackers: the bias drifts and cannot be corrected without external reference." },
+      { sym: "η₁", dim: "3×1", desc: "Rate white noise (ARW source)", detail: "White Gaussian noise on gyro rate. E[η₁]=0, E[η₁(t)η₁(t')ᵀ]=σᵥ²δ(t−t'). This is the Angle Random Walk (ARW) noise source.", trap: "" },
+      { sym: "η₂", dim: "3×1", desc: "Bias drift noise (RRW source)", detail: "White Gaussian noise driving the bias: db/dt = η₂. E[η₂]=0, E[η₂(t)η₂(t')ᵀ]=σᵤ²δ(t−t'). This is the Rate Random Walk (RRW) source.", trap: "η₁ and η₂ are UNCORRELATED: E[η₁(t)η₂(t')ᵀ] = 0." },
+      { sym: "σᵥ (ARW)", dim: "arcsec/√s", desc: "Angle Random Walk coefficient", detail: "Characterises the white noise on the gyro rate. Typical value: 0.05 arcsec/√s. Angular error grows as σ_θ,ARW ∝ ARW·√t.", trap: "ARW dominates at SHORT integration times." },
+      { sym: "σᵤ (RRW)", dim: "arcsec/s^(3/2)", desc: "Rate Random Walk coefficient", detail: "Characterises the bias drift noise. Typical value: 3.19×10⁻⁵ arcsec/s^(3/2). Angular error grows as σ_θ,RRW ∝ RRW·t^(3/2).", trap: "RRW dominates at LONG integration times — this is why gyros drift." },
+      { sym: "k", dim: "scalar", desc: "Scale factor error", detail: "Small multiplicative error on the measured rate: g ≈ (1+k)ω. Assumed small.", trap: "" },
+      { sym: "Δ", dim: "3×3", desc: "Misalignment matrix", detail: "(I−Δ) maps true axes to actual gyro axes. Off-diagonal elements δᵢⱼ represent cross-axis coupling.", trap: "Misalignment + scale factor can be estimated by the EKF if star tracker data are available." },
+      { sym: "Λ", dim: "3×3", desc: "Scale factor matrix", detail: "(I−Λ) = diag(1−λₓ, 1−λᵧ, 1−λ_z). Each axis has its own scale factor error.", trap: "" },
+    ]
+  },
+  {
+    title: "Earth & Sun Sensor Quantities", emoji: "🌍", color: "#059669",
+    rows: [
+      { sym: "δ₁, δ₂", dim: "rad", desc: "Horizon crossing phase angles", detail: "Phase angles of the first and second horizon crossings relative to the vertical reference. Their sum and difference give pitch and roll.", trap: "" },
+      { sym: "E = δ₁ − δ₂", dim: "rad", desc: "Phase angle difference", detail: "Proportional to the roll angle. E₀ is the normalising constant for zero roll at nominal attitude.", trap: "Depends on ALTITUDE — single-beam ES needs altitude information; dual-beam does not." },
+      { sym: "ρ", dim: "rad", desc: "Earth angular radius from spacecraft", detail: "ρ = sin⁻¹[(Rₑ+H_eq)/(Rₑ+h)]. Depends on spacecraft altitude h and Earth radius Rₑ.", trap: "" },
+      { sym: "I(α)", dim: "A", desc: "Sun sensor photocurrent", detail: "I(α) = I(0)cos(α) for a single cosine detector. α is the sun incidence angle.", trap: "Cosine law breaks down at high incidence angles." },
+      { sym: "ΔI", dim: "A", desc: "Differential sun sensor output", detail: "ΔI = I₂−I₁ = 2K sin α₀ sin α = C sin α. Two cosine detectors at ±α₀ give a signal proportional to sin(α) → more linear.", trap: "Need TWO orthogonal sensor axes to determine the full sun vector direction." },
+      { sym: "APE", dim: "rad", desc: "Absolute Pointing Error", detail: "Angular separation between actual and commanded pointing vectors. Real-time error.", trap: "" },
+      { sym: "RPE", dim: "rad", desc: "Relative Pointing Error (stability)", detail: "Difference between instantaneous APE and median APE over time interval tₘ. Measures pointing STABILITY.", trap: "RPE is the error the PAYLOAD sees — often more important than APE for science instruments." },
+      { sym: "AME", dim: "rad", desc: "Absolute Measurement Error", detail: "Angular separation between actual and measured pointing. Represents attitude KNOWLEDGE. Can be determined a posteriori.", trap: "APE/RPE are real-time; AME can be reconstructed after the fact." },
+    ]
+  },
+  {
+    title: "Sagnac Effect (Laser Gyro Physics)", emoji: "💡", color: "#d97706",
+    rows: [
+      { sym: "Δν", dim: "Hz", desc: "Sagnac frequency difference", detail: "Δν = 4AΩ/(λP) for general path, or Δν = 4πR²Ω/(λ·2πR) = 2RΩ/λ for circular path of radius R. Key equation for laser gyros.", trap: "This formula holds for ANY closed path — not just circular. A = enclosed area, P = perimeter." },
+      { sym: "ΔL", dim: "m", desc: "Optical path difference (Sagnac)", detail: "ΔL = 4AΩ/c. The path length difference between co- and counter-rotating beams.", trap: "" },
+      { sym: "N", dim: "integer", desc: "Number of fringes", detail: "N = ΔΦ/(2π) = 4Aθ/(λP). Counting fringes gives the rotation angle θ = Ωt directly.", trap: "" },
+      { sym: "n (FOG)", dim: "integer", desc: "Number of fiber coils", detail: "For FOG: Δν_FOG = n × Δν_single. Sensitivity scales linearly with number of coils → much higher sensitivity for same physical size.", trap: "" },
+      { sym: "A", dim: "m²", desc: "Enclosed area of laser path", detail: "For circular: A = πR². For FOG with n coils: A_eff = nπR². The Sagnac effect is proportional to the enclosed area.", trap: "" },
+    ]
+  },
+];
+
+// ─── MODULE DATA ────────────────────────────────────────────────────────────
+const MODULES = [
+  {
+    id: "star_hw",
+    num: "8",
+    title: "Star Sensors: Hardware & Architecture",
+    pages: "pp. 31–42",
+    icon: "📷",
+    overview: {
+      why: "Star trackers are the PRIMARY attitude sensors on modern spacecraft. They provide the unit vectors Wᵢ that feed into TRIAD, QUEST, and the attitude EKF. Understanding their hardware, limitations, and specifications is essential for designing an AOCS.",
+      objective: "Know the 3 types of star sensors, their components (optics + CCD + electronics), how CCD coordinates map to unit vectors, key specifications (FOV, accuracy, update rate), and practical limitations (baffles, sun exclusion, temperature).",
+      realMission: "BepiColombo: three star trackers with optical axes 90° apart, protected by baffles and radiators pointing to deep space. The hot thermal environment near Mercury makes star tracker design extremely challenging."
+    },
+    equations: [
+      { name: "CCD to star unit vector", eq: "tan φ = u/f,  tan λ = (v/f)cos φ\nS = [−sin φ cos λ,  cos φ cos λ,  −sin λ]ᵀ", explain: "Maps pixel coordinates (u,v) on the CCD to the star unit vector S in the sensor frame. f is the focal length. This S is then transformed to the body/OBF frame to get Wᵢ for the Wahba problem." },
+      { name: "Pointing error from ST accuracy", eq: "For 1 arcsec accuracy: δθ = 1″ = 4.85×10⁻⁶ rad", explain: "Typical accuracies: 1–6 arcsec (1σ) in pitch/roll. Yaw accuracy is WORSE because the star tracker gives poor information about rotation ABOUT its boresight axis." },
+    ],
+    derivation: `**Star Sensors — Complete Overview (pp. 31–42)**
+
+**Why stars are the best attitude reference:**
+• Stellar positions known to outstanding precision (milliarcsec, now 10 µarcsec with Gaia)
+• Stars always available to optical imaging in space
+• CCD/CMOS technology is very reliable
+• Long heritage of use for inertial frame realisation
+
+**Disadvantages:**
+• High cost
+• Significant onboard computing power needed
+• Mission-specific tailoring required (not truly off-the-shelf)
+
+**Three categories of star sensors:**
+1. **Star scanners** — used on spin-stabilised satellites; the spin sweeps the FOV across the sky
+2. **Fixed-head star trackers** — the most accurate; mounted rigidly on the optical bench
+3. **Gimbaled star trackers** — mechanically steered; more complex, less accurate
+
+**Main components (p. 39):**
+1. Optical system (lens + baffle)
+2. Light detector (CCD or CMOS)
+3. Readout electronics
+
+**From CCD to star unit vector:**
+The star image falls on a CCD (typically 500×500 or 1000×1000 pixels).
+Due to diffraction, a star appears not as a point but as a Gaussian blob (Point Spread Function).
+Sub-arrays (3×3 or 4×4 pixels) are used to determine the star centroid with sub-pixel accuracy.
+
+Given pixel coordinates (u,v) and focal length f:
+  tan φ = u/f
+  tan λ = (v/f) cos φ
+  S = [−sin φ cos λ,  cos φ cos λ,  −sin λ]ᵀ
+
+This vector S (in the sensor frame) is then transformed via the calibrated SCF→OBF rotation to get the body-frame vector W used in QUEST/TRIAD.
+
+**Key specifications (from the comparison table, p. 42):**
+| Parameter | HD-1003 | CT-601 | AST |
+|-----------|---------|--------|-----|
+| FOV | 8°×8° | 8°×8° | 8.8°×8.8° |
+| Sensitivity (Mᵥ) | +2 to +6 | +1 to +6 | +7.5 |
+| Accuracy (1σ, roll/pitch) | 6 arcsec | 3 arcsec (bias) | 1 arcsec |
+| Update rate | 10 Hz | 10 Hz | 10 Hz |
+| Max tracked stars | 6 | 5 | 20 |
+| Mass | 3.6 kg | 8.2 kg | 3.5 kg |
+
+**Critical practical aspects:**
+• Baffles are ESSENTIAL to prevent stray light reaching the CCD
+• Star trackers cannot be used when sun aspect angle < 30–60°
+• Moon and Earth albedo can also blind the sensor
+• CCD temperature must be controlled (Peltier cooling, <0°C)
+• Yaw accuracy is WORSE than pitch/roll (poor information about rotation about boresight)
+
+**BepiColombo example (pp. 57-58):**
+Three star trackers with optical axes 90° apart, protected by baffles and radiators pointing to deep space. The harsh thermal environment near Mercury (up to 350°C on sunlit surfaces) makes thermal control of the star trackers extremely challenging.`,
+    matlab: `% Star Tracker: CCD coordinates to unit vector
+% Demonstrate the mapping from pixel to star direction
+
+% Star tracker parameters
+f = 50e-3;          % focal length [m] (50 mm)
+pixel_size = 15e-6; % pixel size [m] (15 microns)
+Npix = 1000;        % 1000x1000 CCD
+
+% Star centroid in pixels (measured)
+u_pix = 200; v_pix = -150; % pixel offset from CCD center
+
+% Convert to physical CCD coordinates [m]
+u = u_pix * pixel_size;
+v = v_pix * pixel_size;
+
+% Compute angular coordinates
+phi = atan(u / f);           % azimuth
+lambda = atan((v / f) * cos(phi)); % elevation
+
+% Star unit vector in sensor frame
+S = [-sin(phi)*cos(lambda);
+      cos(phi)*cos(lambda);
+     -sin(lambda)];
+S = S / norm(S); % ensure unit
+
+fprintf('=== Star Tracker: CCD to Unit Vector ===\\n\\n');
+fprintf('Focal length: %.1f mm\\n', f*1e3);
+fprintf('Pixel position: u=%d, v=%d pixels\\n', u_pix, v_pix);
+fprintf('Physical coords: u=%.3f mm, v=%.3f mm\\n', u*1e3, v*1e3);
+fprintf('Angles: phi=%.4f deg, lambda=%.4f deg\\n', rad2deg(phi), rad2deg(lambda));
+fprintf('Star unit vector S = [%.6f, %.6f, %.6f]\\n', S);
+fprintf('|S| = %.10f (must be 1)\\n\\n', norm(S));
+
+% How many stars visible in different FOV sizes?
+fprintf('Stars visible in FOV vs magnitude limit:\\n');
+fprintf('%8s  %6s  %6s  %6s\\n', 'Mag lim', '8x8 deg', '10x10', '15x15');
+% stars per sq degree brighter than m (from notes p.37)
+density = [1.0, 0.34, 0.12, 0.04, 0.013];
+mag = [8, 7, 6, 5, 4];
+for i = 1:5
+    fprintf('  m<%d     %6.1f   %6.1f   %6.1f\\n', ...
+        mag(i), density(i)*64, density(i)*100, density(i)*225);
+end`,
+    examTraps: [
+      "Prof. Iess frequently asks: 'What do star sensors provide and how do we use them?' → They provide unit vectors Wᵢ in the body/OBF frame. These feed into the Wahba problem (QUEST) or the TRIAD algorithm.",
+      "Yaw accuracy is WORSE than pitch/roll — because a star tracker gives poor information about rotation ABOUT its boresight axis. The professor may ask: 'If I mount the ST along the orbit normal, which axis has worst accuracy?' → Yaw.",
+      "From oral exam questions: 'If I have 2 vectors W, is it better to get them from one or two star trackers?' → TWO star trackers, because with one ST (8°×8° FOV), the two stars might be nearly parallel → poor TRIAD result.",
+      "Baffles, sun exclusion angle (30-60°), CCD temperature control — these practical aspects are frequently tested."
+    ],
+    drill: [
+      { q: "Name the 3 main components of a star sensor.", a: "1) Optical system (lens + baffle), 2) Light detector (CCD or CMOS), 3) Readout electronics. The baffle prevents stray light from the Sun, Moon, and Earth albedo." },
+      { q: "How do you convert CCD pixel coordinates to a star unit vector?", a: "From pixel coords (u,v) and focal length f: tan φ = u/f, tan λ = (v/f)cos φ. Then S = [−sin φ cos λ, cos φ cos λ, −sin λ]ᵀ in the sensor frame. Transform S to the body frame to get Wᵢ for Wahba." },
+      { q: "Why is yaw accuracy worse than pitch/roll for a star tracker?", a: "A star tracker measures the direction of stars very precisely (the boresight vector), but has poor sensitivity to rotations ABOUT the boresight axis. So pitch and roll (which change star positions on the CCD) are accurate, while yaw (rotation about the optical axis) is not." }
+    ]
+  },
+  {
+    id: "magnitude",
+    num: "9",
+    title: "Stellar Magnitude, Type & Catalogs",
+    pages: "pp. 33–52",
+    icon: "✨",
+    overview: {
+      why: "Star identification is the FIRST step before attitude determination can begin. The onboard software must identify which stars are in the FOV by matching their magnitude and position against a stored catalog. Understanding the magnitude system, spectral types, and the Hipparcos catalog is essential.",
+      objective: "Define the magnitude scale, know key spectral types (O B A F G K M), understand the Hipparcos catalog specifications, and master the three corrections needed for catalog positions (proper motion, parallax, aberration).",
+      realMission: "ESA's Hipparcos satellite (1989-1993) measured positions of 118,218 stars to ~1 mas precision, creating the standard catalog for all star trackers. Now superseded by Gaia (~10 µarcsec precision)."
+    },
+    equations: [
+      { name: "Magnitude definition", eq: "m₂ − m₁ = −2.5 log₁₀(S₂/S₁)", explain: "Logarithmic, inverted scale. A difference of 5 magnitudes = factor 100 in flux. Vega ≡ 0. Sun ≈ −26.8, Sirius ≈ −1.5. Brighter objects have SMALLER (even negative) magnitudes." },
+      { name: "Aberration (classical)", eq: "tan Δθ = v_t / c", explain: "Classical aberration formula: the apparent star position shifts by angle Δθ toward the observer's velocity direction. For a LEO spacecraft: ~6 arcsec. For a planetary spacecraft: ~20 arcsec." },
+      { name: "Aberration (relativistic)", eq: "sin θ_obs = sin θ_true / [γ(1 + β cos θ_true)]", explain: "Exact Lorentz treatment. γ = 1/√(1−β²), β = v/c. For non-relativistic speeds (β << 1), reduces to the classical formula." },
+    ],
+    derivation: `**Stellar Magnitude System (pp. 33-37)**
+
+The magnitude scale is LOGARITHMIC and INVERTED:
+  m₂ − m₁ = −2.5 log₁₀(S₂/S₁)
+
+Key reference values:
+| Object | Magnitude | Notes |
+|--------|-----------|-------|
+| Vega (α Lyr) | 0.05 | Defined reference |
+| Sirius (α CMa) | −1.49 | Brightest star |
+| Sun | −26.8 | |
+| Full Moon | ~−12.7 | Exercise: compute from albedo 0.15 |
+
+**Numerical exercise — Full Moon magnitude:**
+The Moon reflects sunlight. Its apparent magnitude depends on:
+• Sun's magnitude: m_Sun = −26.8
+• Moon's solid angle as seen from Earth: Ω_Moon ≈ 6.42×10⁻⁵ sr
+• Albedo: A = 0.15
+• At full Moon, the effective cross-section ≈ πR²_Moon
+Using the magnitude formula and the Sun-Moon flux ratio:
+  m_Moon ≈ m_Sun − 2.5 log₁₀(A × (R_Moon/d_Moon)² × (d_Earth-Sun/d_Moon-Earth)²)
+The precise calculation gives m_Moon ≈ −12.7.
+
+**Spectral Types:** O B A F G K M (L, T)
+Mnemonic: "Oh Be A Fine Girl/Guy, Kiss Me"
+• O, B: hot, blue → rare but very bright
+• A, F: white → common among brightest stars (Vega, Sirius, Procyon)
+• G: yellow (like the Sun)
+• K, M: red, cool → most common overall but often faint
+
+Spectral type matters for selecting the optical filter in the star tracker to reduce background noise.
+
+**Star density (p. 37):**
+For a typical 8°×8° FOV (= 64 sq.deg):
+• m < 5: ~2.6 stars visible → barely enough for QUEST
+• m < 6: ~7.7 stars → comfortable
+• m < 7: ~22 stars → excellent
+
+This is why modern trackers aim for mᵥ ≤ +6 or +7.5 sensitivity.
+
+**Star identification algorithms (p. 33):**
+Two classes:
+1. **Lost in space** — no prior attitude knowledge. Must use pattern matching (angular separation, polygon match)
+2. **Recursive** — approximate previous attitude known. Use direct match (much faster)
+
+**The Hipparcos Catalog (p. 43):**
+• 118,218 stars, measured 1989-1993
+• Epoch: J2000 (1 Jan 2000, 12:00 UTC)
+• Reference system: ICRS (International Celestial Reference System)
+• Position precision: ~0.77 mas (RA), ~0.64 mas (DEC)
+• Parallax precision: ~0.97 mas
+• Proper motion: ~0.88 mas/yr
+
+**Three corrections to catalog positions (pp. 46-51):**
+
+1. **Proper motion** (several arcsec over decades)
+Stars move! The catalog gives position at epoch J2000. To use in 2025, shift by 25 × (proper motion in mas/yr).
+
+2. **Parallax** (<0.8 arcsec)
+The catalog is geocentric (ICRF). A spacecraft in orbit sees stars from a slightly different position → parallax shift. Only significant for very nearby stars.
+
+3. **Aberration** (up to 20 arcsec for planetary spacecraft, ~6 arcsec LEO)
+Due to the spacecraft's velocity, the apparent star position shifts toward the velocity direction. Classical: tan Δθ = v_t/c. For v = 30 km/s (Earth orbital speed): Δθ ≈ 20 arcsec.
+
+**Astronomy terminology (p. 52):**
+• "True" position = corrected for precession AND nutation
+• "Mean" position = corrected for precession only (NOT nutation)`,
+    matlab: `% Stellar Magnitude calculations and Star Density
+
+% --- Magnitude computation ---
+fprintf('=== Stellar Magnitude System ===\\n\\n');
+
+% Flux ratio between two magnitudes
+dm = 5; % 5 magnitude difference
+flux_ratio = 10^(dm/2.5);
+fprintf('5 magnitudes difference = flux ratio of %.0f:1\\n', flux_ratio);
+
+% Full Moon magnitude exercise
+m_sun = -26.8;
+albedo = 0.15;
+R_moon = 1737e3; % [m]
+d_moon = 384400e3; % Moon-Earth distance [m]
+d_se = 1.496e11; % Sun-Earth distance [m]
+
+% Moon reflects fraction (albedo) of sunlight over 2*pi sr
+% Flux at Earth from Moon / Flux from Sun:
+% S_moon/S_sun = albedo * (R_moon/d_moon)^2 * (pi * R_moon^2 / pi / d_se^2) ... simplified:
+% A simpler approach: S_moon/S_sun = albedo * (R_moon^2)/(d_moon^2) * (d_se^2 not needed directly)
+% Actually: apparent magnitude difference is:
+% For a rough estimate:
+solid_angle_moon = pi * (R_moon/d_moon)^2; % sr
+% Sun subtends solid_angle_sun = pi*(R_sun/d_se)^2
+R_sun = 696000e3;
+solid_angle_sun = pi * (R_sun/d_se)^2;
+flux_ratio_moon_sun = albedo * solid_angle_moon / solid_angle_sun / pi;
+m_moon = m_sun - 2.5*log10(flux_ratio_moon_sun);
+fprintf('\\nFull Moon magnitude estimate: %.1f\\n', m_moon);
+fprintf('(Actual value: approximately -12.7)\\n\\n');
+
+% --- Star density in FOV ---
+fprintf('=== Stars in FOV vs Magnitude Limit ===\\n');
+fprintf('(From Prof. Iess notes p.37)\\n\\n');
+mag_lim = [3, 4, 5, 6, 7, 8];
+density = [0.0044, 0.013, 0.04, 0.12, 0.34, 1.0]; % stars/sq.deg
+
+FOVs = [64, 100, 227]; % sq.deg for 8x8, 10x10, ~15x15
+fprintf('%8s', 'Mag<');
+for fov = FOVs
+    fprintf(' %7.0f sq.deg', fov);
+end
+fprintf('\\n');
+for i = 1:length(mag_lim)
+    fprintf('  m<%d  ', mag_lim(i));
+    for fov = FOVs
+        fprintf(' %11.1f', density(i)*fov);
+    end
+    fprintf('\\n');
+end
+
+% --- Aberration calculation ---
+fprintf('\\n=== Stellar Aberration ===\\n');
+c = 3e8; % speed of light [m/s]
+v_LEO = 7.5e3; % LEO orbital speed [m/s]
+v_Earth = 30e3; % Earth orbital speed [m/s]
+v_planetary = 40e3; % deep space probe [m/s]
+
+for v = [v_LEO, v_Earth, v_planetary]
+    dtheta = atan(v/c);
+    fprintf('v = %.1f km/s -> aberration = %.1f arcsec\\n', ...
+        v/1e3, rad2deg(dtheta)*3600);
+end`,
+    examTraps: [
+      "Magnitude is LOGARITHMIC and INVERTED: brighter = smaller number. Δm=5 → flux ratio = 100. The professor may ask: 'What is the magnitude of the full Moon?' — compute from albedo 0.15, answer ≈ −12.7.",
+      "Three corrections to catalog positions: proper motion, parallax, aberration. If the professor asks 'What corrections do you need?' and you forget aberration (up to 20 arcsec for planetary missions!), that's a major miss.",
+      "'True' = precession + nutation corrections applied. 'Mean' = only precession. The professor loves this distinction.",
+      "The Hipparcos catalog uses epoch J2000 in the ICRS. Star trackers observe at a different epoch → must apply proper motion corrections."
+    ],
+    drill: [
+      { q: "A star has flux 100× fainter than Vega. What is its magnitude?", a: "m − 0 = −2.5 log₁₀(S/S_Vega) = −2.5 log₁₀(1/100) = −2.5×(−2) = +5. So magnitude 5." },
+      { q: "Name the 3 corrections needed for star catalog positions and their typical magnitudes.", a: "1) Proper motion: several arcsec (varies star to star), 2) Parallax: <0.8 arcsec (only for nearby stars), 3) Aberration: ~6 arcsec (LEO) to ~20 arcsec (planetary spacecraft). All must be applied before using catalog vectors in Wahba/QUEST." },
+      { q: "What is the difference between 'lost in space' and 'recursive' star identification?", a: "Lost in space: no prior attitude knowledge — must use geometric pattern matching (angular separations between star pairs). Recursive: approximate previous attitude known — can predict which catalog stars should appear in the FOV and match directly (much faster)." }
+    ]
+  },
+  {
+    id: "star_id",
+    num: "10",
+    title: "Star Identification Techniques",
+    pages: "pp. 53–58",
+    icon: "🔍",
+    overview: {
+      why: "Before QUEST or TRIAD can compute attitude, each observed star must be IDENTIFIED — matched to a catalog entry. This is a non-trivial pattern recognition problem, especially in the 'lost in space' scenario. The professor specifically asks about these techniques.",
+      objective: "Master the two main techniques (direct match, angular separation match), understand their requirements and failure modes, and know when each is used.",
+      realMission: "After a spacecraft anomaly (safe mode, tumbling), the AOCS enters 'lost in space' mode. Angular separation match is the only option until a first attitude estimate is obtained."
+    },
+    equations: [
+      { name: "Direct match criterion", eq: "arccos(Oᵢ · Sⱼ) < ε", explain: "Match observed star Oᵢ (in predicted sensor frame) with catalog star Sⱼ if angular distance is below threshold ε. Requires a prior attitude estimate to rotate catalog stars into the sensor frame." },
+      { name: "Angular separation match", eq: "|arccos(S₁·S₂) − d(i,j)| < ε", explain: "Compare measured angular distance between two observed stars with catalog angular distances d(i,j). Does NOT require a prior attitude estimate → works for 'lost in space'. If ambiguous, extend to polygon (N-star) match." },
+    ],
+    derivation: `**Star Identification Techniques (pp. 53-58, Sidi Appendix B)**
+
+**1. Direct Match (p. 54-55)**
+Requires: a rough estimate of the current attitude (e.g., from a previous solution).
+
+Algorithm:
+1. Use the estimated attitude to rotate catalog star vectors into the predicted sensor frame
+2. For each observed star:
+   a. Compute angular distance to ALL predicted catalog stars
+   b. Find the closest match within a tolerance radius ε
+   c. If below threshold → assign match
+3. Check consistency across all observed stars, reject outliers
+4. If ambiguous (multiple matches within ε), use magnitude and/or spectral type to disambiguate
+
+**Advantages:** Fast, simple
+**Disadvantage:** FAILS in "lost in space" state (no prior attitude available)
+
+**2. Angular Separation Match (p. 56)**
+Does NOT require prior attitude knowledge → works for "lost in space".
+
+Algorithm:
+1. Select two stars arbitrarily from the set of measured stars
+2. Compute their angular separation: θ_obs = arccos(S₁ · S₂)
+3. Search the catalog for pairs (i,j) whose angular distance d(i,j) matches θ_obs within tolerance ε
+4. If UNIQUE match found → identification successful
+5. If AMBIGUOUS (multiple matches) → identification FAILS for this pair
+6. Solution: extend to polygon match using N > 2 stars → compare the N(N-1)/2 pair distances
+
+**Advantages:** Works without prior attitude, robust
+**Disadvantage:** Computationally expensive (many catalog comparisons), can fail for star-poor regions
+
+**Polygon match:** When two stars are ambiguous, use 3 or more stars. Compare the pattern of N observed angular separations against the catalog. The probability of a unique match increases dramatically with N.
+
+**Practical considerations:**
+• Uneven distribution of stars on the sky must be accounted for
+• Smaller onboard catalogs can be used for GEO missions (stable pointing, known sky region)
+• Star catalogs give RA, DEC at epoch J2000 in ICRF → must apply precession + nutation to convert to true equinox of date`,
+    matlab: `% Star Identification — Direct Match and Angular Separation Match
+
+% Generate a small star catalog (simplified)
+rng(42);
+Ncat = 50; % catalog stars
+catalog = zeros(3, Ncat);
+for i = 1:Ncat
+    v = randn(3,1); v = v/norm(v);
+    catalog(:,i) = v;
+end
+
+% True attitude
+phi = deg2rad(15); e = [0;0;1];
+ex = [0 -e(3) e(2); e(3) 0 -e(1); -e(2) e(1) 0];
+A_true = cos(phi)*eye(3) + (1-cos(phi))*(e*e') + sin(phi)*ex;
+
+% "Observe" 5 stars (indices 3,7,12,25,40 from catalog)
+obs_idx = [3, 7, 12, 25, 40];
+Nobs = length(obs_idx);
+observed = zeros(3, Nobs);
+for i = 1:Nobs
+    observed(:,i) = A_true * catalog(:,obs_idx(i));
+    observed(:,i) = observed(:,i) + 1e-4*randn(3,1);
+    observed(:,i) = observed(:,i)/norm(observed(:,i));
+end
+
+% --- DIRECT MATCH (requires attitude estimate) ---
+fprintf('=== Direct Match ===\\n');
+A_est = A_true; % assume we have a rough estimate
+eps_direct = deg2rad(0.1); % threshold: 0.1 deg
+
+for i = 1:Nobs
+    best_dist = inf; best_j = -1;
+    for j = 1:Ncat
+        pred = A_est * catalog(:,j); % predict where catalog star j appears
+        ang_dist = acos(min(1, max(-1, dot(observed(:,i), pred))));
+        if ang_dist < best_dist
+            best_dist = ang_dist; best_j = j;
+        end
+    end
+    match = best_dist < eps_direct;
+    fprintf('Obs %d -> Catalog %d (dist=%.4f deg, match=%d, true=%d)\\n', ...
+        i, best_j, rad2deg(best_dist), match, obs_idx(i));
+end
+
+% --- ANGULAR SEPARATION MATCH (no attitude needed) ---
+fprintf('\\n=== Angular Separation Match ===\\n');
+eps_sep = deg2rad(0.05); % tighter threshold
+
+% Compute angular separation between first two observed stars
+theta_obs = acos(dot(observed(:,1), observed(:,2)));
+fprintf('Observed pair (1,2): angular sep = %.4f deg\\n', rad2deg(theta_obs));
+
+% Search catalog for matching pairs
+matches = [];
+for i = 1:Ncat
+    for j = i+1:Ncat
+        theta_cat = acos(min(1, max(-1, dot(catalog(:,i), catalog(:,j)))));
+        if abs(theta_cat - theta_obs) < eps_sep
+            matches = [matches; i, j, rad2deg(theta_cat)];
+        end
+    end
+end
+fprintf('Found %d matching catalog pairs:\\n', size(matches,1));
+for k = 1:size(matches,1)
+    fprintf('  Catalog (%d, %d): sep = %.4f deg\\n', ...
+        matches(k,1), matches(k,2), matches(k,3));
+end
+fprintf('True answer: catalog stars (%d, %d)\\n', obs_idx(1), obs_idx(2));`,
+    examTraps: [
+      "Direct match needs a PRIOR ATTITUDE ESTIMATE — it fails in 'lost in space'. Angular separation match works WITHOUT prior attitude. The professor loves asking: 'Which technique works for lost in space?'",
+      "If two star vectors are nearly parallel (small angular separation), both techniques struggle. This connects back to the TRIAD trap about choosing well-separated vectors.",
+      "The professor may ask about polygon match: 'What if angular separation match gives ambiguous results?' → Use N > 2 stars and compare the pattern of N(N-1)/2 pair distances."
+    ],
+    drill: [
+      { q: "In 'lost in space' mode, which star identification technique can you use and why?", a: "Angular separation match. It computes angular distances between pairs of observed stars and compares them to catalog pair distances. This is INDEPENDENT of the spacecraft attitude because angular separations between stars are invariant under rotation." },
+      { q: "Direct match fails in lost-in-space mode. Why?", a: "Direct match requires a prior attitude estimate to rotate catalog stars into the sensor frame. Without this estimate, you can't predict where catalog stars should appear on the CCD, so you can't match them." },
+      { q: "What is a polygon match?", a: "When angular separation match between 2 stars gives ambiguous results (multiple catalog pairs match), extend to N > 2 stars and compare the full pattern of N(N-1)/2 angular separations. The probability of a unique match increases dramatically with N." }
+    ]
+  },
+  {
+    id: "laser_gyro",
+    num: "11",
+    title: "Laser Gyroscopes: Sagnac Effect, RLG & FOG",
+    pages: "pp. 59–72",
+    icon: "🌀",
+    overview: {
+      why: "Gyroscopes provide angular rate measurements between star tracker updates. They are the 'glue' that holds attitude knowledge together between discrete star observations. The Sagnac effect is the physical principle behind modern laser gyroscopes (RLG and FOG).",
+      objective: "Derive the Sagnac frequency shift and path difference, understand how fringes encode rotation angle, know the difference between RLG and FOG, and be able to compute numerical values for a given gyro geometry.",
+      realMission: "Cassini carried the Northrop Grumman Scalable SIRU (using HRG technology). Most modern LEO satellites use either FOG or RLG packages combined with star trackers via an attitude EKF."
+    },
+    equations: [
+      { name: "Sagnac time difference (circular)", eq: "Δt = t₊ − t₋ = 4πR²Ω / (c² − R²Ω²) ≈ 4AΩ/c²", explain: "Counter-propagating photons take different times to return to the beamsplitter when the gyro rotates at rate Ω. A = πR² is the enclosed area." },
+      { name: "Sagnac frequency shift", eq: "Δν = 4AΩ / (λP)", explain: "The frequency difference between co- and counter-rotating beams. A = enclosed area, P = perimeter, λ = wavelength. For circular: Δν = 2RΩ/λ. THIS is the fundamental laser gyro equation." },
+      { name: "Optical path difference", eq: "ΔL = 4AΩ / c", explain: "The difference in optical path length. Related to the phase difference: ΔΦ = 2π ΔL/λ." },
+      { name: "Fringe count = rotation angle", eq: "N = 4Aθ / (λP)", explain: "By counting N fringes, you directly measure the rotation angle θ = Ωt. This is the digital output of a laser gyro." },
+      { name: "FOG sensitivity gain", eq: "Δν_FOG = n · Δν_single", explain: "A fiber optic gyro with n coils multiplies the Sagnac effect by n. This allows much higher sensitivity for the same physical size." },
+    ],
+    derivation: `**Laser Gyroscopes — The Sagnac Effect (pp. 59-67)**
+
+**Why gyroscopes are needed (p. 59):**
+Gyros provide attitude between star tracker acquisitions. ST + gyro data are combined in an attitude EKF.
+C. Draper defined inertial navigation as "astronomy in a closet" — measuring motion without looking at external references.
+
+**Modern gyro types (no moving parts):**
+• Ring Laser Gyro (RLG) — Sagnac effect in a laser cavity
+• Fiber Optic Gyro (FOG) — Sagnac effect in a fiber coil
+• Hemispherical Resonating Gyro (HRG) — Coriolis effect on vibrating resonator
+
+**Advantages of laser gyros:**
+• No moving parts → very rugged, no maintenance
+• Simple design (<20 components)
+• Wide dynamic range (>10⁹)
+• Digital output (fringe counting)
+• Fast update rate (50 ms to measure 0.5 deg/h)
+• Long lifetime
+
+**Disadvantages:**
+• Poor long-term stability (but star trackers handle long-term)
+• Rate biases (mostly from electronics)
+
+**Sagnac Effect Derivation (pp. 61-63):**
+
+Consider a circular path of radius R rotating at angular rate Ω.
+Two photons are launched in opposite directions from the beamsplitter.
+
+Co-rotating photon (same direction as rotation):
+  ct₊ + RΩt₊ = 2πR  →  t₊ = 2πR/(c + RΩ) ≈ 2πR/c · 1/(1+RΩ/c)
+
+Counter-rotating photon:
+  ct₋ − RΩt₋ = 2πR  →  t₋ = 2πR/(c − RΩ) ≈ 2πR/c · 1/(1−RΩ/c)
+
+Time difference:
+  Δt = t₋ − t₊ = (2πR/c)[1/(1−RΩ/c) − 1/(1+RΩ/c)]
+     = (2πR/c) · 2RΩ/c / (1−R²Ω²/c²) ≈ 4πR²Ω/c² = 4AΩ/c²
+
+**Path difference:**
+  ΔL = cΔt = 4AΩ/c
+
+**Frequency difference (using Doppler):**
+The counter-rotating photon sees a higher frequency, the co-rotating one sees a lower frequency:
+  Δν = ν₊ − ν₋ = ν(1 + RΩ/c) − ν(1 − RΩ/c) = 2νRΩ/c
+
+Multiply and divide by 2πR:
+  Δν = 4πR²Ω / (λ · 2πR) = 4AΩ / (λP)
+
+where P = 2πR is the perimeter and λ = c/ν.
+
+**Fringe counting → rotation angle:**
+  ΔΦ = 2πΔL/λ = 2π · 4AΩ/(cλ) = 8πAΩ/(cλ)
+
+Number of fringes in time t:
+  N = ΔΦ/(2π) · t·ν = 4AΩt/(λP) = 4Aθ/(λP)
+
+So counting fringes directly gives the rotation angle θ = Ωt.
+
+**IMPORTANT:** Although derived for a circular path, these formulas hold for ANY closed path (square, triangular). Just use the actual area A and perimeter P.
+
+**Fiber Optic Gyro (pp. 66-68):**
+FOG replaces the laser cavity with a fiber optic coil of n turns:
+  ΔL_FOG = n · 4AΩ/c = 4nAΩ/c
+
+For n = 1000 coils of R = 10 cm: the effective area is multiplied by 1000!
+This allows achieving high sensitivity in a compact package.
+
+**Numerical exercise from the notes (p. 66):**
+R = 10 cm, Ω = 0.1 deg/h = 4.85×10⁻⁷ rad/s, λ = 633 nm (He-Ne)
+  Δν_single = 4π(0.1)²×4.85e-7 / (633e-9 × 2π×0.1) = 1.53×10⁻⁴ Hz
+  ΔL_single = 4π(0.1)²×4.85e-7 / 3e8 = 2.03×10⁻¹⁷ m
+Incredibly small! That's why FOG uses many coils.
+
+**Light Interference (pp. 70-72):**
+Two beams of same polarisation and slightly different frequencies interfere:
+  I ≈ I₁ + I₂ + 2√(I₁I₂) cos(Δωt + Δφ)
+
+For equal intensities:
+  I = 4I₁ cos²(Δωt/2 + Δφ/2)
+
+The intensity oscillates between 0 and 4I₁ → interference fringes.
+The FOG detector counts fringes per unit time, proportional to Ω.
+NOTE: both beams must have the SAME POLARISATION for interference to occur.`,
+    matlab: `% Sagnac Effect — RLG and FOG calculations
+
+c = 3e8;         % speed of light [m/s]
+lambda = 633e-9; % He-Ne wavelength [m]
+
+% --- Ring Laser Gyro (triangular or square) ---
+fprintf('=== Ring Laser Gyro ===\\n');
+R_rlg = 0.15;   % path "radius" [m] (half-diagonal of square)
+A_rlg = (2*R_rlg)^2; % square path area [m^2]
+P_rlg = 4*2*R_rlg;    % perimeter [m]
+
+Omega_test = [0.001, 0.01, 0.1, 1, 10]; % deg/h
+fprintf('%10s  %14s  %14s  %14s\\n', 'Omega[deg/h]', 'Delta_nu[Hz]', 'Delta_L[m]', 'N_fringes/s');
+for Omega_dh = Omega_test
+    Omega = Omega_dh * pi/180/3600; % convert to rad/s
+    Delta_nu = 4*A_rlg*Omega / (lambda*P_rlg);
+    Delta_L = 4*A_rlg*Omega / c;
+    N_per_s = Delta_nu;
+    fprintf('%10.3f  %14.6e  %14.6e  %14.6e\\n', Omega_dh, Delta_nu, Delta_L, N_per_s);
+end
+
+% --- Fiber Optic Gyro ---
+fprintf('\\n=== Fiber Optic Gyro ===\\n');
+R_fog = 0.10; % coil radius [m]
+n_coils = [1, 100, 1000, 5000];
+Omega = 0.1 * pi/180/3600; % 0.1 deg/h in rad/s
+
+fprintf('R = %.0f cm, Omega = 0.1 deg/h, lambda = %.0f nm\\n', R_fog*100, lambda*1e9);
+fprintf('%10s  %14s  %14s  %14s\\n', 'n_coils', 'Delta_nu[Hz]', 'Delta_L[m]', 'Phase[rad]/50ms');
+for n = n_coils
+    A = n * pi * R_fog^2;
+    P = n * 2 * pi * R_fog;
+    Delta_nu = 4*A*Omega / (lambda * P);
+    Delta_L = 4*A*Omega / c;
+    % Phase accumulated in 50 ms
+    Delta_phi_50ms = 2*pi*Delta_nu * 0.050;
+    fprintf('%10d  %14.6e  %14.6e  %14.6e\\n', n, Delta_nu, Delta_L, Delta_phi_50ms);
+end
+
+fprintf('\\nKey insight: FOG sensitivity scales linearly with n_coils!\\n');
+fprintf('With 1000 coils, even 0.1 deg/h rotation is measurable.\\n');`,
+    examTraps: [
+      "The professor asks: 'Derive the Sagnac frequency shift.' You MUST know: Δν = 4AΩ/(λP). Start from the co/counter-rotating photon travel times.",
+      "The formula Δν = 4AΩ/(λP) holds for ANY closed path — not just circular. The professor may ask: 'Does this work for a triangular path?' → Yes, use A and P of the triangle.",
+      "FOG key advantage: n coils multiply the sensitivity. The professor's numerical exercise: R=10 cm, Ω=0.1 deg/h. Compute Δν, ΔL, phase in 50 ms. These numbers are extremely small → shows why you need many coils.",
+      "Both beams must have the SAME POLARISATION for interference fringes. The polariser in a FOG ensures this.",
+      "From oral exams: 'Perché i giroscopi non si usano da soli?' → Because gyro bias DRIFTS (random walk). Over time, the measured angle deviates systematically. Star trackers provide absolute attitude to correct this drift via the EKF."
+    ],
+    drill: [
+      { q: "Write the Sagnac frequency shift formula and define each term.", a: "Δν = 4AΩ/(λP). A = enclosed area of the light path, Ω = rotation rate, λ = laser wavelength, P = perimeter of the path. This holds for any closed path geometry (circular, triangular, square)." },
+      { q: "Why can't gyroscopes be used alone for long-term attitude determination?", a: "Because of the slowly varying bias b(t) which follows a random walk: db/dt = η₂. The integrated angle error grows as t^(3/2), eventually causing the measured attitude to deviate systematically from the truth. Star trackers provide absolute attitude reference to correct this drift via the EKF." },
+      { q: "A FOG has R=10 cm and n=1000 coils. How much larger is its Sagnac effect compared to a single-loop RLG of the same radius?", a: "The FOG Sagnac effect is n = 1000 times larger. ΔL_FOG = n × 4πR²Ω/c versus ΔL_single = 4πR²Ω/c. This is the key advantage of fiber optic gyros — dramatically increased sensitivity for the same physical size." }
+    ]
+  },
+  {
+    id: "hrg",
+    num: "12",
+    title: "Hemispherical Resonating Gyro (HRG)",
+    pages: "pp. 74–78",
+    icon: "🔔",
+    overview: {
+      why: "The HRG is a fundamentally different type of gyroscope — it uses mechanical resonance and the Coriolis effect rather than the Sagnac optical effect. It has exceptional heritage on deep-space missions. Understanding it completes your knowledge of all gyro types tested in the exam.",
+      objective: "Explain the HRG operating principle (Coriolis-driven node precession), know the gain factor (~0.3), and list the missions that used it.",
+      realMission: "Northrop Grumman Scalable SIRU with HRG: used on Cassini, NEAR, Deep Impact, Messenger, GLAST. The HRG's exceptional stability and lack of moving parts make it ideal for long-duration deep-space missions."
+    },
+    equations: [
+      { name: "HRG gain factor", eq: "Ω_pattern / Ω_case ≈ 0.3", explain: "When the hemispherical resonator vibrates and the case rotates at rate Ω_case, the standing wave node-antinode pattern drifts at ~0.3 × Ω_case relative to the case. The gain factor depends on material properties and shape." },
+      { name: "Thermal stability", eq: "Gain factor stability ≈ 0.5 ppm/°C", explain: "The gain factor is remarkably stable against temperature variations — about 0.5 parts per million per degree Celsius." },
+    ],
+    derivation: `**Hemispherical Resonating Gyro (pp. 74-78)**
+
+**Operating principle:**
+A thin hemispherical shell (the "wineglass") is set into vibration in a standing wave pattern with nodes and antinodes. When the case (and thus the rim) rotates about the symmetry axis, the Coriolis acceleration acting on the vibrating rim causes the standing wave pattern to PRECESS relative to the case.
+
+The key insight: the standing wave pattern is NOT fixed to the resonator — it drifts at a fraction of the rotation rate.
+
+**The gain factor:**
+  Ω_pattern = k_g × Ω_inertial
+
+where k_g ≈ 0.3 is the gain factor. By measuring how fast the node-antinode pattern drifts relative to the case, you can compute the inertial rotation rate.
+
+**Properties:**
+• Gain factor depends on material properties and geometry
+• Remarkably stable against temperature: ~0.5 ppm/°C
+• No moving parts (the resonator vibrates but doesn't rotate)
+• Very high reliability
+• No Sagnac effect involved — purely mechanical principle
+
+**Comparison with laser gyros:**
+| Property | RLG/FOG | HRG |
+|----------|---------|-----|
+| Physical principle | Sagnac (optical) | Coriolis (mechanical) |
+| Moving parts | None (photons) | None (vibration only) |
+| Temperature sensitivity | Moderate | Very low (0.5 ppm/°C) |
+| Long-term stability | Moderate | Excellent |
+| Complexity | Moderate | High (precision machining) |
+| Heritage | LEO, GEO | Deep space (Cassini, NEAR, Messenger) |
+
+**Missions using HRG (Northrop Grumman SIRU):**
+Cassini, Deep Impact, Messenger, GLAST, NEAR, and many others.
+The SIRU is a self-contained inertial reference unit containing multiple HRGs in a redundant configuration.`,
+    matlab: `% HRG Gyro Simulation — Gain factor and node precession
+
+fprintf('=== Hemispherical Resonating Gyro (HRG) ===\\n\\n');
+
+% Gain factor
+k_g = 0.3; % typical HRG gain factor
+temp_coeff = 0.5e-6; % ppm/°C
+
+% Simulate: case rotates, node pattern drifts
+Omega_case = 1.0; % deg/s (example rotation rate)
+Omega_pattern = k_g * Omega_case;
+
+fprintf('Case rotation rate: %.2f deg/s\\n', Omega_case);
+fprintf('Node pattern drift rate: %.2f deg/s\\n', Omega_pattern);
+fprintf('Gain factor: %.2f\\n', k_g);
+fprintf('Inferred inertial rate: %.2f deg/s (= pattern_rate / k_g)\\n\\n', ...
+    Omega_pattern / k_g);
+
+% Temperature stability analysis
+fprintf('=== Temperature Stability ===\\n');
+dT = [-20, -10, 0, 10, 20, 30, 50]; % temperature change [°C]
+fprintf('%8s  %12s  %16s\\n', 'ΔT [°C]', 'k_g actual', 'Error [arcsec/hr]');
+for dt = dT
+    k_actual = k_g * (1 + temp_coeff * dt);
+    % Error in inferred rate
+    Omega_true = 0.01; % deg/s
+    Omega_meas = (k_g * Omega_true) / k_actual;
+    error_dps = Omega_meas - Omega_true; % deg/s
+    error_ash = error_dps * 3600 * 3600; % arcsec/hr
+    fprintf('%8d  %12.8f  %16.4f\\n', dt, k_actual, error_ash);
+end
+
+% Comparison table
+fprintf('\\n=== Gyro Type Comparison ===\\n');
+fprintf('%-15s %-20s %-15s %-15s\\n', 'Type', 'Principle', 'Moving Parts', 'Heritage');
+fprintf('%-15s %-20s %-15s %-15s\\n', 'RLG', 'Sagnac (optical)', 'None', 'Aircraft/LEO');
+fprintf('%-15s %-20s %-15s %-15s\\n', 'FOG', 'Sagnac (fiber)', 'None', 'LEO/GEO');
+fprintf('%-15s %-20s %-15s %-15s\\n', 'HRG', 'Coriolis (mech.)', 'None (vibration)', 'Deep space');
+fprintf('%-15s %-20s %-15s %-15s\\n', 'Mechanical', 'Angular momentum', 'Spinning rotor', 'Obsolete');`,
+    examTraps: [
+      "The professor asks: 'What types of gyroscopes have you studied? Explain them.' → RLG (Sagnac, laser cavity), FOG (Sagnac, fiber coil), HRG (Coriolis, vibrating hemisphere). Know the physical principle for EACH.",
+      "HRG has NO Sagnac effect — it's a mechanical resonance effect. Don't confuse the two principles.",
+      "The gain factor is ~0.3, NOT 1.0. The node pattern drifts at only 30% of the rotation rate.",
+      "From oral exams: 'What about the quartz gyroscope (mechanical)? Why don't we use it?' → It has moving parts (spinning rotor), so it's less reliable. Modern gyros (RLG, FOG, HRG) have no moving parts."
+    ],
+    drill: [
+      { q: "Explain the HRG operating principle in 2-3 sentences.", a: "A thin hemispherical shell vibrates in a standing wave pattern. When the case rotates, the Coriolis force on the vibrating rim causes the node-antinode pattern to precess at ~0.3 times the case rotation rate (the gain factor). By measuring this precession, the inertial rotation rate is determined." },
+      { q: "Name 3 deep-space missions that used HRG technology.", a: "Cassini, Deep Impact, Messenger (also NEAR, GLAST). All used the Northrop Grumman Scalable SIRU containing HRG gyros." },
+      { q: "What is the gain factor and why is its temperature stability important?", a: "The gain factor (≈0.3) is the ratio of the standing wave drift rate to the inertial rotation rate. Temperature stability (~0.5 ppm/°C) is important because any change in the gain factor directly causes a measurement error proportional to the rotation rate." }
+    ]
+  },
+  {
+    id: "farrenkopf",
+    num: "13",
+    title: "Farrenkopf's Gyro Noise Model",
+    pages: "pp. 79–86",
+    icon: "📉",
+    overview: {
+      why: "The Farrenkopf model is THE standard noise model used in every attitude EKF. It separates gyro noise into physically meaningful components (ARW, RRW, bias) that determine how attitude accuracy degrades over time without star tracker corrections.",
+      objective: "Write the full and simplified Farrenkopf models, understand the 3 noise types (electronic, rate noise, drift), know ARW and RRW definitions and typical values, and derive the angular error growth laws.",
+      realMission: "The Farrenkopf model parameters (ARW, RRW) are specified in the datasheet of every space-qualified gyro. They directly determine how often star tracker updates are needed for a given accuracy requirement."
+    },
+    equations: [
+      { name: "Full Farrenkopf model (single axis)", eq: "gᵢ = (1 + kᵢ)ωᵢ + b₀ᵢ + bᵢ + η₁ᵢ", explain: "gᵢ = gyro measurement, ωᵢ = true rate, kᵢ = scale factor error, b₀ᵢ = initial bias, bᵢ = slowly varying bias, η₁ᵢ = rate white noise." },
+      { name: "Simplified model", eq: "g = ω + b + η₁,   db/dt = η₂", explain: "Neglects scale factor error. The bias b(t) follows a random walk driven by η₂. η₁ (rate noise) and η₂ (bias drift) are uncorrelated zero-mean white Gaussian noises." },
+      { name: "Noise covariances", eq: "E[η₁(t)η₁ᵀ(t')] = σᵥ²δ(t−t')\nE[η₂(t)η₂ᵀ(t')] = σᵤ²δ(t−t')\nE[η₁(t)η₂ᵀ(t')] = 0", explain: "σᵥ = ARW coefficient (angle random walk), σᵤ = RRW coefficient (rate random walk). η₁ and η₂ are uncorrelated." },
+      { name: "Angular error growth", eq: "σ²_θ,total = σ²_θ,ARW + σ²_θ,RRW\nσ_θ,ARW ∝ ARW·√t\nσ_θ,RRW ∝ RRW·t^(3/2)", explain: "At short times, ARW dominates (√t growth). At long times, RRW dominates (t^(3/2) growth). This is why gyros DRIFT over time." },
+      { name: "Typical values", eq: "ARW = 0.05 arcsec/√s\nRRW = 3.19×10⁻⁵ arcsec/s^(3/2)", explain: "From Prof. Iess's notes (p. 83). These values are for a high-quality space-grade gyro." },
+      { name: "Full model with misalignment", eq: "g = (I−Δ)(I−Λ)ω + (b₀+b)/2 + noise", explain: "Δ = misalignment matrix (off-diagonal cross-coupling), Λ = scale factor matrix (diagonal). These can be estimated by the EKF with star tracker data." },
+    ],
+    derivation: `**Farrenkopf's Gyro Noise Model (pp. 79-86)**
+
+**Three noise types:**
+
+1. **Electronic noise (kᵢ)** — Scale factor error from gyro electronics
+   • Colored noise, but treated as white if gyro time constant << readout interval
+   • Multiplicative: gᵢ = (1+kᵢ)ωᵢ + ...
+
+2. **Float torque noise (η₁)** — Rate white noise
+   • White Gaussian noise on the measured rate
+   • Characterised by the ARW (Angle Random Walk) coefficient σᵥ
+   • Causes angular error ∝ √t (square root of time)
+
+3. **Float torque derivative noise (η₂)** — Drift rate ramp
+   • Drives the slowly varying bias: db/dt = η₂
+   • Characterised by the RRW (Rate Random Walk) coefficient σᵤ
+   • Integration produces rate random walk → angular error ∝ t^(3/2)
+   • THIS is why gyros can't work alone for long periods
+
+**The simplified model (p. 81):**
+  g = ω + b + η₁        (measured rate)
+  db/dt = η₂             (bias evolution)
+
+where:
+  E[η₁] = E[η₂] = 0
+  E[η₁(t)η₁ᵀ(t')] = σᵥ² δ(t−t')
+  E[η₂(t)η₂ᵀ(t')] = σᵤ² δ(t−t')
+  E[η₁(t)η₂ᵀ(t')] = 0     ← UNCORRELATED
+
+**ARW and RRW from PSD (p. 82-83):**
+The noise variances are obtained by integrating the Power Spectral Density:
+  σᵥ² = ∫ N² df          (flat PSD for white noise)
+  σᵤ² = ∫ K²/f² df       (1/f² PSD for random walk)
+
+where the integration is from f₁ (measurement frequency) to f₂ (sampling frequency).
+Typical: f₁ = 8 Hz, f₂ = 100 Hz.
+
+**Typical values (p. 83):**
+  ARW = 0.05 arcsec/√s
+  RRW = 3.19 × 10⁻⁵ arcsec/s^(3/2)
+
+**Angular error budget (p. 84):**
+Total angular error variance:
+  σ²_θ = σ²_θ,ARW + σ²_θ,RRW
+
+where:
+  σ_θ,ARW ∝ ARW · √t      (dominant at SHORT times)
+  σ_θ,RRW ∝ RRW · t^(3/2)  (dominant at LONG times)
+
+The crossover time t_c where both contributions are equal determines how long you can "coast" on gyros alone before needing a star tracker update.
+
+**Gyro simulation model (p. 85):**
+The discrete-time simulation is:
+  g = ω + (b₀+b)/2 + √(σᵥ²/Δt_g + σᵤ²Δt_g³/12) × ζ_φ / Δt_g
+  b_new = b_old + σᵤ√Δt_g × ζ_b
+
+where ζ_φ, ζ_b are unit-variance Gaussian random numbers and Δt_g is the measurement time.
+
+**Full model with misalignment (p. 86):**
+  g = (I − Δ)(I − Λ)ω + [b₀+b]/2 + noise
+
+(I−Δ) = misalignment matrix: [1, δyz, -δzy; -δxz, 1, δzx; δzy, -δzx, 1]
+(I−Λ) = scale factor matrix: diag(1−λx, 1−λy, 1−λz)
+
+Misalignment and scale factor CAN be estimated by the EKF when star tracker data are available (this is the extended state vector for the attitude EKF with gyro calibration).`,
+    matlab: `% Farrenkopf Gyro Noise Model — Simulation and Error Growth
+
+% Gyro parameters (from notes p.83)
+ARW = 0.05 / 206265;    % arcsec/sqrt(s) -> rad/sqrt(s)
+RRW = 3.19e-5 / 206265; % arcsec/s^(3/2) -> rad/s^(3/2)
+sigma_v = ARW;  % rate noise intensity
+sigma_u = RRW;  % bias drift intensity
+
+% Simulation parameters
+dt = 0.05;       % 50 ms readout interval [s]
+T = 3600;        % total time [s] (1 hour)
+N = round(T/dt);
+t = (1:N)*dt;
+
+% True angular velocity (constant for this demo)
+omega_true = 0; % rad/s (stationary spacecraft)
+
+% Initialize
+b = 0;        % initial bias
+theta_true = 0; % true angle
+theta_gyro = 0; % integrated gyro angle
+
+rng(42);
+angle_error = zeros(1,N);
+
+for k = 1:N
+    % Noise samples
+    eta1 = sigma_v * randn / sqrt(dt); % rate white noise
+    eta2 = sigma_u * randn * sqrt(dt); % bias drift
+    
+    % Update bias (random walk)
+    b = b + eta2;
+    
+    % Gyro measurement
+    g = omega_true + b + eta1;
+    
+    % Integrate
+    theta_gyro = theta_gyro + g * dt;
+    theta_true = theta_true + omega_true * dt;
+    
+    angle_error(k) = theta_gyro - theta_true;
+end
+
+% Theoretical error envelopes
+sigma_ARW = ARW * sqrt(t);
+sigma_RRW = RRW * t.^(3/2) / sqrt(3);
+sigma_total = sqrt(sigma_ARW.^2 + sigma_RRW.^2);
+
+% Convert to arcsec for display
+ae_as = angle_error * 206265;
+s_arw = sigma_ARW * 206265;
+s_rrw = sigma_RRW * 206265;
+s_tot = sigma_total * 206265;
+
+fprintf('=== Farrenkopf Gyro Noise Model Simulation ===\\n');
+fprintf('ARW = %.4f arcsec/sqrt(s)\\n', ARW*206265);
+fprintf('RRW = %.2e arcsec/s^(3/2)\\n', RRW*206265);
+fprintf('\\nAngular error at key times:\\n');
+fprintf('%10s  %12s  %12s  %12s  %12s\\n', ...
+    'Time', 'Simulated', 'sigma_ARW', 'sigma_RRW', 'sigma_total');
+for ti = [10, 60, 300, 600, 1800, 3600]
+    idx = round(ti/dt);
+    if idx > 0 && idx <= N
+        fprintf('%8.0f s  %10.2f as  %10.2f as  %10.2f as  %10.2f as\\n', ...
+            ti, abs(ae_as(idx)), s_arw(idx), s_rrw(idx), s_tot(idx));
+    end
+end
+
+fprintf('\\nKey insight: ARW dominates at short times (sqrt law),\\n');
+fprintf('RRW dominates at long times (t^3/2 law).\\n');
+fprintf('After 1 hour, gyro drift is %.1f arcsec (1-sigma).\\n', s_tot(end));`,
+    examTraps: [
+      "The professor asks: 'Write the Farrenkopf model.' → g = ω + b + η₁, db/dt = η₂. Then immediately state: η₁ and η₂ are zero-mean, white, Gaussian, and UNCORRELATED.",
+      "ARW dominates at SHORT times (∝ √t), RRW at LONG times (∝ t^(3/2)). The professor may ask: 'Which noise dominates after 1 hour?' → RRW (bias drift).",
+      "This is the reason gyros need star trackers: the bias random walk (RRW) causes systematic angular drift that cannot be corrected without an external absolute reference.",
+      "Typical values: ARW = 0.05 arcsec/√s, RRW = 3.19×10⁻⁵ arcsec/s^(3/2). The professor may ask you to compute the error after a given time.",
+      "From oral exams: 'Errore sui giroscopi' (gyroscope errors) → know ALL three: scale factor (k), rate noise (η₁, ARW), and bias drift (η₂, RRW). Also misalignment (Δ) and scale factor matrix (Λ) for the extended model."
+    ],
+    drill: [
+      { q: "Write the simplified Farrenkopf model and state the properties of the noise terms.", a: "g = ω + b + η₁ (measurement), db/dt = η₂ (bias). η₁: rate white noise, E[η₁η₁ᵀ]=σᵥ²δ(t−t'), source of ARW. η₂: bias drift noise, E[η₂η₂ᵀ]=σᵤ²δ(t−t'), source of RRW. η₁ and η₂ are uncorrelated." },
+      { q: "How does gyro angular error grow with time?", a: "σ_θ,total² = σ_θ,ARW² + σ_θ,RRW². σ_θ,ARW ∝ ARW·√t (dominates short-term), σ_θ,RRW ∝ RRW·t^(3/2) (dominates long-term). The total error grows faster than √t due to the bias drift component." },
+      { q: "Can gyro misalignment and scale factor be estimated in flight?", a: "Yes! If star tracker data are available, the attitude EKF can be extended to estimate misalignment (matrix Δ) and scale factor (matrix Λ) along with the attitude and gyro bias. The state vector grows from 6 to 15 components (3 attitude + 3 bias + 9 misalignment/scale factor)." }
+    ]
+  },
+  {
+    id: "earth_sensor",
+    num: "14",
+    title: "Earth (Horizon) Sensors",
+    pages: "pp. 87–98",
+    icon: "🌍",
+    overview: {
+      why: "Earth sensors provide roll and pitch attitude for Earth-pointing satellites. They are simpler and cheaper than star trackers but less accurate. Understanding their operating principle is frequently tested in the oral exam.",
+      objective: "Explain single-beam and dual-beam Earth sensor operating principles, derive roll/pitch from horizon crossings, know the error sources, and compare with star trackers.",
+      realMission: "GEO communication satellites typically use Earth sensors for coarse attitude, combined with star trackers for fine pointing. The SODERN STD 16 is a widely used Earth sensor."
+    },
+    equations: [
+      { name: "Single-beam roll", eq: "roll ∝ (E − E₀) = (δ₁ − δ₂) − E₀", explain: "The phase angle difference between the two horizon crossings is proportional to the roll angle. E₀ normalises for zero roll at nominal altitude." },
+      { name: "Single-beam pitch", eq: "pitch = −(δ₂+δ₁)/(2C₂) + (90°+C₃)/C₂ + Cᵣφ", explain: "Pitch is determined from the sum of the horizon crossing angles. C₁, C₂, C₃, Cᵣ are the ES constants. Requires a vertical reference." },
+      { name: "Dual-beam roll/pitch", eq: "roll = [(δ₂−δ₁) − (δ₄−δ₃)] / (4C₁)\npitch = [(δ₄+δ₃) − (δ₂+δ₁)] / (4C₂) + 90°/C₃ + Cᵣφ", explain: "Dual-beam uses 4 horizon crossings from 2 scan paths → altitude-INDEPENDENT. More accurate but more complex." },
+      { name: "Earth angular radius", eq: "ρ = sin⁻¹[(Rₑ + H_eq)/(Rₑ + h)]", explain: "The angular radius of the Earth as seen from the spacecraft at altitude h. H_eq = equivalent atmospheric altitude. Used in the geometric model." },
+    ],
+    derivation: `**Earth (Horizon) Sensors (pp. 87-98)**
+
+**Basic principle:**
+A rotating prism scans a ring in space. When the FOV crosses the Earth, an IR detector (bolometer) senses the Earth's presence. The Earth is detected in the IR (CO₂ band) because:
+• Earth's IR radiance is much more uniform than visible light (no albedo variations)
+• No ill-defined terminator (the horizon is sharper in IR)
+
+**Accuracy:** 0.02° to 0.5° (0.015° when combined with sun sensors)
+
+**Earth model (p. 88):**
+The Earth is modelled as an oblate ellipsoid:
+  R(λ) = Rₑ[1 − f sin²(λ)] + k sin(λ) + h
+where:
+  Rₑ = 6,378.14 km (equatorial radius)
+  Rₚ = 6,356.75 km (polar radius)
+  f = (Rₑ−Rₚ)/Rₑ ≈ 0.00335281 (flattening)
+
+**Single-beam ES operating principle (pp. 89-91):**
+1. A rotating prism sweeps the FOV in a cone around the optical axis
+2. The FOV crosses the Earth at two points: entry (δ₁) and exit (δ₂)
+3. The phase angles δ₁, δ₂ relative to a vertical reference give roll and pitch:
+   • roll ∝ (δ₁ − δ₂) − E₀
+   • pitch ∝ −(δ₂+δ₁)/(2C₂) + constant + Cᵣ·roll_coupling
+
+Limitations of single-beam:
+• Requires ALTITUDE information to interpret the horizon crossing correctly
+• Roll ambiguity if points 1 and 2 end up on the same half of the globe
+• Limited angular range
+
+**Dual-beam ES (pp. 92-93):**
+Uses TWO scan cones (or two scanning beams in one optical head) → 4 horizon crossings (δ₁,δ₂,δ₃,δ₄).
+
+KEY ADVANTAGE: attitude determination is INDEPENDENT of altitude information!
+Penalty: increased complexity (effectively two sensors).
+
+Roll: φ = [(δ₂−δ₁) − (δ₄−δ₃)] / (4C₁)
+Pitch: θ = [(δ₄+δ₃) − (δ₂+δ₁)] / (4C₂) + 90°/C₃ + Cᵣφ
+
+**Error sources (p. 94):**
+• Main error: fuzzy horizon (the atmosphere makes the Earth's edge uncertain → "bias attitude errors")
+• Motor speed correction needed
+• Phase alignment correction
+• Earth oblateness correction
+• FOV/horizon geometry effects
+• Variations in Earth's radiance
+• Third-body interference (Sun, Moon) → ephemerides needed to predict
+
+**Dual-beam advantages over single-beam:**
+• More accurate
+• Altitude-independent
+• Only 3 horizon crossings needed (vs 4) → less prone to Sun/Moon interference
+
+**SODERN STD 16 specifications (p. 98):**
+• Operating temperature: −20°C to +50°C
+• Power: 7.5 W (typical), 9 W (end of life)
+• Vibration: 15g (sinusoidal), 12.4g rms (random)
+• Lifetime: >5 years (low orbit)
+• Mass: 3.7 kg`,
+    matlab: `% Earth Sensor — Geometry and Roll/Pitch from Horizon Crossings
+
+% Earth parameters
+Re = 6378.14; % equatorial radius [km]
+Rp = 6356.75; % polar radius [km]
+f = (Re - Rp) / Re; % flattening
+
+% Spacecraft altitude
+h = 800; % [km] (LEO)
+
+% Earth angular radius as seen from spacecraft
+rho = asind((Re) / (Re + h)); % simplified (no atmosphere)
+fprintf('=== Earth Sensor Geometry ===\\n');
+fprintf('Spacecraft altitude: %.0f km\\n', h);
+fprintf('Earth angular radius: %.2f deg\\n', rho);
+fprintf('Earth angular diameter: %.2f deg\\n', 2*rho);
+
+% Atmospheric correction
+Heq = 30; % equivalent atmospheric altitude [km]
+rho_atm = asind((Re + Heq) / (Re + h));
+fprintf('With atmosphere (H=%.0f km): rho = %.2f deg\\n\\n', Heq, rho_atm);
+
+% --- Single-beam ES simulation ---
+fprintf('=== Single-Beam ES: Roll and Pitch ===\\n');
+
+% ES constants (typical values)
+C1 = 1.0; C2 = 0.5; C3 = 0; Cr = 0.1; E0 = 0;
+
+% True attitude
+roll_true = 0.5; % deg
+pitch_true = -0.3; % deg
+
+% Simulated horizon crossings (simplified model)
+delta1 = 90 + roll_true*C1 - pitch_true*C2; % entry [deg]
+delta2 = 90 - roll_true*C1 - pitch_true*C2; % exit [deg]
+
+% Add measurement noise
+noise = 0.02; % deg
+delta1 = delta1 + noise*randn;
+delta2 = delta2 + noise*randn;
+
+% Recover roll and pitch
+E = delta1 - delta2;
+roll_est = (E - E0) / (2*C1);
+pitch_est = -(delta2 + delta1)/(2*C2) + 90/C2 + Cr*roll_est;
+
+fprintf('True: roll = %.3f deg, pitch = %.3f deg\\n', roll_true, pitch_true);
+fprintf('Est:  roll = %.3f deg, pitch = %.3f deg\\n', roll_est, pitch_est);
+fprintf('Error: roll = %.4f deg, pitch = %.4f deg\\n\\n', ...
+    roll_est-roll_true, pitch_est-pitch_true);
+
+% --- Altitude dependence comparison ---
+fprintf('=== Earth Angular Radius vs Altitude ===\\n');
+altitudes = [200, 400, 600, 800, 1000, 2000, 5000, 10000, 35786];
+fprintf('%10s  %12s  %10s\\n', 'Alt [km]', 'rho [deg]', 'Orbit type');
+labels = {'LEO','LEO','LEO','LEO','LEO','MEO','MEO','MEO','GEO'};
+for i = 1:length(altitudes)
+    rho_i = asind(Re / (Re + altitudes(i)));
+    fprintf('%10.0f  %12.2f  %10s\\n', altitudes(i), rho_i, labels{i});
+end`,
+    examTraps: [
+      "Single-beam ES needs ALTITUDE information; dual-beam does NOT. The professor asks: 'What is the advantage of dual-beam?' → Altitude-independent measurement.",
+      "The main error source is the FUZZY HORIZON — the atmosphere makes the Earth edge uncertain, causing 'bias attitude errors'.",
+      "Earth sensors work in the IR (CO₂ band), NOT visible light. This gives a more uniform appearance (no albedo variations).",
+      "From oral exams: 'Earth sensors, funzionamento, limitazioni, precisione, confronto con altri sensori.' → Know accuracy (0.02-0.5°), compare with ST (arcsec) and sun sensors (0.015° when combined)."
+    ],
+    drill: [
+      { q: "Explain the operating principle of a single-beam Earth sensor.", a: "A rotating prism scans a cone in space. An IR bolometer detects when the FOV crosses the Earth (two crossings: entry δ₁ and exit δ₂). Roll is proportional to (δ₁−δ₂)−E₀. Pitch is derived from (δ₁+δ₂) using a vertical reference. Requires altitude information." },
+      { q: "Why does a dual-beam Earth sensor not need altitude information?", a: "It uses two scan cones, giving 4 horizon crossings (δ₁,δ₂,δ₃,δ₄). The roll and pitch are computed from DIFFERENCES between the two cones' crossings, which cancels out the altitude dependence." },
+      { q: "What is the main error source for Earth sensors?", a: "The fuzzy horizon — the atmosphere makes the Earth's edge uncertain, creating 'bias attitude errors'. Other sources: radiance variations, Earth oblateness, Sun/Moon interference, motor speed and phase alignment errors." }
+    ]
+  },
+  {
+    id: "sun_sensor",
+    num: "15",
+    title: "Sun Sensors & Attitude Error Definitions",
+    pages: "pp. 99–104",
+    icon: "☀️",
+    overview: {
+      why: "Sun sensors are the simplest and most robust attitude sensors. They provide coarse attitude using the Sun direction and are often the first sensors available in safe mode. Understanding the cosine detector principle and the definitions of APE, RPE, AME completes the sensor knowledge for the exam.",
+      objective: "Explain analog (cosine detector) and digital (Grey code) sun sensors, derive the differential output formula, and define the three attitude error types (APE, RPE, AME).",
+      realMission: "Sun sensors are used on virtually every satellite as backup/safe-mode sensors. Digital sun sensors achieve 0.015° accuracy with 70°×70° FOV."
+    },
+    equations: [
+      { name: "Cosine detector output", eq: "I(α) = I(0) cos(α)", explain: "Output current is proportional to cos(α), where α is the sun incidence angle. Simple but nonlinear at high angles." },
+      { name: "Differential output (two detectors)", eq: "ΔI = I₂ − I₁ = 2K sin α₀ sin α = C sin α", explain: "Two cosine detectors tilted by ±α₀ give a differential output proportional to sin(α). More linear than a single detector. Gives ONE angle → need two orthogonal pairs for the full sun vector." },
+    ],
+    derivation: `**Sun Sensors (pp. 99-103)**
+
+**Operating principle:**
+Silicon solar cells whose output current is proportional to the cosine of the sun incidence angle:
+  I(α) = I(0) cos(α)
+
+At high incidence angles, this cosine law breaks down → limited accuracy range.
+
+**Single cosine detector:**
+Measures α but can't distinguish direction. Only one angle → insufficient for attitude.
+
+**Differential configuration (two detectors, p. 100):**
+Two cosine detectors (CD1 and CD2) tilted by ±α₀ from normal:
+  I₁ = K cos(α₀ + α)
+  I₂ = K cos(α₀ − α)
+  ΔI = I₂ − I₁ = K[cos(α₀−α) − cos(α₀+α)] = 2K sin α₀ sin α = C sin α
+
+This gives a ONE-AXIS sun measurement proportional to sin(α).
+Advantage: more linear in the operating range than a single detector.
+
+**Two-axis measurement (p. 101):**
+To determine the FULL sun vector direction in the body frame:
+• Need TWO spatial angles → two orthogonal single-axis sensors
+• Or: FOUR photocells in one optical head (2×2 arrangement)
+
+**Digital sun sensors (p. 102):**
+• Better accuracy: 0.015°
+• Larger FOV: 70°×70°
+• Use Grey binary coding (equidistant code: only one bit changes per step)
+• More complex but much more precise
+
+**Attitude Error Definitions (p. 104)**
+
+Three distinct error types — know the differences for the exam:
+
+**1. APE — Absolute Pointing Error:**
+• Angular separation between ACTUAL and COMMANDED pointing
+• Real-time error (what the spacecraft is actually doing vs what it should do)
+• Controlled by the ACS
+
+**2. RPE — Relative Pointing Error (Pointing Stability):**
+• Difference between instantaneous APE and median APE over time interval tₘ
+• Measures how STABLE the pointing is (jitter)
+• Often more important for science instruments than APE
+
+**3. AME — Absolute Measurement Error (Attitude Knowledge):**
+• Angular separation between ACTUAL and MEASURED pointing
+• Represents attitude KNOWLEDGE (how well we know where we're pointing)
+• Can be determined A POSTERIORI (post-processing)
+
+**Key distinction:**
+• APE, RPE are REAL-TIME errors (affect spacecraft operation now)
+• AME is RECONSTRUCTED (can be improved later with better data processing)`,
+    matlab: `% Sun Sensor — Cosine Detector and Differential Configuration
+
+fprintf('=== Sun Sensor: Cosine Detectors ===\\n\\n');
+
+% Single cosine detector
+alpha = linspace(-90, 90, 181); % incidence angle [deg]
+I0 = 1.0; % normalised max current
+I_single = I0 * cosd(alpha);
+
+% Differential configuration
+alpha0 = 30; % tilt angle [deg]
+K = I0;
+I1 = K * cosd(alpha0 + alpha);
+I2 = K * cosd(alpha0 - alpha);
+dI = I2 - I1; % differential output
+C = 2*K*sind(alpha0);
+dI_ideal = C * sind(alpha); % ideal linear response
+
+fprintf('Tilt angle alpha_0 = %.0f deg\\n', alpha0);
+fprintf('Sensitivity constant C = 2K*sin(alpha_0) = %.4f\\n\\n', C);
+
+% Print comparison at key angles
+fprintf('%8s  %10s  %10s  %10s\\n', 'alpha', 'I_single', 'DeltaI', 'C*sin(a)');
+for a = [0, 10, 20, 30, 45, 60, 80]
+    idx = a + 91; % index for angle a
+    fprintf('%6.0f°  %10.4f  %10.4f  %10.4f\\n', ...
+        a, I_single(idx), dI(idx), dI_ideal(idx));
+end
+
+fprintf('\\nNote: differential output is more LINEAR than single detector.\\n');
+fprintf('Two orthogonal pairs needed for full sun vector.\\n');
+
+% --- Attitude Error Definitions ---
+fprintf('\\n=== Attitude Error Definitions ===\\n');
+fprintf('%-6s %-35s %-15s\\n', 'Type', 'Definition', 'Timing');
+fprintf('%-6s %-35s %-15s\\n', 'APE', 'Actual vs Commanded pointing', 'Real-time');
+fprintf('%-6s %-35s %-15s\\n', 'RPE', 'Instantaneous APE - Median APE', 'Real-time');
+fprintf('%-6s %-35s %-15s\\n', 'AME', 'Actual vs Measured pointing', 'Post-processing');
+fprintf('\\nAPE = controlled by ACS\\n');
+fprintf('RPE = pointing stability (jitter)\\n');
+fprintf('AME = attitude knowledge (can be improved a posteriori)\\n');
+
+% Numerical example: sensor accuracy comparison
+fprintf('\\n=== Sensor Accuracy Comparison ===\\n');
+fprintf('%-20s  %15s\\n', 'Sensor', 'Typical Accuracy');
+fprintf('%-20s  %15s\\n', 'Star tracker (ST)', '1-6 arcsec');
+fprintf('%-20s  %15s\\n', 'Earth sensor (ES)', '0.02-0.5 deg');
+fprintf('%-20s  %15s\\n', 'Sun sensor (analog)', '~0.5 deg');
+fprintf('%-20s  %15s\\n', 'Sun sensor (digital)', '0.015 deg');
+fprintf('%-20s  %15s\\n', 'Gyro (rate)', 'ARW=0.05 as/sqrt(s)');`,
+    examTraps: [
+      "Sun sensors measure the Sun DIRECTION but NOT the Sun identity — there's only one Sun! Unlike star trackers which must identify stars.",
+      "Differential configuration uses TWO detectors → output proportional to sin(α), which is more linear. Single detector gives cos(α), which has zero sensitivity at α=0.",
+      "You need TWO orthogonal sensor axes for the full sun vector. One axis gives only one angle.",
+      "Know the three error types: APE (pointing), RPE (stability), AME (knowledge). APE and RPE are real-time; AME can be reconstructed. From oral exams: 'Sun sensors — come determinare la direzione e analogie con star sensors.'"
+    ],
+    drill: [
+      { q: "Write the differential output formula for a two-detector sun sensor and explain why it's used.", a: "ΔI = I₂−I₁ = 2K sin α₀ sin α = C sin α. The differential output is proportional to sin(α), which is more LINEAR in the operating range than the cos(α) response of a single detector. Also cancels common-mode noise." },
+      { q: "Define APE, RPE, and AME. Which are real-time errors?", a: "APE = Absolute Pointing Error (actual vs commanded pointing) — real-time. RPE = Relative Pointing Error (instantaneous APE minus median APE over time tₘ, = pointing stability/jitter) — real-time. AME = Absolute Measurement Error (actual vs measured pointing, = attitude knowledge) — can be determined a posteriori." },
+      { q: "Rank these sensors by accuracy: Sun sensor (digital), Earth sensor, Star tracker.", a: "Star tracker (1-6 arcsec = 0.0003-0.0017°) >> Digital Sun sensor (0.015°) >> Earth sensor (0.02-0.5°). Star trackers are by far the most accurate attitude sensors." }
+    ]
+  },
+];
+
+// ─── COMPARISON TABLE ──────────────────────────────────────────────────────
+const SENSOR_COMPARISON = [
+  { sensor: "Star Tracker", accuracy: "1–6 arcsec", fov: "8°×8° – 10°×10°", output: "Unit vectors Wᵢ", principle: "Star positions on CCD → unit vectors", pros: "Highest accuracy, absolute reference", cons: "Expensive, computing, sun exclusion", usage: "Primary sensor (QUEST, EKF)" },
+  { sensor: "Gyroscope (RLG/FOG)", accuracy: "ARW 0.05\"/√s", fov: "Full sphere", output: "Angular rate ω", principle: "Sagnac effect (laser interference)", pros: "Continuous, high bandwidth", cons: "Drifts (bias random walk)", usage: "Bridging between ST updates (EKF)" },
+  { sensor: "Gyroscope (HRG)", accuracy: "Similar to FOG", fov: "Full sphere", output: "Angular rate ω", principle: "Coriolis on vibrating hemisphere", pros: "No moving parts, excellent stability", cons: "Complex, expensive", usage: "Deep space (Cassini, Messenger)" },
+  { sensor: "Earth Sensor", accuracy: "0.02°–0.5°", fov: "Scanning cone", output: "Roll and pitch angles", principle: "IR horizon crossing detection", pros: "Simple, robust, moderate cost", cons: "Low accuracy, altitude-dependent (single)", usage: "GEO coarse attitude, backup" },
+  { sensor: "Sun Sensor (analog)", accuracy: "~0.5°", fov: "Limited", output: "Sun incidence angle(s)", principle: "Cosine detector (photocell)", pros: "Very simple, low cost, robust", cons: "Low accuracy, one direction only", usage: "Safe mode, coarse attitude" },
+  { sensor: "Sun Sensor (digital)", accuracy: "0.015°", fov: "70°×70°", output: "Sun direction (2 angles)", principle: "Grey code shadow mask", pros: "Good accuracy, wide FOV", cons: "Only gives Sun direction", usage: "Fine sun pointing, combined w/ ES" },
+];
+
+// ─── STYLES (same as Part 1) ───────────────────────────────────────────────
+const styles = {
+  shell: { display: "flex", height: "100vh", fontFamily: "'Inter', -apple-system, sans-serif", fontSize: 14, color: "var(--color-text-primary, #1a1a2e)", background: "var(--color-background-tertiary, #f0f0f5)" },
+  sidebar: { width: 240, background: "var(--color-background-primary, #ffffff)", borderRight: "1px solid var(--color-border-tertiary, #e2e2e8)", display: "flex", flexDirection: "column", flexShrink: 0, overflow: "hidden" },
+  sidebarHead: { padding: "14px 16px", borderBottom: "1px solid var(--color-border-tertiary, #e2e2e8)" },
+  sidebarHeadT1: { fontSize: 10, color: "var(--color-text-tertiary, #8888a0)", fontFamily: "monospace", letterSpacing: 1, textTransform: "uppercase" },
+  sidebarHeadT2: { fontSize: 14, fontWeight: 600, marginTop: 3 },
+  sidebarHeadT3: { fontSize: 11, color: "var(--color-text-tertiary, #8888a0)", marginTop: 2 },
+  sidebarList: { overflowY: "auto", flex: 1, padding: 6 },
+  sItem: (active) => ({ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 8, cursor: "pointer", border: "none", background: active ? "var(--color-background-secondary, #eeeef5)" : "transparent", borderLeft: active ? "3px solid #e67e22" : "3px solid transparent", width: "100%", textAlign: "left", transition: "background 0.15s" }),
+  sItemIcon: { fontSize: 15, flexShrink: 0, width: 20, textAlign: "center" },
+  sItemTitle: { fontSize: 12, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  sItemPages: { fontSize: 10, color: "var(--color-text-tertiary, #8888a0)", fontFamily: "monospace" },
+  main: { flex: 1, overflowY: "auto", padding: "24px 32px 48px" },
+  sectionTitle: { fontSize: 22, fontWeight: 700, margin: 0 },
+  sectionPages: { fontSize: 12, color: "var(--color-text-tertiary, #8888a0)", fontFamily: "monospace", marginTop: 4 },
+  tabBar: { display: "flex", gap: 2, marginTop: 20, borderBottom: "2px solid var(--color-border-tertiary, #e2e2e8)", paddingBottom: 0, flexWrap: "wrap" },
+  tab: (active) => ({ padding: "8px 14px", cursor: "pointer", border: "none", background: "none", fontSize: 12, fontWeight: active ? 600 : 400, color: active ? "#e67e22" : "var(--color-text-secondary, #555)", borderBottom: active ? "2px solid #e67e22" : "2px solid transparent", marginBottom: -2, transition: "all 0.15s" }),
+  card: { background: "var(--color-background-primary, #fff)", border: "1px solid var(--color-border-tertiary, #e2e2e8)", borderRadius: 10, padding: "18px 20px", marginTop: 16 },
+  eqBox: { background: "var(--color-background-secondary, #f5f5fa)", borderRadius: 8, padding: "12px 16px", margin: "10px 0", fontFamily: "monospace", fontSize: 13, overflowX: "auto", whiteSpace: "pre-wrap", lineHeight: 1.6 },
+  codeBlock: { background: "#1e1e2e", color: "#cdd6f4", borderRadius: 8, padding: "14px 18px", margin: "10px 0", fontFamily: "'JetBrains Mono', 'Fira Code', monospace", fontSize: 11.5, overflowX: "auto", whiteSpace: "pre-wrap", lineHeight: 1.5 },
+  trapBox: { background: "#fff3e0", border: "1px solid #ffcc80", borderRadius: 8, padding: "10px 14px", margin: "8px 0", fontSize: 13 },
+  drillQ: { background: "#e3f2fd", borderRadius: 8, padding: "10px 14px", margin: "8px 0", fontSize: 13, cursor: "pointer" },
+  drillA: { background: "#e8f5e9", borderRadius: 8, padding: "10px 14px", margin: "4px 0 8px", fontSize: 13 },
+  badge: (color) => ({ display: "inline-block", padding: "2px 8px", borderRadius: 12, fontSize: 10, fontWeight: 600, background: color + "18", color: color, marginRight: 6 }),
+  notationRow: { display: "grid", gridTemplateColumns: "110px 75px 1fr", gap: 8, padding: "8px 0", borderBottom: "1px solid var(--color-border-tertiary, #e2e2e8)", fontSize: 13 },
+  notationSym: { fontFamily: "monospace", fontWeight: 600, fontSize: 13 },
+  overviewBox: { background: "linear-gradient(135deg, #f39c1215, #e67e2215)", border: "1px solid #e67e2230", borderRadius: 10, padding: "16px 20px", marginTop: 12 },
+};
+
+const TABS = [
+  { key: "overview", label: "📋 Overview" },
+  { key: "equations", label: "📐 Equations" },
+  { key: "derivation", label: "📝 Derivation" },
+  { key: "matlab", label: "💻 MATLAB" },
+  { key: "traps", label: "⚠️ Exam Traps" },
+  { key: "drill", label: "🏋️ Drill" },
+];
+
+export default function App() {
+  const [activeModule, setActiveModule] = useState("notation");
+  const [activeTab, setActiveTab] = useState("overview");
+  const [notationSearch, setNotationSearch] = useState("");
+  const [drillRevealed, setDrillRevealed] = useState({});
+
+  const toggleDrill = (modId, idx) => {
+    const key = `${modId}-${idx}`;
+    setDrillRevealed(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const filteredNotation = useMemo(() => {
+    if (!notationSearch.trim()) return NOTATION_GROUPS;
+    const q = notationSearch.toLowerCase();
+    return NOTATION_GROUPS.map(g => ({
+      ...g,
+      rows: g.rows.filter(r =>
+        r.sym.toLowerCase().includes(q) || r.desc.toLowerCase().includes(q) || r.detail.toLowerCase().includes(q)
+      )
+    })).filter(g => g.rows.length > 0);
+  }, [notationSearch]);
+
+  const mod = MODULES.find(m => m.id === activeModule);
+
+  return (
+    <div style={styles.shell}>
+      <div style={styles.sidebar}>
+        <div style={styles.sidebarHead}>
+          <div style={styles.sidebarHeadT1}>SMS • CH.2 — PART 2</div>
+          <div style={styles.sidebarHeadT2}>Sensors & Gyroscopes</div>
+          <div style={styles.sidebarHeadT3}>Prof. Iess — pp. 31–104</div>
+        </div>
+        <div style={styles.sidebarList}>
+          <button style={styles.sItem(activeModule === "notation")} onClick={() => { setActiveModule("notation"); setActiveTab("overview"); }}>
+            <span style={styles.sItemIcon}>📑</span>
+            <div><div style={styles.sItemTitle}>Notation Table</div><div style={styles.sItemPages}>searchable</div></div>
+          </button>
+          {MODULES.map(m => (
+            <button key={m.id} style={styles.sItem(activeModule === m.id)} onClick={() => { setActiveModule(m.id); setActiveTab("overview"); }}>
+              <span style={styles.sItemIcon}>{m.icon}</span>
+              <div><div style={styles.sItemTitle}>{m.num}. {m.title}</div><div style={styles.sItemPages}>{m.pages}</div></div>
+            </button>
+          ))}
+          <button style={styles.sItem(activeModule === "comparison")} onClick={() => { setActiveModule("comparison"); setActiveTab("overview"); }}>
+            <span style={styles.sItemIcon}>⚖️</span>
+            <div><div style={styles.sItemTitle}>Sensor Comparison</div><div style={styles.sItemPages}>all sensors</div></div>
+          </button>
+        </div>
+      </div>
+
+      <div style={styles.main}>
+        {activeModule === "notation" && (
+          <div>
+            <h1 style={styles.sectionTitle}>📑 Notation Table — Sensors & Gyroscopes</h1>
+            <p style={{ ...styles.sectionPages, marginBottom: 12 }}>All symbols for hardware sections (pp. 31–104)</p>
+            <input type="text" placeholder="🔍 Search symbols..." value={notationSearch} onChange={e => setNotationSearch(e.target.value)}
+              style={{ width: "100%", maxWidth: 400, padding: "8px 14px", borderRadius: 8, border: "1px solid #ccc", fontSize: 13, marginBottom: 16, background: "var(--color-background-primary, #fff)" }} />
+            {filteredNotation.map((g, gi) => (
+              <div key={gi} style={{ ...styles.card, marginTop: 12 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>
+                  <span>{g.emoji}</span> {g.title} <span style={styles.badge(g.color)}>{g.rows.length}</span>
+                </div>
+                {g.rows.map((r, ri) => (
+                  <div key={ri} style={styles.notationRow}>
+                    <div style={styles.notationSym}>{r.sym}</div>
+                    <div style={{ fontFamily: "monospace", fontSize: 11, color: "#888" }}>{r.dim}</div>
+                    <div>
+                      <div style={{ fontWeight: 500 }}>{r.desc}</div>
+                      <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>{r.detail}</div>
+                      {r.trap && <div style={{ fontSize: 11, color: "#e65100", marginTop: 3 }}>⚠️ {r.trap}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {activeModule === "comparison" && (
+          <div>
+            <h1 style={styles.sectionTitle}>⚖️ Complete Sensor Comparison</h1>
+            <p style={styles.sectionPages}>All attitude sensors at a glance</p>
+            <div style={{ ...styles.card, overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr style={{ borderBottom: "2px solid #ddd" }}>
+                    {["Sensor", "Accuracy", "FOV", "Output", "Principle", "Pros", "Cons"].map(h => (
+                      <th key={h} style={{ textAlign: "left", padding: "8px 10px", fontWeight: 600, fontSize: 11, color: "#666", textTransform: "uppercase" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {SENSOR_COMPARISON.map((c, i) => (
+                    <tr key={i} style={{ borderBottom: "1px solid #eee" }}>
+                      <td style={{ padding: "10px", fontWeight: 600, color: "#e67e22" }}>{c.sensor}</td>
+                      <td style={{ padding: "10px", fontFamily: "monospace", fontSize: 11 }}>{c.accuracy}</td>
+                      <td style={{ padding: "10px", fontSize: 11 }}>{c.fov}</td>
+                      <td style={{ padding: "10px", fontSize: 11 }}>{c.output}</td>
+                      <td style={{ padding: "10px", fontSize: 11 }}>{c.principle}</td>
+                      <td style={{ padding: "10px", fontSize: 11, color: "#2e7d32" }}>{c.pros}</td>
+                      <td style={{ padding: "10px", fontSize: 11, color: "#c62828" }}>{c.cons}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {mod && (
+          <div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+              <span style={{ fontSize: 28 }}>{mod.icon}</span>
+              <div>
+                <h1 style={styles.sectionTitle}>Module {mod.num}: {mod.title}</h1>
+                <div style={styles.sectionPages}>{mod.pages} — Class Notes (Iess, Sidi)</div>
+              </div>
+            </div>
+            <div style={styles.tabBar}>
+              {TABS.map(t => (
+                <button key={t.key} style={styles.tab(activeTab === t.key)} onClick={() => setActiveTab(t.key)}>{t.label}</button>
+              ))}
+            </div>
+
+            {activeTab === "overview" && (
+              <div style={styles.overviewBox}>
+                <div style={{ fontWeight: 600, fontSize: 13, color: "#e67e22", marginBottom: 6 }}>🎯 Why this module?</div>
+                <p style={{ margin: 0, lineHeight: 1.6 }}>{mod.overview.why}</p>
+                <div style={{ fontWeight: 600, fontSize: 13, color: "#059669", marginTop: 14, marginBottom: 6 }}>📌 Learning Objective</div>
+                <p style={{ margin: 0, lineHeight: 1.6 }}>{mod.overview.objective}</p>
+                <div style={{ fontWeight: 600, fontSize: 13, color: "#d97706", marginTop: 14, marginBottom: 6 }}>🛰️ Real Mission Example</div>
+                <p style={{ margin: 0, lineHeight: 1.6 }}>{mod.overview.realMission}</p>
+              </div>
+            )}
+            {activeTab === "equations" && (
+              <div>{mod.equations.map((eq, i) => (
+                <div key={i} style={styles.card}>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: "#e67e22", marginBottom: 6 }}>{eq.name}</div>
+                  <div style={styles.eqBox}>{eq.eq}</div>
+                  <p style={{ margin: "8px 0 0", lineHeight: 1.6, fontSize: 13, color: "#555" }}>{eq.explain}</p>
+                </div>
+              ))}</div>
+            )}
+            {activeTab === "derivation" && (
+              <div style={styles.card}><div style={{ whiteSpace: "pre-wrap", lineHeight: 1.7, fontSize: 13 }}>{mod.derivation}</div></div>
+            )}
+            {activeTab === "matlab" && (
+              <div>
+                <div style={{ fontSize: 12, color: "#888", marginTop: 12, marginBottom: 4 }}>Copy and paste into MATLAB to run:</div>
+                <div style={styles.codeBlock}>{mod.matlab}</div>
+              </div>
+            )}
+            {activeTab === "traps" && (
+              <div>{mod.examTraps.map((trap, i) => (
+                <div key={i} style={styles.trapBox}><span style={{ fontWeight: 600 }}>⚠️ Trap #{i+1}:</span> {trap}</div>
+              ))}</div>
+            )}
+            {activeTab === "drill" && (
+              <div>
+                <p style={{ fontSize: 12, color: "#888", margin: "12px 0 8px" }}>Click each question to reveal the answer:</p>
+                {mod.drill.map((d, i) => {
+                  const key = `${mod.id}-${i}`;
+                  return (
+                    <div key={i}>
+                      <div style={styles.drillQ} onClick={() => toggleDrill(mod.id, i)}>
+                        <span style={{ fontWeight: 600 }}>Q{i+1}:</span> {d.q}
+                        <span style={{ float: "right", fontSize: 11, color: "#1565c0" }}>{drillRevealed[key] ? "▲ Hide" : "▼ Reveal"}</span>
+                      </div>
+                      {drillRevealed[key] && (
+                        <div style={styles.drillA}><span style={{ fontWeight: 600, color: "#2e7d32" }}>✅</span> {d.a}</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(App));
+</script>
+</body>
+</html>

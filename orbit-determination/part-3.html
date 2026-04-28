@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TSB Ch.4 — 40–70% · §4.7–§4.9</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#e2e8f0;min-height:100vh}
+.shell{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:230px;background:#161b27;border-right:1px solid #1e2a3a;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+.sidebar-head{padding:16px;border-bottom:1px solid #1e2a3a}
+.sh-label{font-size:10px;color:#4a6080;font-family:monospace;letter-spacing:.08em;text-transform:uppercase}
+.sh-title{font-size:13px;font-weight:600;margin-top:3px;color:#e2e8f0}
+.sh-sub{font-size:10px;color:#4a6080;margin-top:2px}
+.sidebar-list{overflow-y:auto;flex:1;padding:8px}
+.sitem{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:7px;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background .15s;border-left:3px solid transparent}
+.sitem:hover{background:#1e2a3a}
+.sitem.active{background:#1a2540;border-left-color:#7c3aed}
+.sitem-icon{font-size:15px;flex-shrink:0;width:20px;text-align:center}
+.sitem-text{display:flex;flex-direction:column;min-width:0}
+.sitem-title{font-size:11px;font-weight:600;color:#c8d6e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sitem-pages{font-size:9px;color:#4a6080;font-family:monospace;margin-top:1px}
+.sidebar-foot{padding:12px 16px;border-top:1px solid #1e2a3a;font-size:10px;color:#2d3f56}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.mhead{padding:16px 22px 12px;border-bottom:1px solid #1a2333;background:#12161f}
+.mhead-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.mhead-icon{font-size:22px}
+.mhead-title{font-size:17px;font-weight:700;color:#e2e8f0}
+.mhead-pages{font-size:10px;color:#3d5a7a;font-family:monospace;margin-left:auto}
+.why-box{border-left:3px solid #7c3aed;padding:8px 12px;background:#1a0a2a;border-radius:0 6px 6px 0;font-size:12px;color:#c4b5fd;line-height:1.55}
+.why-box strong{color:#a78bfa;font-weight:600}
+.tabs{display:flex;gap:2px;padding:8px 22px 0;background:#12161f;border-bottom:1px solid #1a2333;overflow-x:auto}
+.tab{padding:7px 13px;font-size:11px;font-weight:600;border:none;background:none;cursor:pointer;color:#4a6080;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;white-space:nowrap}
+.tab:hover{color:#a78bfa}
+.tab.active{color:#7c3aed;border-bottom-color:#7c3aed}
+.content{flex:1;overflow-y:auto;padding:20px 22px;scrollbar-width:thin;scrollbar-color:#1e2a3a #0f1117}
+.content::-webkit-scrollbar{width:5px}
+.content::-webkit-scrollbar-thumb{background:#1e2a3a;border-radius:3px}
+.obj-box{background:#1a0a2a;border:1px solid #3a1a6a;border-radius:8px;padding:11px 14px;margin-bottom:14px;font-size:12px;color:#c4b5fd;line-height:1.6}
+.obj-box strong{color:#a78bfa;font-weight:600}
+.ov-card{background:#12161f;border:1px solid #1a2333;border-radius:8px;padding:13px 15px;margin-bottom:9px}
+.ov-label{font-size:10px;font-weight:700;color:#7c3aed;margin-bottom:4px;letter-spacing:.06em;text-transform:uppercase}
+.ov-text{font-size:12px;color:#8aaccb;line-height:1.65}
+.eq-box{background:#12161f;border:1px solid #1e2a3a;border-radius:8px;margin-bottom:9px;overflow:hidden}
+.eq-label{padding:5px 13px;background:#0e1929;font-size:9px;color:#4a6080;font-family:monospace;border-bottom:1px solid #1a2333;letter-spacing:.05em}
+.eq-formula{padding:11px 15px;font-family:'Cascadia Code','Fira Code',monospace;font-size:12px;color:#fbbf24;white-space:pre-wrap;line-height:1.8}
+.eq-note{padding:5px 13px;font-size:10px;color:#3d5a7a;border-top:1px solid #1a2333}
+.deriv-box{background:#12161f;border:1px solid #1e2a3a;border-radius:8px;padding:15px;font-family:'Cascadia Code','Fira Code',monospace;font-size:11px;color:#8aaccb;white-space:pre-wrap;line-height:1.85;margin:10px 0}
+.matlab-box{background:#0a1a0f;border:1px solid #1a3a22;border-radius:8px;overflow:hidden}
+.matlab-head{padding:6px 13px;background:#061209;font-size:9px;color:#4ade80;font-family:monospace;border-bottom:1px solid #1a3a22;letter-spacing:.08em;text-transform:uppercase}
+.matlab-code{padding:13px 15px;font-family:'Cascadia Code','Fira Code',monospace;font-size:11px;color:#86efac;white-space:pre-wrap;line-height:1.8;overflow-x:auto}
+.trap-item{display:flex;gap:9px;padding:10px 13px;background:#1a0a0a;border:1px solid #3a1a1a;border-radius:8px;margin-bottom:8px}
+.trap-icon{color:#f87171;flex-shrink:0;font-size:14px;margin-top:1px}
+.trap-text{font-size:12px;color:#f87171;line-height:1.6}
+.drill-item{border:1px solid #1e2a3a;border-radius:8px;margin-bottom:8px;overflow:hidden}
+.drill-q{display:flex;align-items:flex-start;gap:9px;padding:11px 13px;cursor:pointer;background:#12161f;border:none;width:100%;text-align:left;transition:background .15s}
+.drill-q:hover{background:#1a2333}
+.drill-num{font-size:10px;font-weight:700;color:#a78bfa;background:#2e1065;padding:2px 8px;border-radius:999px;flex-shrink:0}
+.drill-qtext{font-size:12px;color:#c8d6e8;flex:1;line-height:1.5}
+.drill-chev{color:#3d5a7a;font-size:11px;flex-shrink:0;margin-top:2px;transition:transform .2s}
+.drill-chev.open{transform:rotate(180deg)}
+.drill-ans{padding:11px 13px;background:#0e1929;border-top:1px solid #1e2a3a;font-size:11px;color:#7fa8cc;line-height:1.7;display:none}
+.drill-ans.open{display:block}
+.drill-ans code{font-family:monospace;color:#fbbf24;font-size:10px}
+.nav-row{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+.btn{padding:9px 20px;font-size:12px;font-weight:600;border:1px solid #1e2a3a;border-radius:7px;background:none;cursor:pointer;color:#8aaccb;transition:all .15s}
+.btn:hover{background:#1a2333;color:#c8d6e8}
+.btn.primary{background:#2e1065;color:#c4b5fd;border-color:#6d28d9}
+.btn.primary:hover{background:#3b1a80;color:#e9d5ff}
+.svg-wrap{margin:12px 0;border-radius:8px;overflow:hidden;background:#12161f;border:1px solid #1a2333}
+h4{font-size:10px;font-weight:700;color:#3d5a7a;margin:14px 0 7px;letter-spacing:.1em;text-transform:uppercase}
+.step-box{background:#12161f;border:1px solid #1e2a3a;border-radius:8px;padding:12px 14px;margin:7px 0;display:flex;gap:12px;align-items:flex-start}
+.step-num{background:#2e1065;color:#c4b5fd;border-radius:999px;font-size:11px;font-weight:700;padding:2px 10px;flex-shrink:0;margin-top:1px}
+.step-body{font-family:'Cascadia Code','Fira Code',monospace;font-size:11px;color:#fbbf24;line-height:1.8}
+.step-note{font-size:11px;color:#4a6080;margin-top:3px}
+</style>
+</head>
+<body>
+<div class="shell">
+ <div class="sidebar">
+  <div class="sidebar-head">
+   <div class="sh-label">Tapley, Schutz &amp; Born</div>
+   <div class="sh-title">Ch.4 — 40–70%</div>
+   <div class="sh-sub">§4.7–§4.9 · pp.199–233</div>
+  </div>
+  <div class="sidebar-list" id="slist"></div>
+  <div class="sidebar-foot">6 sections · Sapienza MSc OD</div>
+ </div>
+ <div class="main">
+  <div class="mhead">
+   <div class="mhead-row">
+    <span class="mhead-icon" id="m-icon"></span>
+    <span class="mhead-title" id="m-title"></span>
+    <span class="mhead-pages" id="m-pages"></span>
+   </div>
+   <div class="why-box" id="m-why"></div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="content" id="content"></div>
+ </div>
+</div>
+<script>
+const M=[
+{id:1,icon:"🔀",title:"KF derivation via Woodbury identity",badge:"§4.7 · pp.199–201",
+why:"<strong>Why the KF?</strong> The batch processor waits for all data. Real-time navigation (GPS, spacecraft, launch guidance) needs an estimate after EACH measurement. The KF is Eq.4.4.29 applied sequentially, then reformulated via the matrix inversion lemma to invert p×p (obs size) instead of n×n (state size).",
+objective:"Derive the Kalman gain Kₖ and measurement update from Eq.4.4.29 by applying the Woodbury (matrix inversion) identity. Show Pₖ=(I−KₖHₖ)P̄ₖ equals the MVE covariance.",
+overview:[
+{label:"Starting point",text:"From §4.4.2: x̂ₖ=(HₖᵀRₖ⁻¹Hₖ+P̄ₖ⁻¹)⁻¹(HₖᵀRₖ⁻¹yₖ+P̄ₖ⁻¹x̄ₖ). This requires inverting an n×n matrix every step — expensive for large state vectors."},
+{label:"Woodbury identity",text:"(A⁻¹+BᵀC⁻¹B)⁻¹ = A−ABᵀ(BABᵀ+C)⁻¹BA. With A=P̄ₖ, B=Hₖ, C=Rₖ: converts n×n inversion into p×p inversion. For scalar observations (p=1): just scalar division."},
+{label:"Kalman gain",text:"Define Kₖ=P̄ₖHₖᵀ(HₖP̄ₖHₖᵀ+Rₖ)⁻¹ [n×p]. Then Pₖ=(I−KₖHₖ)P̄ₖ and x̂ₖ=x̄ₖ+Kₖ(yₖ−Hₖx̄ₖ). The correction = Kₖ × innovation."},
+{label:"Innovation",text:"βₖ=yₖ−Hₖx̄ₖ is the INNOVATION — predicted residual BEFORE measurement update using predicted state x̄ₖ. NOT the same as the post-fit residual ε̂ₖ=yₖ−Hₖx̂ₖ."},
+],
+equations:[
+{label:"MVE with prior — starting point (Eq.4.4.29)",eq:"Pₖ = (HₖᵀRₖ⁻¹Hₖ + P̄ₖ⁻¹)⁻¹   [invert n×n — expensive]",note:""},
+{label:"Woodbury identity (matrix inversion lemma)",eq:"(A⁻¹ + BᵀC⁻¹B)⁻¹ = A − ABᵀ(BABᵀ + C)⁻¹BA",note:"With A=P̄ₖ, B=Hₖ, C=Rₖ → converts n×n to p×p inversion"},
+{label:"Kalman gain definition (Eq.4.7.18) ★★",eq:"Kₖ = P̄ₖ Hₖᵀ [Hₖ P̄ₖ Hₖᵀ + Rₖ]⁻¹   [n×p]",note:"Inverts p×p matrix only! For scalar obs: Kₖ = P̄ₖHₖᵀ / (HₖP̄ₖHₖᵀ+Rₖ)"},
+{label:"Measurement update — covariance (Eq.4.7.12)",eq:"Pₖ = (I − KₖHₖ) P̄ₖ   [standard form]\n\nJoseph form (Eq.4.7.19) — numerically stable:\nPₖ = (I−KₖHₖ)P̄ₖ(I−KₖHₖ)ᵀ + KₖRₖKₖᵀ",note:"Standard form assumes optimal Kₖ. Joseph form always valid — use in practice!"},
+{label:"Measurement update — state (Eq.4.7.18) ★★",eq:"x̂ₖ = x̄ₖ + Kₖ [yₖ − Hₖ x̄ₖ]\n    = x̄ₖ + Kₖ βₖ\n\nwhere βₖ = yₖ − Hₖx̄ₖ  [innovation / prediction residual]",note:"Correction = Kₖ × innovation. Large Kₖ → trust data more than prior."},
+{label:"Gain interpretation — limit cases",eq:"Rₖ→0  (perfect data):  Kₖ→Hₖ⁻¹,  x̂ₖ→Hₖ⁻¹yₖ  (trust data fully)\nP̄ₖ→0  (perfect prior): Kₖ→0,      x̂ₖ→x̄ₖ     (ignore data)\nRₖ=P̄ₖ (equal info):   Kₖ=P̄ₖHᵀ/(2HᵀP̄Hᵀ)   (balanced)",note:""},
+],
+derivation:`DERIVING THE KALMAN GAIN (TSB §4.7):
+
+Start with MVE covariance (Eq.4.4.29):
+  Pₖ = (HₖᵀRₖ⁻¹Hₖ + P̄ₖ⁻¹)⁻¹
+
+Apply Woodbury identity with A=P̄ₖ, B=Hₖ, C=Rₖ:
+  Pₖ = P̄ₖ − P̄ₖHₖᵀ(HₖP̄ₖHₖᵀ + Rₖ)⁻¹HₖP̄ₖ
+     = (I − KₖHₖ) P̄ₖ
+  where Kₖ ≡ P̄ₖHₖᵀ(HₖP̄ₖHₖᵀ+Rₖ)⁻¹   (Eq.4.7.18)
+
+Now derive the state update.
+From Eq.4.4.29 with the gain:
+  x̂ₖ = Pₖ(HₖᵀRₖ⁻¹yₖ + P̄ₖ⁻¹x̄ₖ)
+     = (I−KₖHₖ)P̄ₖ(HₖᵀRₖ⁻¹yₖ + P̄ₖ⁻¹x̄ₖ)
+
+Expand and simplify using KₖRₖ⁻¹ = P̄ₖHₖᵀ(HₖP̄ₖHₖᵀ+Rₖ)⁻¹Rₖ⁻¹:
+  x̂ₖ = x̄ₖ + Kₖ(yₖ − Hₖx̄ₖ)  ← INNOVATION FORM ✓
+
+NOTE: In KF, Hₖ = [∂G/∂X]*ₖ (NO STM multiplication).
+In batch: Hᵢ = H̃ᵢΦ(tᵢ,t₀) (WITH STM).`,
+matlab:`function demo_woodbury()
+% Verify Woodbury: (HᵀR⁻¹H + P̄⁻¹)⁻¹ = (I-KH)P̄
+  n=6; p=2;
+  P_bar = diag(rand(n,1)*100);     % a priori cov
+  H     = randn(p,n);              % obs matrix
+  R     = diag(rand(p,1)*0.01);    % obs noise cov
+
+  % Method 1: direct inversion (n×n)
+  P_direct = inv(H'*(R\H) + inv(P_bar));
+
+  % Method 2: KF gain form (p×p inversion only!)
+  S  = H*P_bar*H' + R;            % p×p innovation cov
+  K  = P_bar*H' * (S\eye(p));     % Kalman gain [n×p]
+  P_kf = (eye(n) - K*H) * P_bar; % standard form
+
+  % Method 3: Joseph form (most stable)
+  ImKH = eye(n) - K*H;
+  P_joseph = ImKH*P_bar*ImKH' + K*R*K';
+
+  fprintf('Direct vs KF:     %.2e\\n', norm(P_direct-P_kf,'fro'));
+  fprintf('Direct vs Joseph: %.2e\\n', norm(P_direct-P_joseph,'fro'));
+  fprintf('All should be ~0 (machine precision)\\n');
+end`,
+traps:["βₖ=yₖ−Hₖx̄ₖ (innovation) uses PREDICTED state x̄ₖ BEFORE measurement update. NOT x̂ₖ.","Standard form Pₖ=(I−KH)P̄ₖ only numerically stable for optimal Kₖ. Use Joseph form in all real implementations.","If Rₖ is too small (over-trusting measurements): Kₖ→H⁻¹, Pₖ→0 rapidly → filter saturation → divergence.","The p×p matrix HₖP̄ₖHₖᵀ+Rₖ is the INNOVATION COVARIANCE — expected spread of βₖ."],
+drills:[{q:"Derive the Kalman gain Kₖ and show (I−KₖHₖ)P̄ₖ = (HᵀR⁻¹H+P̄ₖ⁻¹)⁻¹.",a:"Start: Pₖ=(HᵀR⁻¹H+P̄ₖ⁻¹)⁻¹. Apply Woodbury with A=P̄ₖ,B=Hₖ,C=Rₖ: Pₖ=P̄ₖ−P̄ₖHₖᵀ(HₖP̄ₖHₖᵀ+Rₖ)⁻¹HₖP̄ₖ. Define Kₖ=P̄ₖHₖᵀ(HₖP̄ₖHₖᵀ+Rₖ)⁻¹. Then Pₖ=P̄ₖ−KₖHₖP̄ₖ=(I−KₖHₖ)P̄ₖ ✓ This equals (HᵀR⁻¹H+P̄ₖ⁻¹)⁻¹ by Woodbury ✓"},
+{q:"What is the innovation βₖ? What does a large innovation signal?",a:"βₖ=yₖ−Hₖx̄ₖ = difference between actual observation yₖ and what the PREDICTED state x̄ₖ says the observation should be. A large innovation signals the prediction was poor — either the prior is bad, the model has errors, or there's measurement noise. The update x̂ₖ=x̄ₖ+Kₖβₖ corrects the prediction proportionally to Kₖ."}]
+},
+{id:2,icon:"🔄",title:"KF sequential algorithm — TSB Fig.4.7.1",badge:"§4.7.1 · pp.201–209",
+why:"<strong>Why this section?</strong> This is the algorithm you implement in MATLAB. Professors frequently ask students to write it from memory or trace through it on a given example. The critical distinguishing detail vs batch: the KF does NOT multiply Hₖ by the STM.",
+objective:"Memorise the 5-step KF algorithm from TSB Fig.4.7.1. Understand the two failure modes: Pₖ→0 (saturation) and covariance losing positive-definiteness. Know when Joseph form is required.",
+overview:[
+{label:"Step 1 — Integrate",text:"Propagate reference orbit Ẋ*=F(X*,t) and STM Φ̇=A(t)Φ from tₖ₋₁ to tₖ. Reinitialise Φ=I at each observation epoch. Output: X*(tₖ), Φ(tₖ,tₖ₋₁)."},
+{label:"Step 2 — Time update (predict)",text:"x̄ₖ=Φ(tₖ,tₖ₋₁)x̂ₖ₋₁. P̄ₖ=Φ(tₖ,tₖ₋₁)Pₖ₋₁Φᵀ(tₖ,tₖ₋₁). If SNC: add ΓQΓᵀ. Uncertainty grows between observations."},
+{label:"Step 3 — Compute obs, partials, residual",text:"yₖ=Yₖ−G(Xₖ*,tₖ) [O−C]. Hₖ=[∂G/∂X]*ₖ [NO STM — compute locally at current time]. This is the critical difference from the batch processor."},
+{label:"Step 4 — Measurement update",text:"Kₖ=P̄ₖHₖᵀ(HₖP̄ₖHₖᵀ+Rₖ)⁻¹. x̂ₖ=x̄ₖ+Kₖ(yₖ−Hₖx̄ₖ). Pₖ=Joseph form. Uncertainty shrinks."},
+{label:"Step 5 — Advance",text:"k←k+1, reinitialise Φ=I, return to Step 1. The full state estimate at tₖ: X̂ₖ=Xₖ*+x̂ₖ."},
+],
+equations:[
+{label:"Step 1 — Integration",eq:"Ẋ* = F(X*,t),  Φ̇ = A(t)Φ(t,tₖ₋₁)\nfrom tₖ₋₁ to tₖ, with Φ(tₖ₋₁,tₖ₋₁)=I",note:"42 ODEs for n=6. Use ode113 in MATLAB."},
+{label:"Step 2 — Time update (Eq.4.7.17) ★★",eq:"x̄ₖ = Φ(tₖ,tₖ₋₁) x̂ₖ₋₁\nP̄ₖ = Φ(tₖ,tₖ₋₁) Pₖ₋₁ Φᵀ(tₖ,tₖ₋₁)   [+ ΓQΓᵀ if SNC]",note:"Φᵀ on the RIGHT. Overbars = a priori (before measurement update)."},
+{label:"Step 3 — Observation",eq:"yₖ = Yₖ − G(Xₖ*, tₖ)        [O−C residual]\nHₖ = [∂G(X,tₖ)/∂X]*ₖ        [NO STM!  evaluated at current time]",note:"KEY difference from batch: no Φ multiplication on Hₖ. STM is reset to I each epoch."},
+{label:"Step 4 — Measurement update (Eq.4.7.18) ★★★",eq:"Kₖ = P̄ₖ Hₖᵀ [Hₖ P̄ₖ Hₖᵀ + Rₖ]⁻¹\nx̂ₖ = x̄ₖ + Kₖ [yₖ − Hₖ x̄ₖ]\nPₖ = (I−KₖHₖ)P̄ₖ(I−KₖHₖ)ᵀ + KₖRₖKₖᵀ  [Joseph form]",note:"Joseph form always numerically valid. Never use standard Pₖ=(I-KH)P̄ₖ in code."},
+{label:"Covariance trace behaviour (Fig.4.7.2)",eq:"trace(Pₖ) = trace(P̄ₖ) − trace(KₖHₖP̄ₖ)\n\nGrows between obs (time update)\nDrops at each obs (meas. update)\n\nProblem: as Pₖ→0, Kₖ→0 → FILTER SATURATION",note:"Solution: add process noise Q (§4.9) to keep P̄ₖ above zero"},
+],
+derivation:`SEQUENTIAL KF ALGORITHM — COMPLETE (TSB Fig.4.7.1):
+
+══════ INITIALISE ══════
+  k = 1,  ti-1 = t0
+  x̂₀ = x̄₀  (a priori state deviation)
+  P₀         (a priori covariance)
+
+══════ LOOP: for each observation at tₖ ══════
+
+STEP 1 — INTEGRATE from tₖ₋₁ to tₖ:
+  Ẋ* = F(X*,t)                 [orbit ODE, n equations]
+  Φ̇  = A(t)Φ,  Φ(tₖ₋₁,tₖ₋₁)=I [STM ODE, n² equations]
+  → yields X*(tₖ),  Φ(tₖ,tₖ₋₁)
+
+STEP 2 — TIME UPDATE:
+  x̄ₖ = Φ(tₖ,tₖ₋₁) · x̂ₖ₋₁         [predict state]
+  P̄ₖ = Φ(tₖ,tₖ₋₁) · Pₖ₋₁ · Φᵀ     [predict cov]
+
+STEP 3 — OBS MODEL (NO STM ON H!):
+  yₖ = Yₖ − G(Xₖ*,tₖ)              [O-C residual]
+  Hₖ = [∂G/∂X]* at (Xₖ*,tₖ)        [local partials]
+
+STEP 4 — MEASUREMENT UPDATE:
+  Kₖ = P̄ₖHₖᵀ · inv(HₖP̄ₖHₖᵀ + Rₖ)  [Kalman gain]
+  x̂ₖ = x̄ₖ + Kₖ(yₖ − Hₖx̄ₖ)          [update state]
+  Pₖ = (I−KₖHₖ)P̄ₖ(I−KₖHₖ)ᵀ + KₖRₖKₖᵀ [Joseph form!]
+
+STEP 5:
+  k ← k+1,  reinitialise Φ=I,  ti-1 = tₖ
+  Full state: X̂ₖ = Xₖ* + x̂ₖ
+  GOTO STEP 1`,
+matlab:`function [x_hist, P_hist] = kalman_filter(Y, t_obs, X0_star, P0, x0_hat, R)
+% Sequential KF — TSB Fig.4.7.1
+  n = length(X0_star);  n_obs = length(t_obs);
+  x_hist = zeros(n, n_obs);  P_hist = zeros(n, n, n_obs);
+
+  X_star = X0_star;  x_hat = x0_hat;  P = P0;  t_prev = 0;
+
+  for k = 1:n_obs
+    %% STEP 1: Integrate orbit + STM
+    Phi0 = eye(n);
+    [X_star, Phi] = propagate_orbit_stm(X_star, Phi0, t_prev, t_obs(k));
+
+    %% STEP 2: Time update
+    x_bar = Phi * x_hat;               % predict state
+    P_bar = Phi * P * Phi';            % predict cov  (Φᵀ on RIGHT!)
+    % If SNC: P_bar = P_bar + Gamma*Q*Gamma';
+
+    %% STEP 3: Observation model (NO STM on H!)
+    [G_k, H_k] = obs_model(X_star, t_obs(k));  % H_k = [∂G/∂X]*
+    y_k = Y(k,:)' - G_k;               % O-C residual
+
+    %% STEP 4: Measurement update
+    S_k = H_k * P_bar * H_k' + R;      % innovation cov [p×p]
+    K_k = P_bar * H_k' / S_k;          % Kalman gain    [n×p]
+    x_hat = x_bar + K_k*(y_k - H_k*x_bar);  % update state
+    % Joseph form (numerically stable):
+    ImKH = eye(n) - K_k*H_k;
+    P = ImKH * P_bar * ImKH' + K_k * R * K_k';
+
+    %% STEP 5: Store, update reference, advance
+    x_hist(:,k) = x_hat;  P_hist(:,:,k) = P;
+    X_star = X_star + x_hat;  % update reference (EKF mode)
+    t_prev = t_obs(k);
+  end
+end`,
+traps:["In KF: Hₖ=[∂G/∂X]*ₖ — NO STM multiplication. In batch: Hᵢ=H̃ᵢΦ(tᵢ,t₀) — WITH STM. Confusing these is the #1 KF exam error.","STM Φ is reinitialised to I after each observation epoch. A new integration from Φ=I starts for each step.","Always use Joseph form in MATLAB code. Standard form Pₖ=(I−KH)P̄ₖ loses positive-definiteness in finite precision.","Pₖ→0 with many observations → Kₖ→0 → filter insensitive to new data → divergence. Cure: add process noise Q (§4.9)."],
+drills:[{q:"Write the 5 steps of the KF algorithm from memory. Which TSB equation numbers apply?",a:"Step 1: Integrate Ẋ*=F and Φ̇=AΦ (Eq.4.7.17a). Step 2: time update x̄ₖ=Φx̂ₖ₋₁, P̄ₖ=ΦPₖ₋₁Φᵀ (Eq.4.7.17b). Step 3: yₖ=Yₖ−G(Xₖ*,tₖ), Hₖ=[∂G/∂X]*ₖ (no STM!). Step 4: Kₖ=P̄ₖHₖᵀ(HₖP̄ₖHₖᵀ+Rₖ)⁻¹, x̂ₖ=x̄ₖ+Kₖ(yₖ−Hₖx̄ₖ), Pₖ=Joseph form (Eq.4.7.18). Step 5: k←k+1, Φ←I."},
+{q:"What is the critical difference between Hₖ in the KF and Hᵢ in the batch processor?",a:"KF: Hₖ=[∂G/∂X]*ₖ evaluated at (Xₖ*,tₖ) — NO STM multiplication. Each obs processed at its own time — no epoch mapping needed. STM only propagates x̄ₖ and P̄ₖ between epochs. Batch: Hᵢ=H̃ᵢΦ(tᵢ,t₀) — observation partials mapped to epoch t₀ via STM. All obs referenced to single epoch."}]
+},
+{id:3,icon:"🌀",title:"Extended KF (EKF) and prediction residual",badge:"§4.7.2–4.7.4 · pp.209–211",
+why:"<strong>Why EKF?</strong> Orbit dynamics are strongly nonlinear. The standard KF's fixed reference accumulates linearisation error. The EKF updates X*(t) after each observation, keeping the deviation x̂ₖ≈0 and linearisation valid at every step. Faster convergence for nonlinear problems.",
+objective:"State the EKF reference update rule (Eq.4.7.28) and the simplified state update (Eq.4.7.29). Understand why x̂ₖ₊₁=Kₖ₊₁yₖ₊₁ in EKF mode.",
+overview:[
+{label:"Standard KF — fixed reference",text:"Reference X*(t) stays fixed for all k. x̂ₖ accumulates as a growing deviation. If |X−X*| grows large, linearisation error accumulates → possible divergence. STM integrated over the full arc."},
+{label:"EKF — update reference each step",text:"After processing obs k: (Xₖ*)new = X̂ₖ = Xₖ*+x̂ₖ (Eq.4.7.28). This resets x̂ₖ=0 as new starting point. Next step starts with x̄ₖ₊₁=Φ·0=0. Linearisation errors minimised at every step."},
+{label:"Simplified EKF state update",text:"Since x̄ₖ₊₁=0 after reference update, the measurement update simplifies: x̂ₖ₊₁=0+Kₖ₊₁(yₖ₊₁−Hₖ₊₁·0)=Kₖ₊₁yₖ₊₁ (Eq.4.7.29). The prior x̄ term vanishes."},
+{label:"Prediction residual (§4.7.4)",text:"βₖ=yₖ−Hₖx̄ₖ [before update]. ε̂ₖ=yₖ−Hₖx̂ₖ [after update]. Monitor ‖βₖ‖ decreasing → filter converging. TSB note: don't update reference using first observations — wait for x̂ to stabilise."},
+],
+equations:[
+{label:"EKF reference update (Eq.4.7.28)",eq:"After processing obs k:\n(X*ₖ)new = X̂ₖ = X*ₖ + x̂ₖ\n\nThis sets x̂ₖ = 0 for next step (new reference = best estimate)",note:"Linearisation error minimised at each step"},
+{label:"EKF simplified state update (Eq.4.7.29)",eq:"x̂ₖ₊₁ = Kₖ₊₁ yₖ₊₁\n\n(because x̄ₖ₊₁ = Φ·x̂ₖ = Φ·0 = 0 after reference update)",note:"The prior x̄ term drops out — simpler than standard KF update"},
+{label:"Innovation and prediction residual (§4.7.4)",eq:"Pre-update:  βₖ = yₖ − Hₖ x̄ₖ   [innovation]\nPost-update: ε̂ₖ = yₖ − Hₖ x̂ₖ   [post-fit residual]\n\nConvergence: ‖βₖ‖ → 0  as filter learns true orbit",note:"If βₖ stays large: divergence or major model error"},
+],
+derivation:`EKF vs STANDARD KF — COMPARISON:
+
+STANDARD KF:
+  Reference X*(t) fixed for all steps
+  x̂ₖ grows as deviation from fixed reference
+  Time update: x̄ₖ = Φ · x̂ₖ₋₁  (can be large)
+  State update: x̂ₖ = x̄ₖ + Kₖ(yₖ − Hₖx̄ₖ)
+  Risk: |x̂| grows → linearisation breaks → diverge
+
+EKF:
+  After step k: (X*ₖ)new = X*ₖ + x̂ₖ  (Eq.4.7.28)
+  This makes x̂ₖ = 0 the new reference deviation
+
+  Next time update: x̄ₖ₊₁ = Φ · 0 = 0  ← always zero!
+
+  State update simplifies:
+    x̂ₖ₊₁ = x̄ₖ₊₁ + Kₖ₊₁(yₖ₊₁ − Hₖ₊₁ x̄ₖ₊₁)
+           = 0     + Kₖ₊₁(yₖ₊₁ − Hₖ₊₁ · 0)
+           = Kₖ₊₁ yₖ₊₁   (Eq.4.7.29) ✓
+
+WHY EKF CONVERGES FASTER:
+  Linearisation error O(|x|²) is smaller at each step
+  because |x̂ₖ|≈0 (just updated from previous obs).
+  Standard KF: |x̂ₖ| can grow large → O(|x|²) large.`,
+matlab:`%% EKF reference update — code addition to KF loop
+% After STEP 4 measurement update, add:
+
+% Standard KF: do NOT update reference
+% EKF: update reference to absorb x̂ₖ
+if use_ekf && norm(x_hat) < ekf_threshold
+    % Update reference trajectory
+    X_star_new = X_star + x_hat;   % Eq.4.7.28: (X*ₖ)new = X*ₖ + x̂ₖ
+    X_star = X_star_new;
+
+    % x̂ₖ becomes 0 — confirmed by next time update giving x̄ₖ₊₁=0
+    x_hat = zeros(n,1);            % reset deviation
+
+    % NOTE: do NOT restart Phi here — still integrate from current epoch
+    % NOTE: in EKF mode x̂ₖ₊₁ = Kₖ₊₁ yₖ₊₁  (Eq.4.7.29)
+    %       since x̄ₖ₊₁ = Phi * x_hat = Phi * 0 = 0
+end
+
+% EKF threshold: only update reference once x_hat is stable
+% (don't update on first few observations — noise dominates early)`,
+traps:["EKF advantage: convergence is faster because O(|x|²) linearisation error is smaller at each step. But NOT guaranteed convergence for strongly nonlinear problems.","In EKF: STM Φ cannot be used to map x̂ between epochs (since x̂ₖ=0 after update). Covariance P(t) must be propagated by integrating Eq.4.9.35 or via Eq.4.9.50 with SNC.","TSB note: do NOT update reference using first observations — wait for x̂ to stabilise first. Early noise causes bad reference updates → divergence.","'Extended' in EKF refers to updating the reference — NOT to extending the mathematical formulation. The estimator equations are identical."],
+drills:[{q:"What is the key algorithmic difference between the standard KF and the EKF? Write the EKF state update equation and explain why it simplifies.",a:"Standard KF: reference X*(t) is fixed. x̂ₖ accumulates as a growing deviation. EKF: after each obs k, update (X*ₖ)new=X*ₖ+x̂ₖ (Eq.4.7.28), resetting x̂ₖ=0. Because x̄ₖ₊₁=Φ·0=0, the next update simplifies to: x̂ₖ₊₁=0+Kₖ₊₁(yₖ₊₁−Hₖ₊₁·0)=Kₖ₊₁yₖ₊₁ (Eq.4.7.29). The x̄ term drops out entirely."}]
+},
+{id:4,icon:"🌊",title:"Example problems — linear system + spring-mass",badge:"§4.8 · pp.211–219",
+why:"<strong>Why these examples?</strong> §4.8.1 proves analytically that batch = sequential for linear systems. The spring-mass (§4.8.2) appears in Prof. Iess's own class notes (pp.87–90) and is a near-certain oral exam topic. Know the STM, the observation partials H̃, and the O−C computation.",
+objective:"Verify batch=KF for the linear system example (TSB p.211). Know the spring-mass EOM, STM, and observation partials for range ρ and range-rate ρ̇.",
+overview:[
+{label:"§4.8.1 — Linear system (pp.211–215)",text:"State X=[x₁;x₂], Φ=[1,1;0,1], H̃₁=[0,1;1,½]. Both batch and KF give x̂₀=[11/4;3] and x̂₁=[23/4;3]. This is the proof that batch=sequential for linear Q=0 systems."},
+{label:"§4.8.2 — Spring-mass geometry",text:"Mass m between two springs K₁,K₂. Station at height h observes range ρ and range-rate ρ̇. State X=[x;ẋ]ᵀ. Equation of motion: ẍ+ω²x=0, ω²=(K₁+K₂)/m. Linear dynamics but nonlinear observations."},
+{label:"Spring-mass STM",text:"A(t)=[[0,1],[−ω²,0]] (constant). Φ(t,t₀)=[[cos(ωτ),sin(ωτ)/ω],[−ωsin(ωτ),cos(ωτ)]], τ=t−t₀. Analytical — no numerical integration needed."},
+{label:"Observation partials H̃",text:"ρ=√(x²+h²): H̃_ρ=[x/ρ, 0]. ρ̇=xẋ/ρ: H̃_ρ̇=[ẋh²/ρ³, x/ρ]. Note: ∂ρ̇/∂x=ẋ/ρ−x²ẋ/ρ³=ẋh²/ρ³ (simplified). All evaluated on X*(t)."},
+],
+equations:[
+{label:"Spring-mass EOM (§4.8.2)",eq:"ẍ + ω²x = 0,   ω² = (K₁+K₂)/m\n\nA = [[0, 1], [−ω², 0]]   (constant A)",note:"Linear dynamics (constant A) → analytical STM"},
+{label:"Spring-mass STM ★",eq:"Φ(t,t₀) = [[cos(ωτ),   sin(ωτ)/ω ],\n           [−ωsin(ωτ), cos(ωτ)  ]]\nwhere τ = t − t₀",note:"Verify: Φ(t₀,t₀)=I ✓. Φ̇=AΦ ✓."},
+{label:"Range observation model",eq:"ρ = √(x² + h²)   (h = fixed station height)\nH̃_ρ = [∂ρ/∂x, ∂ρ/∂ẋ] = [x/ρ,  0]",note:"∂ρ/∂ẋ=0 since ρ does not depend on velocity"},
+{label:"Range-rate observation model ★",eq:"ρ̇ = xẋ/ρ = ∂ρ/∂t\nH̃_ρ̇ = [ẋh²/ρ³,  x/ρ]",note:"Derived via product rule: ∂(xẋ/ρ)/∂x. The h²/ρ³ term comes from ẋ/ρ − x²ẋ/ρ³ = ẋ(ρ²−x²)/ρ³ = ẋh²/ρ³"},
+{label:"Combined H̃ (both observables)",eq:"H̃ = [[x/ρ,    0    ],\n     [ẋh²/ρ³, x/ρ]]\n\nAll elements evaluated on X*(t) = [x*; ẋ*]",note:"[2×2] matrix — 2 observables, 2 state components"},
+{label:"Batch results (§4.8.1, p.215)",eq:"Batch x̂₀ = [11/4; 3] at t₀\nBatch x̂₁ = Φ·x̂₀ = [11/4+3; 3] = [23/4; 3] at t₁\n\nKF x̂₁ = [23/4; 3]  (identical) ✓",note:"Proves batch = sequential for linear Q=0 systems"},
+],
+derivation:`SPRING-MASS OBSERVATION PARTIAL DERIVATION:
+
+State: X = [x; ẋ],   h = fixed station height
+
+RANGE:
+  ρ = √(x² + h²)
+  ∂ρ/∂x = x/ρ          (chain rule on √)
+  ∂ρ/∂ẋ = 0            (ρ independent of velocity)
+  H̃_ρ = [x/ρ, 0]  ✓
+
+RANGE-RATE:
+  ρ̇ = xẋ/ρ
+  ∂ρ̇/∂x = ẋ/ρ + xẋ·(−1/ρ²)·(x/ρ)   [product+chain rule]
+           = ẋ/ρ − x²ẋ/ρ³
+           = ẋ(ρ² − x²)/ρ³
+           = ẋh²/ρ³   (since ρ²−x²=h²)
+  ∂ρ̇/∂ẋ = x/ρ
+  H̃_ρ̇ = [ẋh²/ρ³, x/ρ]  ✓
+
+COMBINED 2×2 MATRIX:
+  H̃ = [[x/ρ,    0    ],
+        [ẋh²/ρ³, x/ρ]]
+  (evaluated on X*(t) = [x*; ẋ*])`,
+matlab:`function spring_mass_batch()
+% Spring-mass batch OD — TSB §4.8.2 + Prof Iess notes pp.87-90
+  global w h_stat
+
+  %% Physical parameters (from your MATLAB project)
+  k1=2.50; k2=13.70; m=25; h_stat=50.4;
+  w = sqrt((k1+k2)/m);           % angular frequency
+
+  %% True initial conditions (hidden from estimator)
+  x0_true = 3.0; v0_true = 0.0;
+  X_true = [x0_true; v0_true];
+
+  %% Simulate observations
+  t_obs = linspace(0, 60, 300)';  % 300 epochs over 60s
+  sigma_rho = 0.1; sigma_rho_dot = 0.01;
+  R = diag([sigma_rho^2; sigma_rho_dot^2]);
+
+  X_traj = zeros(length(t_obs), 2);
+  Y_obs  = zeros(length(t_obs), 2);
+  for i=1:length(t_obs)
+    tau = t_obs(i);
+    Phi_i = stm_spring(tau);
+    X_traj(i,:) = (Phi_i * X_true)';
+    Y_obs(i,:) = obs_spring(X_traj(i,:)') + ...
+                 [sigma_rho; sigma_rho_dot].*randn(2,1);
+  end
+
+  %% Batch processor (TSB Fig.4.6.1)
+  X_star = [6.5; 0.05];  x_bar = zeros(2,1);
+  P_bar = diag([1e6, 1e6]);
+
+  for iter = 1:10
+    Lambda = inv(P_bar);  Nu = inv(P_bar)*x_bar;
+    for i=1:length(t_obs)
+      tau = t_obs(i);
+      Phi_i   = stm_spring(tau);        % STM
+      X_i     = Phi_i * X_star;         % reference at tᵢ
+      [G_i, H_tilde_i] = obs_spring(X_i);
+      Hi = H_tilde_i * Phi_i;           % MAP TO EPOCH!
+      yi = Y_obs(i,:)' - G_i;
+      Lambda = Lambda + Hi'*(R\Hi);
+      Nu     = Nu     + Hi'*(R\yi);
+    end
+    x_hat = Lambda \ Nu;
+    P_hat = inv(Lambda);
+    X_star = X_star + x_hat;  x_bar = x_bar - x_hat;
+    fprintf('Iter %d: |x̂|=%.3e  x₀=%.4f  v₀=%.4f\\n',...
+            iter,norm(x_hat),X_star(1),X_star(2));
+    if norm(x_hat)<1e-10, break; end
+  end
+  fprintf('True: x₀=%.4f, v₀=%.4f\\n', x0_true, v0_true);
+  fprintf('Sigma: [%.4f m, %.4f m/s]\\n', sqrt(P_hat(1,1)), sqrt(P_hat(2,2)));
+end
+
+function Phi = stm_spring(tau)
+% Spring-mass STM (analytical)
+  global w
+  Phi = [cos(w*tau),    sin(w*tau)/w;
+         -w*sin(w*tau), cos(w*tau)];
+end
+
+function [G, H_tilde] = obs_spring(X)
+% Range and range-rate observables + partials
+  global h_stat
+  x=X(1); xd=X(2);
+  rho     = sqrt(x^2 + h_stat^2);
+  rho_dot = x*xd/rho;
+  G = [rho; rho_dot];
+  H_tilde = [x/rho,            0;
+             xd*h_stat^2/rho^3, x/rho];
+end`,
+traps:["H̃_ρ̇: the ∂ρ̇/∂x term is ẋh²/ρ³ — NOT simply ẋ/ρ. Missing the h²/ρ³ simplification (from ρ²−x²=h²) is a common derivation error.","In §4.8.2: x is the HORIZONTAL displacement of the mass. h is the fixed station height — a PARAMETER, not a state variable.","∂ρ/∂ẋ=0 — the range does not depend on velocity. Students sometimes include a velocity term incorrectly.","The spring-mass STM is only valid for the HOMOGENEOUS equation ẍ+ω²x=0. No forcing terms."],
+drills:[{q:"Derive H̃_ρ̇ = [ẋh²/ρ³, x/ρ] for the spring-mass range-rate observable ρ̇=xẋ/ρ.",a:"ρ̇=xẋ/ρ, state X=[x;ẋ]. ∂ρ̇/∂x: product rule → ẋ/ρ+xẋ·(−x/ρ³)=ẋ/ρ−x²ẋ/ρ³=ẋ(ρ²−x²)/ρ³=ẋh²/ρ³ (since ρ²=x²+h²). ∂ρ̇/∂ẋ: x/ρ. So H̃_ρ̇=[ẋh²/ρ³, x/ρ] ✓. All evaluated on X*(t)=[x*;ẋ*]."},
+{q:"State the spring-mass STM. Verify it satisfies Φ(t₀,t₀)=I.",a:"Φ(t,t₀)=[[cos(ωτ),sin(ωτ)/ω],[−ωsin(ωτ),cos(ωτ)]], τ=t−t₀. At t=t₀ (τ=0): Φ=[[cos0,sin0/ω],[−ωsin0,cos0]]=[[1,0],[0,1]]=I ✓. Also check Φ̇=AΦ where A=[[0,1],[−ω²,0]] — differentiating each entry confirms this."}]
+},
+{id:5,icon:"📡",title:"State Noise Compensation — preventing divergence",badge:"§4.9 · pp.220–230",
+why:"<strong>Why SNC?</strong> Without process noise, Pₖ→0 after many observations → Kₖ→0 → filter ignores new data → estimate drifts (divergence). SNC adds ΓQΓᵀ to the time-update covariance, providing a floor. P̄ₖ never collapses. Real spacecraft OD systems require SNC for atmospheric drag, SRP, and thrust uncertainties.",
+objective:"Derive the SNC time-update covariance Eq.4.9.50 via variation of parameters. Write Pₖ₊₁=ΦPₖΦᵀ+ΓQΓᵀ. Understand why the batch processor cannot use process noise efficiently.",
+overview:[
+{label:"The divergence problem",text:"Without Q: trace(Pₖ)→0 as ℓ→∞. Once Pₖ small: Kₖ=PₖHₖᵀ(HₖPₖHₖᵀ+Rₖ)⁻¹≈0. Filter completely ignores new measurements. Any model error (unmodelled drag fluctuation) makes estimate drift undetected."},
+{label:"SNC model (Eq.4.9.1)",text:"ẋ(t)=A(t)x(t)+B(t)u(t). u(t) = white noise with E[u(t)uᵀ(τ)]=Q(t)δ(t−τ). B(t) maps noise into state space (e.g. B=[0;1]ᵀ for acceleration noise)."},
+{label:"SNC time-update covariance (Eq.4.9.50)",text:"P̄ₖ₊₁=Φ(tₖ₊₁,tₖ)PₖΦᵀ(tₖ₊₁,tₖ)+Γ(tₖ₊₁,tₖ)QₖΓᵀ(tₖ₊₁,tₖ). The extra ΓQΓᵀ term prevents P from collapsing. The balance between ΓQΓᵀ growing P and Kₖ reducing P creates a steady-state filter."},
+{label:"Why batch cannot use SNC",text:"SNC adds temporal correlations between observations. In a batch formulation, the full m×m observation error covariance becomes non-block-diagonal (correlations propagate through process noise). For 5000 DORIS obs, inverting a 5000×5000 dense matrix is computationally impossible."},
+],
+equations:[
+{label:"SNC state dynamics (Eq.4.9.1)",eq:"ẋ(t) = A(t)x(t) + B(t)u(t)\n\nE[u(t)] = 0\nE[u(t)uᵀ(τ)] = Q(t) δ(t−τ)   [white noise]",note:"B(t) maps q-dimensional noise into n-dimensional state"},
+{label:"Solution via variation of parameters (Eq.4.9.12)",eq:"x(tₖ₊₁) = Φ(tₖ₊₁,tₖ)x(tₖ) + Γ(tₖ₊₁,tₖ)ûₖ\n\nΓ(tₖ₊₁,tₖ) = ∫[tₖ→tₖ₊₁] Φ(tₖ₊₁,τ)B(τ) dτ",note:"Γ integrates the effect of continuous noise into a discrete increment"},
+{label:"SNC time-update covariance (Eq.4.9.50) ★★",eq:"P̄ₖ₊₁ = Φ(tₖ₊₁,tₖ) Pₖ Φᵀ(tₖ₊₁,tₖ)\n       + Γ(tₖ₊₁,tₖ) Qₖ Γᵀ(tₖ₊₁,tₖ)",note:"ΓQΓᵀ added to TIME UPDATE — NOT measurement update! Provides P floor."},
+{label:"Differential Riccati (Eq.4.9.35)",eq:"Ṗ(t) = A(t)P(t) + P(t)Aᵀ(t) + B(t)Q(t)Bᵀ(t)",note:"Continuous form — integrate alongside orbit and STM. Same Pₖ as Eq.4.9.50."},
+{label:"SNC for position/velocity (accel noise)",eq:"State x=[pos;vel], noise → accel: B=[0;1]ᵀ\n\nΓ = ∫Φ(t,τ)[0;1]dτ = [(t−t₀)²/2; (t−t₀)]\n\nΓQΓᵀ = σ²ᵤ·[(Δt⁴/4), (Δt³/2); (Δt³/2), Δt²]",note:"σᵤ is the tuning parameter — larger = more process noise = more responsive filter"},
+],
+derivation:`SNC COVARIANCE DERIVATION — Eq.4.9.50:
+
+From variation of parameters:
+  x(tₖ₊₁) = Φ·x(tₖ) + Γ·ûₖ
+  where Γ = ∫[tₖ→tₖ₊₁] Φ(tₖ₊₁,τ)B(τ) dτ
+
+Estimation error:
+  x(tₖ₊₁) − x̂ₖ₊₁ = Φ(xₖ−x̂ₖ) + Γûₖ
+                    = Φ·x̃ₖ + Γûₖ
+
+Covariance (apply expectation):
+  P̄ₖ₊₁ = E[(Φx̃ₖ + Γûₖ)(Φx̃ₖ + Γûₖ)ᵀ]
+         = Φ·E[x̃ₖx̃ₖᵀ]·Φᵀ + Γ·E[ûₖûₖᵀ]·Γᵀ
+           + cross terms
+
+Cross terms vanish because:
+  E[x̃ₖ·ûₖᵀ] = 0   [past error ⊥ future noise]
+  (causality: u(τ) for τ>tₖ cannot affect x̃ₖ)
+
+Therefore:
+  P̄ₖ₊₁ = Φ·Pₖ·Φᵀ + Γ·Qₖ·Γᵀ   (Eq.4.9.50) ✓
+
+The ΓQΓᵀ term prevents Pₖ from collapsing to zero.
+It acts as a FLOOR: P̄ₖ₊₁ ≥ ΓQΓᵀ always.`,
+matlab:`function [x_hist, P_hist] = kf_with_snc(Y, t_obs, X0_star, P0, x0, R, sigma_u)
+% KF with State Noise Compensation (SNC) — Eq.4.9.50
+  n=length(X0_star); n_obs=length(t_obs);
+  x_hist=zeros(n,n_obs); P_hist=zeros(n,n,n_obs);
+  X_star=X0_star; x_hat=x0; P=P0; t_prev=0;
+
+  for k=1:n_obs
+    dt = t_obs(k) - t_prev;
+
+    %% STEP 1: Propagate (orbit + STM)
+    [X_star, Phi] = propagate(X_star, t_prev, t_obs(k));
+
+    %% STEP 2: Time update WITH SNC (Eq.4.9.50)
+    x_bar = Phi * x_hat;
+    % Process noise matrix for constant acceleration noise
+    % B = [0;1] (accel noise maps to velocity)
+    % Gamma = ∫Phi(t,tau)*B dtau = [dt²/2; dt]
+    Gamma = [dt^2/2; dt];                       % [2×1] for 2-state
+    Q_k   = sigma_u^2;                          % scalar Q
+    P_bar = Phi*P*Phi' + Gamma*Q_k*Gamma';      % Eq.4.9.50: add ΓQΓᵀ!
+
+    %% STEP 3: Obs model
+    [G_k, H_k] = obs_model(X_star, t_obs(k));
+    y_k = Y(k,:)' - G_k;
+
+    %% STEP 4: Measurement update (Joseph form)
+    S_k = H_k*P_bar*H_k' + R;
+    K_k = P_bar*H_k' / S_k;
+    x_hat = x_bar + K_k*(y_k - H_k*x_bar);
+    ImKH = eye(n) - K_k*H_k;
+    P = ImKH*P_bar*ImKH' + K_k*R*K_k';
+
+    x_hist(:,k)=x_hat; P_hist(:,:,k)=P;
+    t_prev=t_obs(k);
+  end
+end
+
+%% Tune sigma_u:
+% Start with physics estimate: sigma_u ~ 0.1*max_accel_uncertainty
+% Monitor WRMS of post-fit residuals → should be ~1
+% If WRMS >> 1: increase sigma_u  (more noise needed)
+% If WRMS << 1: decrease sigma_u  (too much noise)`,
+traps:["ΓQΓᵀ is added to the TIME UPDATE (covariance prediction), NOT the measurement update. Adding it to the wrong step is a serious error.","Γ≠B. Γ=∫Φ(tₖ,τ)B(τ)dτ — integrates the propagated effect of continuous noise. For B=[0;1]ᵀ (velocity noise): Γ=[Δt²/2;Δt].","E[u(t)uᵀ(τ)]=Qδ(t−τ): Q has units of [variance/time]. When discretising, Qₖ=Q·Δt for the correct discrete variance.","Batch processor CANNOT use SNC: temporal correlations make the observation error covariance m×m and dense — computationally impossible for large datasets."],
+drills:[{q:"Derive Eq.4.9.50 (P̄ₖ₊₁=ΦPₖΦᵀ+ΓQΓᵀ) from the SNC state equation. Why do cross terms vanish?",a:"From var. of params: x(tₖ₊₁)=Φ·xₖ+Γûₖ. Error: x(tₖ₊₁)−x̂=Φx̃ₖ+Γûₖ. Covariance: P̄ₖ₊₁=Φ·Pₖ·Φᵀ+Γ·Qₖ·Γᵀ+E[Φx̃ₖ·ûₖᵀΓᵀ]+... Cross terms: E[x̃ₖ·ûₖᵀ]=0 because ûₖ depends on u(τ) for τ>tₖ — future noise cannot affect the estimation error x̃ₖ which was determined by past data. Causality kills the cross terms ✓"},
+{q:"For a 2-state system [x;ẋ] with white noise acceleration (B=[0;1]ᵀ, σᵤ²=0.01 m²/s³), compute ΓQΓᵀ for Δt=10s.",a:"Φ=[1,Δt;0,1]=[1,10;0,1]. Γ=∫₀^Δt Φ(Δt,τ)[0;1]dτ=∫₀^10 [(Δt−τ);1]dτ=[Δt²/2;Δt]=[50;10]. ΓQΓᵀ=σᵤ²·[50;10][50,10]=0.01×[2500,500;500,100]=[25,5;5,1] m² and (m/s)². This adds 25m² position variance and 1(m/s)² velocity variance each step."}]
+},
+{id:6,icon:"🔬",title:"Gauss-Markov process and DMC",badge:"§4.9.1 · pp.230–233",
+why:"<strong>Why Gauss-Markov/DMC?</strong> White noise SNC models force errors as completely uncorrelated in time — unrealistic for atmospheric drag or SRP which are correlated over the orbital period. The Gauss-Markov (GM) process has exponential memory (correlation time τ=1/β) and makes the error estimate η itself a state variable in DMC.",
+objective:"State the Gauss-Markov ODE η̇+βη=u(t). Describe the DMC augmented state [pos;vel;η]. Understand why DMC is more robust to σᵤ tuning than SNC (Appendix F of TSB).",
+overview:[
+{label:"Gauss-Markov ODE",text:"η̇(t)+βη(t)=u(t) where β=1/τ (inverse of correlation time). Solution: η(t)=η₀e^(−β(t−t₀))+∫e^(−β(t−τ))u(τ)dτ. As β→∞ (τ→0): GM reduces to white noise (SNC limit). As β→0 (τ→∞): GM becomes a random walk."},
+{label:"DMC — augmented state",text:"Augment state: X_aug=[pos;vel;η]ᵀ. η is the unmodelled acceleration (drag fluctuation, SRP error). Dynamics: η̇=−βη+u(t). Filter ESTIMATES η simultaneously with position and velocity."},
+{label:"DMC advantages over SNC",text:"TSB Appendix F: for the same σᵤ, DMC and SNC give similar position accuracy (~0.14m). But DMC is much less sensitive to σᵤ tuning — robust over a wide range. SNC performance degrades rapidly if σᵤ is off by factor 2. DMC also provides a direct estimate of the unmodelled acceleration η."},
+{label:"Physical interpretation",text:"Correlation time τ: for atmospheric drag in LEO, τ~orbital period (~90 min) since density variations repeat each orbit. For gravity field errors: τ~pass duration. For manoeuvre uncertainty: τ~burn duration."},
+],
+equations:[
+{label:"Gauss-Markov ODE (§4.9.1)",eq:"η̇(t) + β η(t) = u(t),   β = 1/τ\n\nSolution: η(t) = η₀ e^{−β(t−t₀)} + ∫e^{−β(t−τ)}u(τ)dτ",note:"β→∞ (τ→0): white noise (SNC). β→0 (τ→∞): random walk."},
+{label:"DMC augmented state + dynamics",eq:"X_aug = [pos; vel; ηD]ᵀ   [n+1 per axis]\n\nDynamics matrix A_aug:\n[[0, 1, 0],\n [0, 0, 1],\n [0, 0, -β]]",note:"ηD = deterministic part of η (estimated component)"},
+{label:"DMC STM (Appendix F of TSB)",eq:"Φ_aug(t,t₀) =\n[[1, Δt, (Δt)/β + (e^{−βΔt}−1)/β²],\n [0, 1,  (1−e^{−βΔt})/β           ],\n [0, 0,  e^{−βΔt}                  ]]",note:"Standard 2-state STM for pos/vel + exponential decay for η"},
+{label:"SNC vs DMC comparison (Appendix F)",eq:"Both: position error RMS ~ 0.14m (optimally tuned)\n\nSNC: performance degrades sharply if σᵤ wrong by ×2\nDMC: robust over wide σᵤ range\nDMC: provides direct estimate of unmodelled accel η",note:"For real missions: DMC preferred (σᵤ never known exactly)"},
+],
+derivation:`GAUSS-MARKOV vs SNC:
+
+SNC model: ẍ = u(t)   [white noise acceleration]
+  - Force error has ZERO correlation time (instantaneous)
+  - Γ=[Δt²/2; Δt], ΓQΓᵀ = σ²ᵤ·[(Δt⁴/4), ...] 
+  - Simple but unrealistic for real force errors
+
+GAUSS-MARKOV model: η̇ + βη = u(t)
+  - Force error has correlation time τ=1/β
+  - Autocorrelation: E[η(t)η(t+s)] = (σ²/2β)·e^{−β|s|}
+  - More physical: drag/SRP errors persist over orbital timescale
+
+DMC augmented state:
+  X = [x; ẋ; η]ᵀ  (estimate the unmodelled force!)
+
+  Ẋ = [[0, 1, 0 ], [x ]     [0]
+        [0, 0, 1 ],  [ẋ ] +  [0]·u
+        [0, 0, -β]]  [η ]    [1]
+
+Benefits:
+  1) η is estimated → provides physical insight
+  2) Less sensitive to σᵤ tuning than SNC
+  3) Handles persistent force errors (drag over an orbit)`,
+matlab:`function dmc_filter_demo()
+% DMC (Dynamic Model Compensation) — Gauss-Markov process
+% Appendix F of TSB
+
+  %% Parameters
+  tau = 200;   % correlation time [s]
+  beta = 1/tau;
+  sigma_u = 0.26; % tuned per Appendix F example
+
+  %% DMC augmented state transition matrix
+  function Phi_aug = stm_dmc(dt, beta)
+    e = exp(-beta*dt);
+    Phi_aug = [1, dt, (dt/beta + (e-1)/beta^2);
+               0, 1,  (1-e)/beta;
+               0, 0,  e];
+  end
+
+  %% Process noise covariance for DMC (Appendix F)
+  function Q_aug = pnc_dmc(dt, beta, sigma_u)
+    % Qη = σ²ᵤ · ∫Φ(:,3)·Φ(:,3)ᵀ dτ  (see TSB Appendix F)
+    % Simplified for small β·dt:
+    e = exp(-2*beta*dt);
+    Q33 = sigma_u^2/(2*beta)*(1-e);
+    Q23 = sigma_u^2/beta^2*(0.5*(1-e) - beta*dt*e);
+    Q13 = sigma_u^2/beta^3*(1-e - beta*dt*(1+e));
+    Q22 = sigma_u^2/beta*(dt + (e-1)/(2*beta));
+    Q12 = sigma_u^2/beta^2*(0.5*(1-e) - e*beta*dt);
+    Q11 = sigma_u^2/beta^3*(beta*dt + 2*(e-1) + 0.5*(1-e^2)/beta);
+    Q_aug = [Q11 Q12 Q13; Q12 Q22 Q23; Q13 Q23 Q33];
+  end
+
+  %% State estimate: [pos; vel; eta_estimate]
+  n=3;
+  x_hat = [0; 0; 0];   % initial deviation
+  P = diag([1000^2, 10^2, 0.1^2]);
+
+  fprintf('DMC filter ready: tau=%.0fs, sigma_u=%.3f\\n', tau, sigma_u);
+  fprintf('Key: eta (3rd state) estimates unmodelled acceleration\\n');
+end`,
+traps:["Correlation time τ=1/β. Larger τ → slower decay → more persistent force error memory. For LEO drag: τ~orbital period (~90 min), NOT the integration step.","DMC adds η to the state vector and estimates it. This increases state dimension (n→n+1 per axis) and requires extending H̃ with ∂G/∂η columns (usually zero for range/Doppler).","BATCH PROCESSOR STILL CANNOT USE SNC/DMC. Temporal correlations make R non-block-diagonal. Only sequential KF handles process noise efficiently.","β→∞: GM→white noise (SNC). β→0: GM→random walk. Pick τ based on physics of the force error, not numerics."],
+drills:[{q:"What is the physical meaning of the correlation time τ in the Gauss-Markov process? What are the limits β→∞ and β→0?",a:"τ=1/β is the time constant of exponential memory decay. The autocorrelation of η is E[η(t)η(t+s)]=(σ²/2β)e^{−β|s|}. After time τ, the correlation has dropped to 1/e≈37% of its initial value. β→∞ (τ→0): GM reduces to white noise — zero correlation time, same as SNC. β→0 (τ→∞): GM becomes a random walk — η stays constant forever. For LEO atmospheric drag: τ~90min (one orbital period) is physically motivated."},
+{q:"Why does the batch processor fail with SNC/DMC while the sequential KF handles it naturally?",a:"With process noise Q>0, the state at tₖ depends on u(τ) for all τ∈[tₖ₋₁,tₖ]. This introduces temporal correlations between observations — the full observation error covariance R̄ becomes m×m and non-block-diagonal. For 5000–7000 DORIS obs (typical for TOPEX/Poseidon), inverting a 7000×7000 dense matrix is computationally impossible.\n\nKF naturally handles SNC: ΓQΓᵀ is simply added at each time step as a small n×n correction. Rₖ at each observation epoch remains p×p. The KF never forms the full R̄ matrix — process noise is local to each step."}]
+}
+]
+
+const TABS=[{k:'overview',lbl:'📖 Overview'},{k:'equations',lbl:'⚡ Equations'},{k:'derivation',lbl:'🔬 Derivation'},{k:'matlab',lbl:'💻 MATLAB'},{k:'traps',lbl:'⚠️ Traps'},{k:'drill',lbl:'💪 Drill'}]
+let cur=0,activeTab='overview',DS={}
+
+function buildSidebar(){
+ document.getElementById('slist').innerHTML=''
+ M.forEach((m,i)=>{
+  const b=document.createElement('button')
+  b.className='sitem'+(i===cur?' active':'')
+  b.innerHTML=`<span class="sitem-icon">${m.icon}</span><div class="sitem-text"><div class="sitem-title">${m.title}</div><div class="sitem-pages">${m.badge}</div></div>`
+  b.onclick=()=>{cur=i;activeTab='overview';render()}
+  document.getElementById('slist').appendChild(b)
+ })
+}
+
+function buildHead(){
+ const m=M[cur]
+ document.getElementById('m-icon').textContent=m.icon
+ document.getElementById('m-title').textContent=m.title
+ document.getElementById('m-pages').textContent=m.badge
+ document.getElementById('m-why').innerHTML=m.why
+}
+
+function buildTabs(){
+ document.getElementById('tabs').innerHTML=''
+ TABS.forEach(t=>{
+  const b=document.createElement('button')
+  b.className='tab'+(activeTab===t.k?' active':'')
+  b.textContent=t.lbl
+  b.onclick=()=>{activeTab=t.k;buildContent()}
+  document.getElementById('tabs').appendChild(b)
+ })
+}
+
+function buildContent(){
+ document.querySelectorAll('.tab').forEach((b,i)=>{b.className='tab'+(TABS[i].k===activeTab?' active':'')})
+ const cc=document.getElementById('content'); cc.innerHTML=''
+ const m=M[cur]
+
+ if(activeTab==='overview'){
+  cc.innerHTML=`<div class="obj-box"><strong>🎯 Objective:</strong> ${m.objective}</div>`
+  m.overview.forEach(o=>{cc.innerHTML+=`<div class="ov-card"><div class="ov-label">${o.label}</div><div class="ov-text">${o.text}</div></div>`})
+ } else if(activeTab==='equations'){
+  cc.innerHTML='<h4>Key equations — exact TSB notation</h4>'
+  m.equations.forEach(e=>{cc.innerHTML+=`<div class="eq-box"><div class="eq-label">${e.label}</div><div class="eq-formula">${e.eq}</div>${e.note?`<div class="eq-note">${e.note}</div>`:''}</div>`})
+ } else if(activeTab==='derivation'){
+  cc.innerHTML='<h4>Step-by-step — professor may stop you at any line</h4>'
+  cc.innerHTML+=`<div class="deriv-box">${m.derivation}</div>`
+ } else if(activeTab==='matlab'){
+  cc.innerHTML=`<div class="matlab-box"><div class="matlab-head">MATLAB — complete runnable code</div><pre class="matlab-code">${m.matlab}</pre></div>`
+ } else if(activeTab==='traps'){
+  cc.innerHTML='<h4>Exam traps — where marks are lost</h4>'
+  m.traps.forEach(t=>{cc.innerHTML+=`<div class="trap-item"><span class="trap-icon">⚠</span><span class="trap-text">${t}</span></div>`})
+ } else if(activeTab==='drill'){
+  cc.innerHTML='<h4>Rapid-fire oral questions — click to reveal</h4>'
+  m.drills.forEach((d,i)=>{
+   const k=`${cur}_${i}`,o=DS[k]
+   cc.innerHTML+=`<div class="drill-item"><button class="drill-q" onclick="td('${k}')"><span class="drill-num">Q${i+1}</span><span class="drill-qtext">${d.q}</span><span class="drill-chev${o?' open':''}">▼</span></button><div class="drill-ans${o?' open':''}">${d.a}</div></div>`
+  })
+ }
+
+ cc.innerHTML+=`<div class="nav-row">`
+ if(cur>0) cc.innerHTML+=`<button class="btn" onclick="ns(-1)">← Previous</button>`
+ if(cur<M.length-1) cc.innerHTML+=`<button class="btn primary" onclick="ns(1)">Next section →</button>`
+ else cc.innerHTML+=`<div style="padding:10px 0;font-size:12px;color:#a78bfa">✓ Sections 40–70% complete — §4.7 to §4.9 (pp.199–233)</div>`
+ cc.innerHTML+=`</div>`
+}
+
+window.td=function(k){
+ DS[k]=!DS[k]
+ const idx=parseInt(k.split('_')[1])
+ const items=document.querySelectorAll('.drill-item')
+ if(items[idx]){
+  items[idx].querySelector('.drill-chev').classList.toggle('open',DS[k])
+  items[idx].querySelector('.drill-ans').classList.toggle('open',DS[k])
+ }
+}
+window.ns=function(d){cur=Math.max(0,Math.min(M.length-1,cur+d));activeTab='overview';render()}
+function render(){buildSidebar();buildHead();buildTabs();buildContent()}
+render()
+</script>
+</body>
+</html>

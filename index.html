@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Space Missions & Systems — Interactive Study Hub</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#080b14;color:#e2e8f0;min-height:100vh;overflow-x:hidden}
+
+/* Hero */
+.hero{text-align:center;padding:60px 24px 40px;background:linear-gradient(180deg,#0d1225 0%,#080b14 100%);position:relative}
+.hero::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 50% 0%,rgba(59,130,246,0.08) 0%,transparent 70%);pointer-events:none}
+.hero-icon{font-size:56px;margin-bottom:16px;display:block}
+.hero h1{font-size:28px;font-weight:800;letter-spacing:-0.02em;background:linear-gradient(135deg,#60a5fa,#a78bfa,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px}
+.hero h2{font-size:15px;font-weight:400;color:#697399;margin-bottom:6px}
+.hero .badge{display:inline-block;font-size:10px;font-weight:700;color:#3b82f6;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.25);padding:4px 14px;border-radius:999px;letter-spacing:.08em;text-transform:uppercase;margin-top:12px}
+
+/* Stats */
+.stats{display:flex;justify-content:center;gap:32px;padding:20px 24px 36px;flex-wrap:wrap}
+.stat{text-align:center}
+.stat-val{font-size:28px;font-weight:800;color:#60a5fa}
+.stat-label{font-size:10px;color:#4a6080;text-transform:uppercase;letter-spacing:.08em;margin-top:2px}
+
+/* Section */
+.section{max-width:900px;margin:0 auto;padding:0 24px 48px}
+.section-head{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid #1a2333}
+.section-icon{font-size:28px}
+.section-title{font-size:18px;font-weight:700;color:#e2e8f0}
+.section-sub{font-size:11px;color:#4a6080;margin-top:2px}
+
+/* Cards */
+.cards{display:grid;gap:12px}
+.card{display:block;text-decoration:none;background:#0f1525;border:1px solid #1a2540;border-radius:12px;padding:18px 20px;transition:all .2s;position:relative;overflow:hidden}
+.card:hover{border-color:#3b82f6;background:#111a30;transform:translateY(-2px);box-shadow:0 8px 24px rgba(59,130,246,0.1)}
+.card-row{display:flex;align-items:flex-start;gap:14px}
+.card-num{font-size:11px;font-weight:800;color:#fff;background:linear-gradient(135deg,#3b82f6,#6366f1);width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.card-num.amber{background:linear-gradient(135deg,#f59e0b,#d97706)}
+.card-num.purple{background:linear-gradient(135deg,#7c3aed,#6d28d9)}
+.card-num.green{background:linear-gradient(135deg,#22c55e,#059669)}
+.card-num.rose{background:linear-gradient(135deg,#e11d48,#be123c)}
+.card-num.cyan{background:linear-gradient(135deg,#06b6d4,#0891b2)}
+.card-body{flex:1;min-width:0}
+.card-title{font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:4px}
+.card-ref{font-size:10px;color:#4a6080;font-family:monospace;margin-bottom:6px;letter-spacing:.03em}
+.card-desc{font-size:12px;color:#7a8baa;line-height:1.6}
+.card-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.tag{font-size:9px;font-weight:600;padding:3px 8px;border-radius:4px;letter-spacing:.04em;text-transform:uppercase}
+.tag-matlab{color:#4ade80;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.2)}
+.tag-theory{color:#60a5fa;background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.2)}
+.tag-exam{color:#fbbf24;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.2)}
+.tag-mission{color:#c084fc;background:rgba(192,132,252,0.1);border:1px solid rgba(192,132,252,0.2)}
+.card-arrow{color:#3b82f6;font-size:18px;flex-shrink:0;margin-top:4px;opacity:0;transition:opacity .2s}
+.card:hover .card-arrow{opacity:1}
+
+/* Features */
+.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;max-width:900px;margin:0 auto 48px;padding:0 24px}
+.feat{background:#0f1525;border:1px solid #1a2540;border-radius:10px;padding:16px;text-align:center}
+.feat-icon{font-size:24px;margin-bottom:8px}
+.feat-title{font-size:12px;font-weight:700;color:#c8d6e8;margin-bottom:4px}
+.feat-desc{font-size:11px;color:#4a6080;line-height:1.5}
+
+/* Footer */
+.footer{text-align:center;padding:32px 24px;border-top:1px solid #1a2333;font-size:11px;color:#2d3f56}
+.footer a{color:#3b82f6;text-decoration:none}
+.footer a:hover{text-decoration:underline}
+
+@media(max-width:600px){
+  .hero h1{font-size:22px}
+  .stats{gap:20px}
+  .stat-val{font-size:22px}
+  .card{padding:14px 16px}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="hero-icon">&#x1F680;</span>
+  <h1>Space Missions & Systems</h1>
+  <h2>Interactive Study Modules</h2>
+  <p style="font-size:12px;color:#4a6080;margin-top:4px">MSc Space & Astronautical Engineering — Sapienza University of Rome</p>
+  <span class="badge">Prof. Luciano Iess &middot; SMS 2025-2026</span>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-val">10</div><div class="stat-label">Modules</div></div>
+  <div class="stat"><div class="stat-val">168+</div><div class="stat-label">Slides Covered</div></div>
+  <div class="stat"><div class="stat-val">50+</div><div class="stat-label">MATLAB Codes</div></div>
+  <div class="stat"><div class="stat-val">100+</div><div class="stat-label">Exam Drills</div></div>
+</div>
+
+<div class="features">
+  <div class="feat"><div class="feat-icon">&#x1F4D0;</div><div class="feat-title">Step-by-Step Derivations</div><div class="feat-desc">Every equation derived in the professor's notation with physical intuition</div></div>
+  <div class="feat"><div class="feat-icon">&#x1F4BB;</div><div class="feat-title">MATLAB Code Sprints</div><div class="feat-desc">Ready-to-run implementations of TRIAD, QUEST, MEKF, Kalman filters, PID control</div></div>
+  <div class="feat"><div class="feat-icon">&#x1F3AF;</div><div class="feat-title">Oral Exam Drills</div><div class="feat-desc">Click-to-reveal Q&A covering every topic the professor asks at the oral exam</div></div>
+  <div class="feat"><div class="feat-icon">&#x26A0;&#xFE0F;</div><div class="feat-title">Common Traps</div><div class="feat-desc">The sign errors, convention mismatches, and subtle pitfalls students actually hit</div></div>
+</div>
+
+<!-- ORBIT DETERMINATION -->
+<div class="section">
+  <div class="section-head">
+    <div class="section-icon">&#x1F30D;</div>
+    <div>
+      <div class="section-title">Module A — Orbit Determination</div>
+      <div class="section-sub">Tapley, Schutz & Born, Ch. 4 &middot; Statistical Orbit Determination (2004)</div>
+    </div>
+  </div>
+  <div class="cards">
+    <a class="card" href="orbit-determination/part-1.html">
+      <div class="card-row">
+        <div class="card-num">1</div>
+        <div class="card-body">
+          <div class="card-title">Foundations &amp; Linearisation</div>
+          <div class="card-ref">&sect;4.1&ndash;&sect;4.3.3 &middot; First 20%</div>
+          <div class="card-desc">State deviation equation, observation-state mapping (H-tilde), normal equations, batch least-squares estimator</div>
+          <div class="card-tags"><span class="tag tag-theory">Theory</span><span class="tag tag-matlab">MATLAB</span><span class="tag tag-exam">Exam Drill</span></div>
+        </div>
+        <div class="card-arrow">&#x2192;</div>
+      </div>
+    </a>
+    <a class="card" href="orbit-determination/part-2.html">
+      <div class="card-row">
+        <div class="card-num amber">2</div>
+        <div class="card-body">
+          <div class="card-title">Estimation Theory &amp; Sequential Processing</div>
+          <div class="card-ref">&sect;4.3.4&ndash;&sect;4.6 &middot; 20&ndash;40%</div>
+          <div class="card-desc">Minimum variance, weighted least squares, a priori information, sequential algorithm, information filter</div>
+          <div class="card-tags"><span class="tag tag-theory">Theory</span><span class="tag tag-matlab">MATLAB</span><span class="tag tag-exam">Exam Drill</span></div>
+        </div>
+        <div class="card-arrow">&#x2192;</div>
+      </div>
+    </a>
+    <a class="card" href="orbit-determination/part-3.html">
+      <div class="card-row">
+        <div class="card-num purple">3</div>
+        <div class="card-body">
+          <div class="card-title">Consider Parameters, SNC &amp; SRIF</div>
+          <div class="card-ref">&sect;4.7&ndash;&sect;4.9 &middot; 40&ndash;70%</div>
+          <div class="card-desc">Consider parameters, process noise, state noise compensation, dynamic model compensation, Householder QR, SRIF</div>
+          <div class="card-tags"><span class="tag tag-theory">Theory</span><span class="tag tag-matlab">MATLAB</span><span class="tag tag-exam">Exam Drill</span></div>
+        </div>
+        <div class="card-arrow">&#x2192;</div>
+      </div>
+    </a>
+    <a class="card" href="orbit-determination/part-4.html">
+      <div class="card-row">
+        <div class="card-num green">4</div>
+        <div class="card-body">
+          <div class="card-title">Kalman Filter, EKF &amp; Observability</div>
+          <div class="card-ref">&sect;4.10&ndash;&sect;4.17 &middot; Final 30%</div>
+          <div class="card-desc">Kalman filter, extended Kalman filter, observability, covariance analysis, filter consistency, Schmidt-Kalman filter</div>
+          <div class="card-tags"><span class="tag tag-theory">Theory</span><span class="tag tag-matlab">MATLAB</span><span class="tag tag-exam">Exam Drill</span><span class="tag tag-mission">Missions</span></div>
+        </div>
+        <div class="card-arrow">&#x2192;</div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<!-- ATTITUDE DETERMINATION -->
+<div class="section">
+  <div class="section-head">
+    <div class="section-icon">&#x1F6F0;&#xFE0F;</div>
+    <div>
+      <div class="section-title">Module B — Attitude Determination</div>
+      <div class="section-sub">Prof. Iess's Lecture Notes &middot; pp. 1&ndash;118</div>
+    </div>
+  </div>
+  <div class="cards">
+    <a class="card" href="attitude-determination/part-a1.html">
+      <div class="card-row">
+        <div class="card-num cyan">5</div>
+        <div class="card-body">
+          <div class="card-title">Wahba's Problem, TRIAD &amp; QUEST</div>
+          <div class="card-ref">pp. 1&ndash;30 &middot; Fundamentals &amp; Algorithms</div>
+          <div class="card-desc">Reference frames, attitude matrix, quaternion algebra, Wahba's cost function, TRIAD algorithm, QUEST optimal estimation, error covariance</div>
+          <div class="card-tags"><span class="tag tag-theory">Theory</span><span class="tag tag-matlab">MATLAB</span><span class="tag tag-exam">Exam Drill</span></div>
+        </div>
+        <div class="card-arrow">&#x2192;</div>
+      </div>
+    </a>
+    <a class="card" href="attitude-determination/part-a2.html">
+      <div class="card-row">
+        <div class="card-num rose">6</div>
+        <div class="card-body">
+          <div class="card-title">Sensors &amp; Hardware</div>
+          <div class="card-ref">pp. 31&ndash;104 &middot; Star Trackers, Gyros, Earth &amp; Sun Sensors</div>
+          <div class="card-desc">Star tracker CCD mapping, Sagnac effect, RLG &amp; FOG physics, Farrenkopf model (ARW/RRW), Earth sensors, Sun sensors, pointing budgets</div>
+          <div class="card-tags"><span class="tag tag-theory">Theory</span><span class="tag tag-matlab">MATLAB</span><span class="tag tag-exam">Exam Drill</span><span class="tag tag-mission">BepiColombo</span></div>
+        </div>
+        <div class="card-arrow">&#x2192;</div>
+      </div>
+    </a>
+    <a class="card" href="attitude-determination/part-a3.html">
+      <div class="card-row">
+        <div class="card-num">7</div>
+        <div class="card-body">
+          <div class="card-title">Multiplicative EKF (MEKF)</div>
+          <div class="card-ref">pp. 105&ndash;118 &middot; Sequential Attitude Estimation</div>
+          <div class="card-desc">Error quaternion formulation, 6-state filter, linearised dynamics (F, G matrices), gyro process noise, star tracker updates</div>
+          <div class="card-tags"><span class="tag tag-theory">Theory</span><span class="tag tag-matlab">MATLAB</span><span class="tag tag-exam">Exam Drill</span></div>
+        </div>
+        <div class="card-arrow">&#x2192;</div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<!-- ATTITUDE DYNAMICS & CONTROL -->
+<div class="section">
+  <div class="section-head">
+    <div class="section-icon">&#x2699;&#xFE0F;</div>
+    <div>
+      <div class="section-title">Module C — Attitude Dynamics &amp; Control</div>
+      <div class="section-sub">Sidi (1997) &amp; Prof. Iess's Slides 1&ndash;168</div>
+    </div>
+  </div>
+  <div class="cards">
+    <a class="card" href="attitude-determination/part-b1.html">
+      <div class="card-row">
+        <div class="card-num amber">8</div>
+        <div class="card-body">
+          <div class="card-title">ACS Architecture &amp; Control Design</div>
+          <div class="card-ref">Slides 1&ndash;67 &middot; Fundamentals</div>
+          <div class="card-desc">Euler's equations, gravity gradient, pitch/roll/yaw dynamics, reaction wheels, PD/PID control, desaturation strategies</div>
+          <div class="card-tags"><span class="tag tag-theory">Theory</span><span class="tag tag-matlab">MATLAB</span><span class="tag tag-exam">Exam Drill</span><span class="tag tag-mission">Cassini</span></div>
+        </div>
+        <div class="card-arrow">&#x2192;</div>
+      </div>
+    </a>
+    <a class="card" href="attitude-determination/part-b2.html">
+      <div class="card-row">
+        <div class="card-num purple">9</div>
+        <div class="card-body">
+          <div class="card-title">Librations, Magnetic Control &amp; RWA</div>
+          <div class="card-ref">Slides 68&ndash;118 &middot; Advanced Topics</div>
+          <div class="card-desc">Roll-yaw coupling, DeBra-Delp diagram, wheel dampers, magnetic torquers, nadir pointing, 4-wheel array architecture</div>
+          <div class="card-tags"><span class="tag tag-theory">Theory</span><span class="tag tag-matlab">MATLAB</span><span class="tag tag-exam">Exam Drill</span></div>
+        </div>
+        <div class="card-arrow">&#x2192;</div>
+      </div>
+    </a>
+    <a class="card" href="attitude-determination/part-b3.html">
+      <div class="card-row">
+        <div class="card-num green">10</div>
+        <div class="card-body">
+          <div class="card-title">Appendices &amp; Comprehensive Exam Prep</div>
+          <div class="card-ref">Slides 119&ndash;168 &middot; Final Review</div>
+          <div class="card-desc">Complex analysis, Routh-Hurwitz, gravity gradient tensor derivation, full oral exam practice with 50+ questions</div>
+          <div class="card-tags"><span class="tag tag-theory">Theory</span><span class="tag tag-matlab">MATLAB</span><span class="tag tag-exam">Exam Drill</span></div>
+        </div>
+        <div class="card-arrow">&#x2192;</div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<div class="footer">
+  <p>Space Missions &amp; Systems &mdash; MSc Space &amp; Astronautical Engineering, Sapienza University of Rome</p>
+  <p style="margin-top:6px">Built with care for the SMS community &middot; <a href="https://github.com">View on GitHub</a></p>
+</div>
+
+</body>
+</html>

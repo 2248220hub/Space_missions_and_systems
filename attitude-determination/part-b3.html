@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attitude Dynamics & Control — Appendices & Exam Prep (Part 3)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0c0f1a; color: #e2e8f0; min-height: 100vh; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo } = React;
+
+/* ═══════════════════════════════════════════════════════════
+   Chapter 2 Part B — Attitude Dynamics & Control (FINAL 25%)
+   + Comprehensive Exam Practice Module
+   Prof. Luciano Iess — Sapienza, SMS 2025-2026
+   Slides 119-168 + Exam Practice
+   ═══════════════════════════════════════════════════════════ */
+
+const C = {
+  bg: "#0c0f1a", bgCard: "#141828", bgHover: "#1a2038",
+  border: "#232946", borderLight: "#2e3560",
+  accent: "#5b8def", accentGlow: "rgba(91,141,239,0.12)",
+  warn: "#f0ad4e", ok: "#4ecca3", err: "#e74c3c",
+  t1: "#e8eaf6", t2: "#a8b2d1", t3: "#697399",
+  gold: "#ffd700",
+};
+
+// ─── NOTATION ───────────────────────────────────────────
+const NOTATION = [
+  { cat: "Complex Analysis (App. A)", rows: [
+    { sym: "f(z) = u(x,y) + iv(x,y)", desc: "Complex function", detail: "z = x+iy. u and v are real-valued functions of two real variables." },
+    { sym: "∂u/∂x = ∂v/∂y, ∂u/∂y = −∂v/∂x", desc: "Cauchy-Riemann conditions", detail: "Necessary and sufficient (with continuity) for f(z) to be analytic. Also imply u,v are harmonic." },
+    { sym: "f(z) = Σ aₙ(z−z₀)ⁿ (n=−∞..∞)", desc: "Laurent series", detail: "Generalizes Taylor series to include negative powers. Coefficients with n<0 → singularities." },
+    { sym: "Residue = a₋₁", desc: "Residue of f at z₀", detail: "Coefficient of 1/(z−z₀) in Laurent expansion. Central to residue theorem for inverse LT." },
+    { sym: "Pole of order p", desc: "Singularity type", detail: "Laurent series starts at a₋ₚ. If all negative coefficients nonzero → essential singularity." },
+  ]},
+  { cat: "Routh-Hurwitz (App. B)", rows: [
+    { sym: "aₙλⁿ + ... + a₁λ + a₀ = 0", desc: "Characteristic equation", detail: "All coefficients must be same sign and nonzero (necessary but not sufficient)." },
+    { sym: "b₁ = −det[aₙ,aₙ₋₂; aₙ₋₁,aₙ₋₃]/aₙ₋₁", desc: "Routh array element", detail: "Computed from 2×2 determinants. Continue for c₁, d₁, etc." },
+    { sym: "First column all positive", desc: "Stability criterion", detail: "All elements of the first column of the Routh array must be positive. Number of sign changes = number of unstable roots." },
+  ]},
+  { cat: "Gravity Gradient Tensor (App. C)", rows: [
+    { sym: "Γ = (3GM/R⁵)(R × I·R)", desc: "GG torque vector formula", detail: "Derived from integration of differential gravitational force over the body. I = inertia tensor." },
+    { sym: "aᵢ₃ = Rᵢ/R", desc: "Direction cosines of R in BF", detail: "a₁₃ = −sinθ, a₂₃ = sinφ cosθ, a₃₃ = cosφ cosθ. Only pitch and roll appear (not yaw)." },
+    { sym: "ρρ (dyadic product)", desc: "Position dyadic", detail: "∫ρρ dm relates to the inertia tensor: I = ∫(|ρ|²𝟏 − ρρ)dm." },
+  ]},
+];
+
+// ─── MODULES 20-24 ──────────────────────────────────────
+const MODULES = [
+  /* ═══ MODULE 20 ═══ */
+  {
+    id: "complex_analysis", num: "20", title: "Appendix A: Complex Analysis for Laplace Transforms", pages: "Slides 119–137", icon: "🔢",
+    overview: {
+      why: "The Laplace transform lives in the COMPLEX plane. Understanding analyticity, poles, residues, and the Laurent series is essential for inverse LT (partial fractions) and stability analysis (pole locations). The professor uses these concepts throughout.",
+      objective: "State the Cauchy-Riemann conditions. Define poles, zeros, and residues via Laurent series. Know the key LT properties (derivative, integral, convolution, initial/final value theorems).",
+      realMission: "Every control engineer uses pole-zero plots to assess stability. Poles in the left half-plane → stable; right half-plane → unstable. This is grounded in complex analysis."
+    },
+    equations: [
+      { name: "Cauchy-Riemann conditions", eq: "∂u/∂x = ∂v/∂y\n∂u/∂y = −∂v/∂x\n\n⟹ ∇²u = 0 and ∇²v = 0  (harmonic)", explain: "If these hold with continuous partial derivatives, f(z) = u + iv is analytic (holomorphic). Analyticity is much stronger than mere differentiability." },
+      { name: "Laurent series", eq: "f(z) = Σ_{n=−∞}^{∞} aₙ(z−z₀)ⁿ\n\nPole of order p: first nonzero term is a₋ₚ\nResidue: a₋₁ (coefficient of 1/(z−z₀))", explain: "Generalizes Taylor series. The residue theorem lets us compute inverse LT via contour integration." },
+      { name: "Key LT theorems", eq: "Initial value: f(0⁺) = lim_{s→∞} sF(s)\nFinal value:   f(∞) = lim_{s→0⁺} sF(s)\nConvolution:   f*g ↔ F(s)·G(s)\nDerivative:    f⁽ⁿ⁾(t) ↔ sⁿF(s) − Σ terms", explain: "Final value theorem requires all poles of sF(s) to have Re(s) < 0. Initial value has no such restriction." },
+    ],
+    derivation: `**Why Complex Analysis Matters for LT (Slides 119-120):**
+
+LT is a generalization of Fourier transform:
+  F(s) = ∫₀^∞ f(t)e⁻ˢᵗ dt,   s = σ + iω
+
+For FT: s = iω (purely imaginary)
+For LT: s is complex → need complex function theory
+
+**Cauchy-Riemann (Slides 122-124):**
+
+For f(z) = u(x,y) + iv(x,y) to be differentiable:
+  
+  f'(z₀) via x-approach: ∂u/∂x + i∂v/∂x
+  f'(z₀) via y-approach: ∂v/∂y − i∂u/∂y
+
+These must be equal → Cauchy-Riemann conditions.
+
+Consequence: u and v satisfy Laplace's equation:
+  ∇²u = ∂²u/∂x² + ∂²u/∂y² = 0 (harmonic)
+
+**Example of non-analytic function:** f(z) = z̄ = x − iy
+  u = x, v = −y → ∂u/∂x = 1 ≠ ∂v/∂y = −1  ✗
+
+**Analytic Continuation (Slide 128):**
+If two analytic functions agree on ANY line segment,
+they agree EVERYWHERE. This is why LT is well-defined.
+
+**Key LT Properties (Slides 131-137):**
+
+  δ(t) ↔ 1               u(t) ↔ 1/s
+  tⁿu(t) ↔ n!/sⁿ⁺¹      eᵃᵗ ↔ 1/(s−a)
+  sin(ωt) ↔ ω/(s²+ω²)   cos(ωt) ↔ s/(s²+ω²)
+
+Derivative: L{f'} = sF(s) − f(0⁻)
+n-th deriv: L{f⁽ⁿ⁾} = sⁿF(s) − sⁿ⁻¹f(0⁻) − ... − f⁽ⁿ⁻¹⁾(0⁻)
+Integral:   L{∫f dt} = F(s)/s
+
+**Convolution Theorem:** L{f*g} = F(s)·G(s)
+  Used implicitly every time we multiply transfer functions!`,
+    matlab: `%% Complex Analysis: Visualize Poles & Zeros
+% Transfer function of a PID-controlled pitch system
+% Iy*s^3 + kd*s^2 + kp*s + ki = 0
+Iy = 500; kd = 30; kp = 2; ki = 0.005;
+
+% Characteristic polynomial coefficients
+poly_coeffs = [Iy, kd, kp, ki];
+poles = roots(poly_coeffs);
+
+fprintf('Characteristic equation: %.0f s^3 + %.0f s^2 + %.1f s + %.3f = 0\\n',...
+    Iy, kd, kp, ki);
+fprintf('Poles:\\n');
+for i = 1:length(poles)
+    fprintf('  s%d = %.6f + %.6fi  [%s]\\n', i, real(poles(i)), imag(poles(i)),...
+        char((real(poles(i))<0)*'stable' + (real(poles(i))>=0)*'UNSTABLE'));
+end
+
+% Routh-Hurwitz check
+fprintf('\\nRouth-Hurwitz conditions:\\n');
+fprintf('  All coefficients same sign: %s\\n', mat2str(all(poly_coeffs>0)));
+b1 = (kd*kp - Iy*ki)/kd;
+fprintf('  b1 = (kd*kp - Iy*ki)/kd = %.4f > 0: %s\\n', b1, mat2str(b1>0));
+
+% Pole-zero plot
+figure;
+plot(real(poles), imag(poles), 'rx', 'MarkerSize', 12, 'LineWidth', 2);
+hold on;
+xline(0, '--k', 'LineWidth', 0.5);
+yline(0, '--k', 'LineWidth', 0.5);
+% Shade stable region
+patch([-0.1 -0.1 0 0], [-0.1 0.1 0.1 -0.1], 'g', 'FaceAlpha', 0.05);
+xlabel('Re(s)'); ylabel('Im(s)');
+title('Pole-Zero Map: PID Pitch Controller');
+legend('Poles'); grid on; axis equal;`,
+    traps: [
+      "⚠️ f(z) = z̄ (complex conjugate) is NOT analytic. The Cauchy-Riemann conditions fail. Students often forget this classic example.",
+      "⚠️ The Final Value Theorem ONLY works when sF(s) has all poles with Re(s) < 0. Don't apply it to unstable systems!",
+      "⚠️ LT is defined from 0⁻ (not 0⁺) specifically to include the Dirac delta at t = 0 in the integration domain.",
+      "⚠️ Analytic continuation: if two transfer functions agree on any segment of the real axis, they're the SAME function. This is why partial fraction decomposition gives a unique answer."
+    ],
+    drills: [
+      { q: "State the Cauchy-Riemann conditions.", a: "For f(z) = u + iv: ∂u/∂x = ∂v/∂y and ∂u/∂y = −∂v/∂x. With continuous first partial derivatives, these are necessary and sufficient for analyticity." },
+      { q: "What is the residue of f(z) = 1/[(z−1)(z−2)] at z = 1?", a: "Residue = lim_{z→1} (z−1)·f(z) = 1/(1−2) = −1. It's the coefficient a₋₁ in the Laurent expansion about z = 1." },
+      { q: "When does the Final Value Theorem fail?", a: "When sF(s) has poles with Re(s) ≥ 0. For example, if the system is unstable or has undamped oscillation, lim_{s→0} sF(s) does not equal lim_{t→∞} f(t)." },
+    ]
+  },
+
+  /* ═══ MODULE 21 ═══ */
+  {
+    id: "routh_hurwitz", num: "21", title: "Appendix B: Routh-Hurwitz Stability Criterion", pages: "Slides 138–141", icon: "📏",
+    overview: {
+      why: "Routh-Hurwitz is the go-to method for checking stability WITHOUT computing eigenvalues. The professor uses it for every control law analysis (PD, PID, wheel damper). You must be able to construct the Routh array quickly and read off stability conditions.",
+      objective: "Construct the Routh array for any polynomial. State the stability theorem: all first-column elements positive ↔ all roots have Re(s) < 0. Apply to PID: Iy·s³ + kd·s² + kp·s + ki = 0.",
+      realMission: "In real ACS design, engineers use Routh-Hurwitz to quickly check if proposed gains satisfy stability before running simulations."
+    },
+    equations: [
+      { name: "Necessary conditions", eq: "aₙsⁿ + aₙ₋₁sⁿ⁻¹ + ... + a₁s + a₀ = 0\n1. All coefficients same sign\n2. All coefficients nonzero", explain: "Necessary but NOT sufficient. If violated, system is definitely unstable." },
+      { name: "Routh array construction", eq: "sⁿ  |  aₙ    aₙ₋₂  aₙ₋₄  ...\nsⁿ⁻¹|  aₙ₋₁  aₙ₋₃  aₙ₋₅  ...\nsⁿ⁻²|  b₁    b₂    b₃    ...\nsⁿ⁻³|  c₁    c₂    ...\n\nb₁ = −det[aₙ,aₙ₋₂; aₙ₋₁,aₙ₋₃] / aₙ₋₁\nb₂ = −det[aₙ,aₙ₋₄; aₙ₋₁,aₙ₋₅] / aₙ₋₁", explain: "Continue until the array is complete. Each row has one fewer element." },
+      { name: "Stability theorem", eq: "All roots have Re(s) < 0\n⟺ All first-column elements are positive\n\nNumber of sign changes in first column\n= number of roots with Re(s) > 0", explain: "This is both necessary AND sufficient." },
+    ],
+    derivation: `**Routh Array for PID (3rd-order):**
+
+Char. eq: Iy·s³ + kd·s² + kp·s + ki = 0
+
+Routh array:
+  s³ | Iy    kp
+  s² | kd    ki
+  s¹ | b₁    0
+  s⁰ | ki
+
+b₁ = −det[Iy, kp; kd, ki] / kd
+   = −(Iy·ki − kd·kp) / kd
+   = (kd·kp − Iy·ki) / kd
+
+First column: {Iy, kd, b₁, ki}
+
+All must be positive:
+  1. Iy > 0  ✓ (always)
+  2. kd > 0
+  3. b₁ > 0  →  kd·kp − Iy·ki > 0  →  kp > Iy·ki/kd
+  4. ki > 0
+
+**Routh Array for 4th-order (triaxial stability):**
+
+s⁴ + ω₀²(3σx+σxσz+1)s² + 4ω₀⁴σxσz = 0
+
+Coefficients: a₄=1, a₃=0, a₂=ω₀²(3σx+σxσz+1), a₁=0, a₀=4ω₀⁴σxσz
+
+Problem: a₃=0 and a₁=0! The necessary condition (all nonzero) fails!
+
+But this is a polynomial in s² only. The system can be marginally 
+stable (purely imaginary roots). This is why we solve the biquadratic 
+directly instead of using Routh-Hurwitz.
+
+**Important special case: 2nd-order**
+
+as² + bs + c = 0
+Routh: all positive → a>0, b>0, c>0 → trivially satisfied
+  when all three have the same sign.`,
+    matlab: `%% Routh-Hurwitz Array Construction (General)
+function stable = routh_hurwitz(coeffs)
+    % Constructs Routh array and checks stability
+    n = length(coeffs);
+    rows = ceil(n/2);
+    R = zeros(n, rows);
+    
+    % Fill first two rows
+    R(1, :) = coeffs(1:2:end);
+    if length(coeffs(2:2:end)) < rows
+        R(2, 1:length(coeffs(2:2:end))) = coeffs(2:2:end);
+    else
+        R(2, :) = coeffs(2:2:end);
+    end
+    
+    % Compute remaining rows
+    for i = 3:n
+        for j = 1:rows-1
+            if R(i-1, 1) == 0
+                R(i-1, 1) = 1e-10; % avoid division by zero
+            end
+            R(i, j) = -(R(i-2,1)*R(i-1,j+1) - R(i-2,j+1)*R(i-1,1)) / R(i-1,1);
+        end
+    end
+    
+    fprintf('Routh Array:\\n');
+    for i = 1:n
+        fprintf('  s^%d: ', n-i);
+        fprintf('%.4f  ', R(i, R(i,:)~=0));
+        fprintf('\\n');
+    end
+    
+    first_col = R(:, 1);
+    fprintf('\\nFirst column: ');
+    fprintf('%.4f  ', first_col);
+    fprintf('\\n');
+    
+    sign_changes = sum(diff(sign(first_col)) ~= 0);
+    stable = all(first_col > 0);
+    fprintf('Sign changes: %d\\n', sign_changes);
+    fprintf('STABLE: %s\\n', mat2str(stable));
+end
+
+% Example: PID control
+Iy = 500; kd = 30; kp = 2; ki = 0.005;
+fprintf('=== PID: Iy*s^3 + kd*s^2 + kp*s + ki ===\\n');
+routh_hurwitz([Iy, kd, kp, ki]);
+
+fprintf('\\nConditions: kd>0: %s, ki>0: %s, kp>Iy*ki/kd=%.4f: %s\\n',...
+    mat2str(kd>0), mat2str(ki>0), Iy*ki/kd, mat2str(kp > Iy*ki/kd));`,
+    traps: [
+      "⚠️ If a first-column element is zero, Routh-Hurwitz has special rules (replace with ε → 0 or use auxiliary polynomial). Don't just skip it!",
+      "⚠️ For the triaxial satellite biquadratic (4th order in s, 2nd order in s²), Routh-Hurwitz doesn't directly apply because odd coefficients are zero. Solve the quadratic in s² directly.",
+      "⚠️ The professor's exam question: 'Apply Routh-Hurwitz to the PID characteristic equation.' Be ready to write the full array from memory.",
+      "⚠️ Number of sign changes = number of UNSTABLE roots. Zero sign changes → all stable."
+    ],
+    drills: [
+      { q: "For the PID equation Iy·s³ + kd·s² + kp·s + ki = 0, what is the b₁ element?", a: "b₁ = (kd·kp − Iy·ki)/kd. Must be positive: kp > Iy·ki/kd." },
+      { q: "What are the TWO necessary conditions before constructing the Routh array?", a: "1) All polynomial coefficients must have the same sign. 2) All coefficients must be nonzero. If either fails, the system is unstable." },
+      { q: "If the Routh array first column is {1, 2, −0.5, 3}, how many unstable roots exist?", a: "Two sign changes (2 → −0.5 and −0.5 → 3), so there are 2 roots with Re(s) > 0." },
+    ]
+  },
+
+  /* ═══ MODULE 22 ═══ */
+  {
+    id: "gg_derivation", num: "22", title: "Appendix C: Gravity Gradient Torque Derivation", pages: "Slides 142–168", icon: "🌐",
+    overview: {
+      why: "The GG torque formula Γ = (3GM/R⁵)(R×I·R) is used throughout the course but rarely derived from first principles. This appendix shows the full tensor derivation using dyadics, completing the theoretical foundation. The professor may ask WHERE the 3ω₀² comes from.",
+      objective: "Derive Γ from the gravitational force dF on a mass element dm. Show how the dyadic ∫ρρ dm relates to the inertia tensor. Extract the direction cosine formula and linearize for small angles.",
+      realMission: "Space tethers (TSS, SEDS) are stabilized purely by this torque. The derivation also shows why a dumbbell has Gz = 0 — critical for understanding tether dynamics."
+    },
+    equations: [
+      { name: "Differential GG torque", eq: "dΓ = ρ × dF = −(μ dm/r³)(ρ × r)\nr ≈ R + ρ,   1/r³ ≈ (1/R³)(1 − 3R·ρ/R²)", explain: "ρ = position of dm from CoM. The 1/r³ is expanded to first order in ρ/R." },
+      { name: "Integrated GG torque", eq: "Γ = (3GM/R⁵) ∫(ρ×R)(R·ρ) dm\n  = (3GM/R⁵) R × I · R", explain: "Uses the dyadic identity: ∫ρρ dm = ∫|ρ|²𝟏 dm − I. The cross-product R×I·R gives the final torque vector." },
+      { name: "Component form (BF)", eq: "Γx = (3GM/R³) a₂₃a₃₃(Iz−Iy)\nΓy = (3GM/R³) a₁₃a₃₃(Ix−Iz)\nΓz = (3GM/R³) a₁₃a₂₃(Iy−Ix)", explain: "aᵢ₃ = direction cosines of nadir in BF. Linearized: a₁₃≈−θ, a₂₃≈φ, a₃₃≈1." },
+      { name: "Linearized GG torques", eq: "Gx = 3ω₀²(Iz−Iy)φ\nGy = 3ω₀²(Iz−Ix)θ\nGz ≈ 0  (second order)", explain: "The 3 comes from the expansion of 1/r³. Gz = 0 because a₁₃·a₂₃ ∝ θφ ≈ 0 for small angles." },
+    ],
+    derivation: `**Full Derivation (Slides 142-168):**
+
+**Step 1: Force on mass element dm at position ρ from CoM**
+
+  r = R + ρ  (R = CoM position, ρ = local position in BF)
+  
+  dF = −(GM dm/r³)r
+  
+  1/r³ = 1/|R+ρ|³ = (1/R³)(1 + 2R·ρ/R² + ρ²/R²)^(-3/2)
+       ≈ (1/R³)(1 − 3R·ρ/R²)  [first order in ρ/R]
+
+**Step 2: Differential torque**
+
+  dΓ = ρ × dF = −(GM dm/R³)(1 − 3R·ρ/R²)(ρ × R) − (GM dm/R³)(ρ × ρ)
+                                                                    = 0
+  
+  = −(GM dm/R³)(ρ × R) + (3GM dm/R⁵)(R·ρ)(ρ × R)
+
+**Step 3: Integrate over body**
+
+  ∫ρ dm = 0  (origin at CoM)  ⟹  first term vanishes!
+  
+  Γ = (3GM/R⁵) ∫(ρ×R)(R·ρ) dm
+
+**Step 4: Dyadic reformulation**
+
+  (ρ×R)(R·ρ) = −(R×ρ)(ρ·R) = −R × (ρρ) · R
+
+  Γ = −(3GM/R⁵) R × [∫ρρ dm] · R
+
+  Inertia tensor: I = ∫(|ρ|²𝟏 − ρρ) dm
+  ⟹ ∫ρρ dm = ∫|ρ|²𝟏 dm − I
+
+  R × [∫|ρ|²𝟏 dm] · R = ∫|ρ|² dm · (R × R) = 0
+
+  ⟹ Γ = (3GM/R⁵) R × I · R
+
+**Step 5: Component form**
+
+  R in BF: (Rx, Ry, Rz) = R(a₁₃, a₂₃, a₃₃)
+
+  R×I·R = [0,−Rz,Ry; Rz,0,−Rx; −Ry,Rx,0][Ix,0,0; 0,Iy,0; 0,0,Iz][Rx;Ry;Rz]
+
+  = (3GM/R³)[a₂₃a₃₃(Iz−Iy); a₁₃a₃₃(Ix−Iz); a₁₃a₂₃(Iy−Ix)]
+
+**Step 6: Linearize**
+  a₁₃ = −sinθ ≈ −θ,  a₂₃ = sinφ cosθ ≈ φ,  a₃₃ = cosφ cosθ ≈ 1
+  
+  Gx = 3ω₀²(Iz−Iy)φ,  Gy = 3ω₀²(Iz−Ix)θ,  Gz ≈ 0`,
+    matlab: `%% Gravity Gradient Torque: Full Computation
+% Verify the linearized formula against the exact tensor expression
+
+Ix = 80; Iy = 82; Iz = 4;       % [kg·m²]
+R0 = 6371e3 + 800e3;            % orbit radius [m]
+GM = 3.986e14;
+w0 = sqrt(GM/R0^3);
+
+fprintf('omega_0 = %.6e rad/s\\n', w0);
+
+% Sweep roll and pitch angles
+phi_range = linspace(-10, 10, 100);
+theta_range = linspace(-10, 10, 100);
+
+% Fix pitch, sweep roll
+theta_fix = 0;
+Gx_exact = zeros(size(phi_range));
+Gx_linear = zeros(size(phi_range));
+
+for i = 1:length(phi_range)
+    phi = deg2rad(phi_range(i));
+    theta = deg2rad(theta_fix);
+    
+    % Direction cosines (3-2-1 rotation, nadir = -z_orbital)
+    a13 = -sin(theta);
+    a23 = sin(phi)*cos(theta);
+    a33 = cos(phi)*cos(theta);
+    
+    % Exact GG torque
+    Gx_exact(i) = 3*GM/R0^3 * a23*a33 * (Iz - Iy);
+    
+    % Linearized
+    Gx_linear(i) = 3*w0^2 * (Iz - Iy) * phi;
+end
+
+figure;
+plot(phi_range, Gx_exact*1e6, 'b', phi_range, Gx_linear*1e6, 'r--', 'LineWidth', 1.5);
+xlabel('Roll angle \\phi [deg]'); ylabel('G_x [\\muN\\cdotm]');
+title('GG Roll Torque: Exact vs Linearized');
+legend('Exact (tensor)', 'Linearized: 3\\omega_0^2(I_z-I_y)\\phi');
+grid on;
+
+% Show that Gz is second order
+fprintf('\\nGz at phi=5°, theta=5°: %.2e N·m (second order!)\\n', ...
+    3*GM/R0^3 * (-sin(deg2rad(5))) * sin(deg2rad(5))*cos(deg2rad(5)) * (Iy-Ix));`,
+    traps: [
+      "⚠️ The 3 in 3ω₀² comes from the gradient expansion 1/r³ ≈ (1/R³)(1 − 3R·ρ/R²). It's NOT arbitrary.",
+      "⚠️ ∫ρ dm = 0 because the origin is at the center of mass. If the origin is NOT at the CoM, there's an additional term.",
+      "⚠️ Gz involves the product a₁₃·a₂₃ ≈ (−θ)(φ) = second order. This is why GG cannot stabilize yaw to first order.",
+      "⚠️ The dyadic identity ∫ρρ dm = ∫|ρ|²𝟏 dm − I is the key step. Don't confuse ρρ (outer product) with ρ·ρ (scalar product)."
+    ],
+    drills: [
+      { q: "Where does the factor of 3 in the gravity gradient torque come from?", a: "From the first-order expansion of 1/r³ ≈ (1/R³)(1 − 3R·ρ/R²). The gradient of the gravitational potential introduces the factor 3." },
+      { q: "Why is Gz ≈ 0 for small angles?", a: "Gz ∝ a₁₃·a₂₃ ≈ (−θ)(φ), which is a product of two small quantities — second order. It vanishes in the linearized equations." },
+      { q: "How does the inertia tensor enter the GG formula?", a: "Through the dyadic identity: ∫(ρ×R)(R·ρ)dm = R×[∫ρρ dm]·R = R×(∫|ρ|²𝟏 dm − I)·R = −R×I·R (since R×R = 0)." },
+    ]
+  },
+
+  /* ═══ MODULE 23 ═══ */
+  {
+    id: "angular_vel", num: "23", title: "Angular Velocity Decomposition (Detailed)", pages: "Slides 147–155", icon: "🔀",
+    overview: {
+      why: "The decomposition ωBI = ωBR + ωRIB is the foundation of ALL linearized attitude equations. Understanding why ωRIy = −ω₀ (not +ω₀), how the small-angle DCM works, and the Euler angle ↔ angular velocity relations is critical.",
+      objective: "Derive ωRIB from the small-angle rotation of (0, −ω₀, 0). Show the full nonlinear Euler angle ↔ (p,q,r) relations and their linearized forms. Know the singularity at θ = π/2.",
+      realMission: "Gyros measure ωBI directly. The AOCS software decomposes this into ωBR (deviation from nominal) + ωRIB (orbital motion) to extract the attitude error."
+    },
+    equations: [
+      { name: "Angular velocity decomposition", eq: "ωBI = ωBR + ωRIB\nωBR = (φ̇, θ̇, ψ̇)ᵀ  (linearized)\nωRIB = R_{BF←RF} · (0, −ω₀, 0)ᵀ", explain: "ωBI is what gyros measure. ωBR is the body's angular velocity relative to the orbital frame. ωRIB is the orbital frame's rotation rate expressed in the body frame." },
+      { name: "Small-angle ωRIB", eq: "ωRIB = [1,ψ,−θ; −ψ,1,φ; θ,−φ,1] · [0;−ω₀;0]\n     = (−ψω₀, −ω₀, φω₀)ᵀ", explain: "The −ω₀ in the y-component is because the y-axis is OPPOSITE to the orbital angular momentum." },
+      { name: "Full nonlinear relations", eq: "p = φ̇ − ψ̇sinθ\nq = θ̇cosφ + ψ̇cosθsinφ\nr = ψ̇cosθcosφ − θ̇sinφ\n\nSingularity at θ = π/2 (gimbal lock!)", explain: "For small angles: p ≈ φ̇, q ≈ θ̇, r ≈ ψ̇ (linearized). The inverse relations have secθ terms → singularity." },
+    ],
+    derivation: `**Why −ω₀ in the y-component (Slides 147-153):**
+
+The orbital reference frame:
+  +z → nadir (toward Earth center)
+  +y → OPPOSITE to orbital angular momentum h
+  +x → approximately along velocity
+
+The orbital frame rotates about the −y axis (because y is opposite to h)
+at rate ω₀:
+  ωRI|RF = (0, −ω₀, 0)ᵀ
+
+To express this in the body frame, use the small-angle DCM:
+  R_{BF←RF} ≈ [1, ψ, −θ; −ψ, 1, φ; θ, −φ, 1]
+
+  ωRIB = R · (0, −ω₀, 0) = (−ψω₀, −ω₀, φω₀)
+
+**Total angular velocity in BF:**
+  ωBI = ωBR + ωRIB
+  
+  ωx = φ̇ − ψω₀     (roll rate + yaw×orbit coupling)
+  ωy = θ̇ − ω₀       (pitch rate + orbital rotation)
+  ωz = ψ̇ + φω₀     (yaw rate + roll×orbit coupling)
+
+**Full Euler Angle Relations (Slide 149):**
+
+For a 3-2-1 (yaw-pitch-roll) rotation sequence:
+
+  [p]   [1    0      −sinθ  ] [φ̇]
+  [q] = [0   cosφ   cosθsinφ] [θ̇]
+  [r]   [0  −sinφ   cosθcosφ] [ψ̇]
+
+Inverse:
+  φ̇ = p + (qsinφ + rcosφ)tanθ   ← SINGULAR at θ = π/2!
+  θ̇ = qcosφ − rsinφ
+  ψ̇ = (qsinφ + rcosφ)secθ
+
+This singularity is why quaternions are preferred for large angles.
+
+**For eccentric orbits (Slide 154):**
+  ωj = −df/dt (instantaneous orbital angular velocity)
+  For circular: df/dt = ω₀ = constant`,
+    matlab: `%% Angular Velocity Decomposition
+% Verify linearized vs nonlinear for various attitude angles
+w0 = 0.001;  % [rad/s]
+
+angles_deg = [1, 5, 10, 20, 45]; % test angles
+fprintf('%-10s %-12s %-12s %-10s\\n', 'Angle', 'omega_BI(x)', 'Linear', 'Error%%');
+
+for ang = angles_deg
+    phi = deg2rad(ang); theta = deg2rad(ang/2); psi = deg2rad(ang/3);
+    dphi = 0.01; dtheta = 0.005; dpsi = 0.002; % rates [rad/s]
+    
+    % Nonlinear ωBR
+    M = [1, 0, -sin(theta);
+         0, cos(phi), cos(theta)*sin(phi);
+         0, -sin(phi), cos(theta)*cos(phi)];
+    wBR_nonlin = M * [dphi; dtheta; dpsi];
+    
+    % Nonlinear ωRIB
+    R_bf_rf = [1, psi, -theta;
+              -psi, 1, phi;
+               theta, -phi, 1];
+    % More accurate DCM
+    R_exact = [cos(theta)*cos(psi), cos(theta)*sin(psi), -sin(theta);
+               -cos(phi)*sin(psi)+sin(phi)*sin(theta)*cos(psi), cos(phi)*cos(psi)+sin(phi)*sin(theta)*sin(psi), sin(phi)*cos(theta);
+               sin(phi)*sin(psi)+cos(phi)*sin(theta)*cos(psi), -sin(phi)*cos(psi)+cos(phi)*sin(theta)*sin(psi), cos(phi)*cos(theta)];
+    wRIB_exact = R_exact * [0; -w0; 0];
+    
+    % Linearized
+    wBI_linear = [dphi - psi*w0; dtheta - w0; dpsi + phi*w0];
+    wBI_exact = wBR_nonlin + wRIB_exact;
+    
+    err = norm(wBI_linear - wBI_exact)/norm(wBI_exact)*100;
+    fprintf('%-10.0f %-12.6f %-12.6f %-10.2f\\n', ang, wBI_exact(1), wBI_linear(1), err);
+end
+
+fprintf('\\nNote: linearization error grows with angle. >10° → use quaternions!\\n');`,
+    traps: [
+      "⚠️ The −ω₀ in ωRIBy is the single most common source of sign errors. It's negative because y-axis opposes h.",
+      "⚠️ The 3-2-1 Euler angle parameterization has a singularity at θ = π/2 (gimbal lock). This is absent in quaternion representation.",
+      "⚠️ The linearized relation ωBR ≈ (φ̇, θ̇, ψ̇) is valid ONLY for small angles. For large maneuvers, use the full matrix.",
+      "⚠️ The 4ω₀² in the roll equation comes from BOTH the GG torque (3ω₀²σx) and the kinematic ω₀² term from ωBI decomposition."
+    ],
+    drills: [
+      { q: "Why is ωRIBy = −ω₀ negative?", a: "Because the y-axis of the orbital frame is defined opposite to the orbital angular momentum vector h. The orbit rotates about +h, but expressed in the orbital frame this is rotation about −y." },
+      { q: "What is the singularity in 3-2-1 Euler angles and how is it avoided?", a: "At θ = π/2 (pitch = 90°), the inverse relations contain secθ → ∞. Avoided by using quaternions, which have no singularities." },
+      { q: "For a nadir-pointing satellite with φ = θ = ψ = 0, what is ωBI?", a: "ωBI = (0, −ω₀, 0). The satellite rotates once per orbit about the y-axis (perpendicular to the orbital plane) to maintain nadir pointing." },
+    ]
+  },
+
+  /* ═══ MODULE 24: FINAL EXAM PRACTICE ═══ */
+  {
+    id: "exam_practice", num: "🎓", title: "FINAL EXAM PRACTICE — Chapter 2B", pages: "Comprehensive", icon: "🏆",
+    overview: {
+      why: "This module consolidates everything from Chapter 2 Part B into exam-format questions with complete solutions. These are based on patterns from sms_oral_questions.pdf — the professor's actual exam questions. Each question has the full oral answer structure.",
+      objective: "Practice answering 12 exam questions covering ALL major topics: PID vs PD, reaction wheels, torqrods, gravity gradient stability, bang-bang control, DeBra-Delp, wheel saturation, momentum management.",
+      realMission: "Your oral exam is the real mission. These questions prepare you for the exact format and depth Professor Iess expects."
+    },
+    equations: [],
+    derivation: "",
+    matlab: "",
+    traps: [],
+    drills: [],
+    examQuestions: [
+      {
+        q: "Q1: Dimostrare che un controllo PID è meglio di un PD. (Prove PID is better than PD.)",
+        topic: "PID vs PD", difficulty: "⭐⭐⭐",
+        answer: `**Opening:** PD control cannot eliminate steady-state error under constant disturbance; PID can.
+
+**Key Derivation:**
+PD: Iy·θ̈ + kd·θ̇ + kp·θ = D
+  At steady state: θ∞ = D/kp ≠ 0  ← residual error!
+
+PID: Iy·θ̈ + kd·θ̇ + kp·θ + ki·∫θ dt = D
+  Differentiate: Iy·θ⃛ + kd·θ̈ + kp·θ̇ + ki·θ = 0
+  At steady state: ki·θ∞ = 0 → θ∞ = 0  ✓
+
+**Stability (Routh-Hurwitz):**
+  Char. eq: Iy·s³ + kd·s² + kp·s + ki = 0
+  Conditions: kd > 0, ki > 0, kp > Iy·ki/kd
+
+**Real example:** Solar radiation pressure on a planetary SC is nearly constant → PID required.
+
+**Conclusion:** PID nulls steady-state error because the integral term accumulates until Mc exactly cancels D.`
+      },
+      {
+        q: "Q2: Reaction wheels con tutte le formule e limitazioni. (RW with all formulas and limitations.)",
+        topic: "Reaction Wheels", difficulty: "⭐⭐⭐",
+        answer: `**Opening:** RWs are momentum exchange devices that produce torque by changing their angular velocity relative to the spacecraft.
+
+**Key Equations:**
+  Conservation: ḣs + ḣW = 0 (total momentum unchanged)
+  One-axis: (Iz+Iw)·ψ̈ = −Iw·Ω̇w
+  DC motor: V = Ri + kw·θ̇,  τ = kT·i − kd·θ̇
+  Saturation: Cmax = Iw·ωmax,  tmax = (Cmax−JW0)/D
+
+**Limitations:**
+  1) Cannot change total system momentum (need external torque for desaturation)
+  2) Saturation under constant disturbance: Jw = JW0 + D·t → saturates at tmax
+  3) Back-EMF limits torque at high speed
+  4) Minimum 3 for 3-axis, 4 recommended for redundancy
+
+**Desaturation:**
+  Apply Mdes > D externally (thrusters or torqrods)
+  During desat: θ∞ = (D−Mdes)/kp, J̇w = D−Mdes < 0
+  Trade-off: faster desat → larger pointing error
+
+**Configuration:** 4 wheels, pyramidal, β cant angle. AW = [1,0,−1,0; 0,1,0,−1; 1,1,1,1]`
+      },
+      {
+        q: "Q3: Quante reaction wheels usi e come le disponi? (How many RW and how do you arrange them?)",
+        topic: "RWA Configuration", difficulty: "⭐⭐",
+        answer: `**Opening:** Minimum 3 wheels for 3-axis control, but 4 in pyramidal configuration for redundancy.
+
+**Configuration:**
+  Wheels 1&3: rotation axis in x-z plane at angle β from XB-YB plane
+  Wheels 2&4: rotation axis in y-z plane at angle β from XB-YB plane
+  All four contribute to z-axis torque
+
+**Distribution matrix:**
+  [AW] = [1,0,−1,0; 0,1,0,−1; 1,1,1,1]
+  3 equations, 4 unknowns → underdetermined (1D null space)
+
+**Torque optimization:** Minimize Σ Ti² → ΔT = T1−T2+T3−T4 = 0
+  This minimizes power (P ∝ i² ∝ T²)
+
+**Momentum management:** ΔhW = h1−h2+h3−h4 → 0
+  Feedback: ΔTCi = (−1)ⁱ K·ΔhW (null-space, zero body torque)
+
+**Why not 3?** One wheel failure → loss of one control axis → mission failure.`
+      },
+      {
+        q: "Q4: Gravity gradient: cosa controlla? Limitazioni, condizioni su inerzia.",
+        topic: "GG Stabilization", difficulty: "⭐⭐⭐",
+        answer: `**Opening:** Gravity gradient provides a passive restoring torque that tends to align the minimum-inertia axis with the nadir direction.
+
+**What it controls:** Pitch and roll. Gz ≈ 0 → yaw is NOT controlled!
+
+**Linearized torques:**
+  Gx = 3ω₀²(Iz−Iy)φ,  Gy = 3ω₀²(Iz−Ix)θ,  Gz ≈ 0
+
+**Stability conditions (DeBra-Delp):**
+  Pitch: Ix > Iz (σy > 0)
+  Roll-yaw: σxσz > 0, (3σx+σxσz+1)² > 16σxσz
+  Combined: Iy > Ix > Iz and Iy < Ix + Iz
+
+**Limitations:**
+  1) Only MARGINAL stability (undamped) — no energy dissipation
+  2) Yaw uncontrolled (Gz second-order)
+  3) Under constant disturbance, angles grow secularly for symmetric SC
+  4) GG ∝ 1/R³ → very weak at high altitude
+  5) Need boom to increase (Ix−Iz) for practical error levels
+
+**Key formula:** θss = Tdy/[3ω₀²(Ix−Iz)] — reduce by increasing Ix.`
+      },
+      {
+        q: "Q5: Manovre bang-bang e on-off. Quanti thruster servono per controllare uno SC?",
+        topic: "Bang-Bang & Thrusters", difficulty: "⭐⭐",
+        answer: `**Opening:** Bang-bang is a time-optimal control using two impulsive or finite-duration thruster firings.
+
+**On-off:** u = umax if e ≥ 0, u = 0 if e < 0 (like a thermostat)
+
+**Bang-bang:** u = +umax if e ≥ e₂, u = 0 in dead zone [e₁,e₂], u = −umax if e ≤ e₁
+
+**Impulsive rotation:**
+  Iz·ψ̈ = m₀[δ(t) − δ(t−tf)]
+  tf = Iz·ψf/m₀ (minimum time for maximum impulse)
+
+**Finite pulse:** tf = Iz·ψf/(M₀τ) + τ (longer than impulsive)
+
+**How many thrusters?**
+  Minimum: 6 thrusters for full 3-axis control (±torque on each axis)
+  Can we use 1? Only for single-axis, unidirectional torque — NOT for full control.
+  For rotation + translation: 12 thrusters minimum.
+
+**Trade-off:** Thrusters consume propellant but have unlimited momentum range. Wheels have limited momentum but no propellant cost.`
+      },
+      {
+        q: "Q6: PD con disturbo impulsivo e costante. Come si può diminuire l'errore sull'angolo?",
+        topic: "PD Control", difficulty: "⭐⭐⭐",
+        answer: `**Opening:** Under impulsive disturbance, PD gives θ∞ = 0. Under constant disturbance, θ∞ = D/kp ≠ 0.
+
+**Impulsive disturbance:**
+  Iy·θ̈ + kd·θ̇ + kp·θ = 0 (after impulse)
+  Damped oscillation → θ∞ = 0 ✓
+
+**Constant disturbance D:**
+  Iy·θ̈ + kd·θ̇ + kp·θ = D
+  θ∞ = D/kp ≠ 0
+
+**How to decrease θ∞:**
+  Method 1: Increase kp → θ∞ = D/kp decreases
+    BUT: larger kp → larger control torques → more current → more POWER
+    The current i in the wheel is larger, and P = V·i increases.
+
+  Method 2: Add integral term (PID) → θ∞ = 0
+
+  Method 3: For nadir pointing, GG helps: θ∞ = D/[kp + 3ω₀²(Ix−Iz)]
+
+**Consequences of larger kp:**
+  - Higher bandwidth → amplifies noise
+  - Larger torques → higher power consumption
+  - Faster response but potentially larger overshoot if kd not adjusted`
+      },
+      {
+        q: "Q7: Se devi scegliere fra solo ruote e solo thruster, chi scegli? (Wheels only vs thrusters only?)",
+        topic: "Actuator Selection", difficulty: "⭐⭐",
+        answer: `**Opening:** It depends on the mission, but for most long-duration missions: wheels + thrusters for desaturation.
+
+**If forced to choose ONE:**
+
+**Wheels only:**
+  ✅ Fine pointing accuracy (continuous torque)
+  ✅ No propellant → unlimited operational life
+  ✅ Low disturbance (smooth, no structural excitation)
+  ❌ Cannot change total angular momentum → saturate under constant D
+  ❌ Need external actuator for desaturation → MISSION FAILS without it
+
+**Thrusters only:**
+  ✅ Can produce any torque, any momentum change
+  ✅ No saturation (unlimited momentum capacity)
+  ✅ Can also perform orbit maneuvers
+  ❌ Propellant limited → finite lifetime
+  ❌ Coarse control (on/off) → poor pointing
+  ❌ Structural excitation (especially bang-bang)
+  ❌ Plume contamination
+
+**My choice:** For an Earth observation satellite needing arcsecond pointing over years, I choose WHEELS (with torqrods for desaturation — they need no propellant either). For a short interplanetary cruise, THRUSTERS may be acceptable.`
+      },
+      {
+        q: "Q8: Le leggi di controllo: on-off, bang-bang, PD, PID. Quando usi ciascuna?",
+        topic: "Control Laws Summary", difficulty: "⭐⭐⭐",
+        answer: `**Opening:** The choice depends on actuator type, disturbance characteristics, and accuracy requirements.
+
+**On-off:** Simplest. Like a thermostat. Used when only binary control is available.
+  Example: thermal heaters on spacecraft.
+
+**Bang-bang:** Time-optimal rotation. Two firings: accelerate then decelerate.
+  Use: large slew maneuvers with thrusters (e.g., Cassini reorientation).
+  Dead zone prevents chattering but allows residual error.
+  Excites structural modes → not for fine pointing.
+
+**PD (Proportional-Derivative):**
+  u = −kp·θ − kd·θ̇
+  Use: impulsive disturbances (θ∞ = 0) or when small steady-state error is acceptable.
+  Simple, robust, well-understood.
+  Limitation: θ∞ = D/kp under constant disturbance.
+
+**PID (Proportional-Integral-Derivative):**
+  u = −kp·θ − kd·θ̇ − ki·∫θ dt
+  Use: constant disturbances where θ∞ = 0 is required.
+  Example: nadir pointing under SRP.
+  Stability: kd>0, ki>0, kp > Iy·ki/kd (Routh-Hurwitz).
+
+**Summary table:**
+  Impulsive D → PD sufficient
+  Constant D, error OK → PD
+  Constant D, zero error → PID required
+  Large slew → bang-bang with thrusters`
+      },
+      {
+        q: "Q9: Tempo di saturazione e desaturazione con le formule.",
+        topic: "Saturation & Desaturation", difficulty: "⭐⭐",
+        answer: `**Opening:** Under constant disturbance, a reaction wheel accumulates angular momentum until it reaches its maximum speed.
+
+**Saturation time:**
+  Cmax = Iw·ωmax  (maximum stored momentum)
+  Under constant D: Jw(t) = Jw0 + D·t
+  tmax = (Cmax − Jw0)/D
+
+**Example:** Iw = 0.05 kg·m², ωmax = 5000 rpm, D = 0.01 N·m
+  Cmax = 0.05 × 524 = 26.2 N·m·s
+  tmax = 26.2/0.01 = 2618 s ≈ 43.6 min
+
+**Desaturation strategies:**
+  1) Impulsive (thrusters) — fast but uses propellant
+  2) Continuous (magnetotorquers) — slow, no propellant, LEO only
+
+**During desaturation (Mdes > D applied externally):**
+  Iy·θ̈ = D − Mdes + Mc,  Mc = −kd·θ̇ − kp·θ
+  θ∞ = (D − Mdes)/kp  (opposite sign to normal operation!)
+  J̇w = D − Mdes < 0  (wheel decelerates ✓)
+
+**Trade-off:** Faster desat (larger Mdes) → larger pointing error during maneuver.`
+      },
+      {
+        q: "Q10: Magneto torquers: come funzionano e limitazioni.",
+        topic: "Magnetotorquers", difficulty: "⭐⭐",
+        answer: `**Opening:** Torqrods produce a magnetic moment M that interacts with the Earth's field B to produce torque T = M × B.
+
+**How they work:**
+  - Thin coil with controlled current → magnetic dipole M = NiA
+  - Torque: T = M × B (always perpendicular to B!)
+
+**Key limitation:** T ⊥ B always. Cannot produce torque along B direction.
+  Matrix [B×] has rank 2 → need another actuator for the third axis.
+
+**Optimal control:** M = (B × Tc)/|B|²
+  Produces M ⊥ B, giving the closest achievable torque to desired Tc.
+
+**Hybrid scheme:** Torqrods for roll-yaw, reaction wheel for pitch.
+  The 3×3 matrix becomes invertible (if By ≠ 0).
+
+**Altitude limitation:** B ∝ 1/r³
+  LEO (400 km): B ~ 3×10⁻⁵ T → good torques
+  GEO (36000 km): B ~ 10⁻⁷ T → essentially useless
+
+**Momentum dumping:** M = −k(B × Δh)/|B|²
+  Not exact but effective over multiple orbits.`
+      },
+      {
+        q: "Q11: Stabilità di un satellite triassiale passivo con il diagramma di DeBra-Delp.",
+        topic: "DeBra-Delp", difficulty: "⭐⭐⭐",
+        answer: `**Opening:** A passive triaxial satellite in circular orbit under gravity gradient can be marginally stable if the moments of inertia satisfy specific conditions.
+
+**Characteristic equation (roll-yaw):**
+  s⁴ + ω₀²(3σx + σxσz + 1)s² + 4ω₀⁴σxσz = 0
+
+**For stability (s purely imaginary):**
+  1. σxσz > 0 (same sign → quadrants I or III)
+  2. 3σx + σxσz + 1 > 0 (positive sum)
+  3. Discriminant > 0: (3σx+σxσz+1)² > 16σxσz
+
+**Combined with pitch (Ix > Iz) and σ < 1:**
+  Iy > Ix > Iz  AND  Iy < Ix + Iz
+
+**DeBra-Delp diagram:** σx vs σz plot showing the stable region.
+  Only region A is exploited: σx > 0, σz > 0, σz < σx.
+
+**Important caveats:**
+  - This is MARGINAL stability (oscillation, no convergence)
+  - Any dissipation → destabilization (Likins-Pringle paradox)
+  - Symmetric case (σz = 0) → secular divergence
+  - Yaw practically uncontrollable with passive GG alone`
+      },
+      {
+        q: "Q12: Schema completo di un sistema ACS basato su ruote di reazione.",
+        topic: "Complete ACS Architecture", difficulty: "⭐⭐⭐",
+        answer: `**Opening:** A complete RW-based ACS has five layers: sensing, estimation, control law, torque allocation, and momentum management.
+
+**Architecture (from sensors to actuators):**
+  1. SENSORS: Star trackers (attitude) + Gyros (angular rate)
+  2. OBSERVER: EKF combining ST and gyro data → q̂, b̂
+  3. CONTROL LAW: PID computes desired body torque Tc
+     Tci = −kip(θcom,i − θi) − kid·θ̇i − kii·∫(θcom,i − θi)dt
+  4. TORQUE ALLOCATION: T = AW^T(AW·AW^T)⁻¹ · T̂C
+     Minimizes Σ Ti² (power) with constraint ΔT = 0
+  5. MOMENTUM MANAGEMENT: Ti += (−1)ⁱ K·ΔhW
+     Keeps wheel speeds balanced without affecting body torques
+  6. DESATURATION: Torqrods or thrusters when wheels approach Cmax
+
+**Key equations:**
+  [AW] = [1,0,−1,0; 0,1,0,−1; 1,1,1,1]
+  T̂C = (TC/cosβ, TC/cosβ, TC/sinβ)
+  ΔT = 0 → minimum power
+  ΔhW = 0 → maximum saturation time
+
+**Redundancy:** 4 wheels. One failure → 3 remaining still span 3D.`
+      },
+    ]
+  },
+];
+
+// ─── TABS ───────────────────────────────────────────────
+const TABS = ["Overview","Equations","Derivation","MATLAB","Exam Traps","Drill"];
+const TAB_ICONS = ["📖","📝","🔍","💻","⚠️","🎯"];
+
+// ─── MAIN APP ───────────────────────────────────────────
+export default function App() {
+  const [activeSection, setActiveSection] = useState("notation");
+  const [activeTab, setActiveTab] = useState(0);
+  const [notationFilter, setNotationFilter] = useState("");
+  const [drillReveal, setDrillReveal] = useState({});
+  const [expandedDeriv, setExpandedDeriv] = useState(true);
+  const [examReveal, setExamReveal] = useState({});
+
+  const activeModule = MODULES.find(m => m.id === activeSection);
+
+  const filteredNotation = useMemo(() => {
+    if (!notationFilter) return NOTATION;
+    const q = notationFilter.toLowerCase();
+    return NOTATION.map(cat => ({...cat, rows: cat.rows.filter(r =>
+      r.sym.toLowerCase().includes(q) || r.desc.toLowerCase().includes(q) || r.detail.toLowerCase().includes(q)
+    )})).filter(cat => cat.rows.length > 0);
+  }, [notationFilter]);
+
+  const isExamModule = activeSection === "exam_practice";
+
+  return (
+    <div style={{display:"flex",height:"100vh",fontFamily:"'IBM Plex Sans','Segoe UI',system-ui,sans-serif",background:C.bg,color:C.t1,overflow:"hidden"}}>
+      {/* SIDEBAR */}
+      <div style={{width:240,minWidth:240,background:C.bgCard,borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        <div style={{padding:"14px 14px 10px",borderBottom:`1px solid ${C.border}`}}>
+          <div style={{fontSize:10,color:C.t3,fontFamily:"monospace",letterSpacing:1}}>SMS • SAPIENZA</div>
+          <div style={{fontSize:13,fontWeight:600,marginTop:2}}>Ch 2B: Attitude Control</div>
+          <div style={{fontSize:10,color:C.t3}}>FINAL — Slides 119–168 + Exam</div>
+        </div>
+        <div style={{flex:1,overflowY:"auto",padding:6}}>
+          <button onClick={()=>{setActiveSection("notation");setActiveTab(0);}}
+            style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:6,cursor:"pointer",border:"none",background:activeSection==="notation"?C.bgHover:"transparent",width:"100%",textAlign:"left",borderLeft:activeSection==="notation"?`3px solid ${C.accent}`:"3px solid transparent"}}>
+            <span style={{fontSize:14}}>📑</span>
+            <span style={{fontSize:12,fontWeight:500,color:activeSection==="notation"?C.t1:C.t2}}>Appendix Notation</span>
+          </button>
+          {MODULES.map(m => (
+            <button key={m.id} onClick={()=>{setActiveSection(m.id);setActiveTab(0);setDrillReveal({});setExamReveal({});}}
+              style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:6,cursor:"pointer",border:"none",background:activeSection===m.id?C.bgHover:"transparent",width:"100%",textAlign:"left",borderLeft:activeSection===m.id?`3px solid ${m.id==="exam_practice"?C.gold:C.accent}`:"3px solid transparent",marginTop:2}}>
+              <span style={{fontSize:13,flexShrink:0}}>{m.icon}</span>
+              <div style={{minWidth:0}}>
+                <div style={{fontSize:11,fontWeight:m.id==="exam_practice"?700:500,color:activeSection===m.id?C.t1:m.id==="exam_practice"?C.gold:C.t2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{m.num}. {m.title}</div>
+                <div style={{fontSize:9,color:C.t3,fontFamily:"monospace"}}>{m.pages}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* MAIN */}
+      <div style={{flex:1,overflowY:"auto",padding:"20px 28px"}}>
+        {activeSection === "notation" ? (
+          <div>
+            <h2 style={{fontSize:18,fontWeight:700,marginBottom:4}}>📑 Appendix Notation</h2>
+            <p style={{fontSize:12,color:C.t3,marginBottom:12}}>Symbols from Appendices A, B, C (Slides 119–168)</p>
+            <input placeholder="🔍 Search..." value={notationFilter} onChange={e=>setNotationFilter(e.target.value)}
+              style={{width:"100%",maxWidth:500,padding:"8px 12px",borderRadius:6,border:`1px solid ${C.border}`,background:C.bgCard,color:C.t1,fontSize:12,marginBottom:16,outline:"none"}}/>
+            {filteredNotation.map((cat,ci) => (
+              <div key={ci} style={{marginBottom:20}}>
+                <h3 style={{fontSize:14,fontWeight:600,color:C.accent,marginBottom:8,borderBottom:`1px solid ${C.border}`,paddingBottom:4}}>{cat.cat}</h3>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                  <thead><tr style={{borderBottom:`1px solid ${C.border}`}}>
+                    {["Symbol","Description","Details"].map(h=><th key={h} style={{textAlign:"left",padding:"6px 10px",color:C.t3,fontWeight:500,fontSize:11}}>{h}</th>)}
+                  </tr></thead>
+                  <tbody>{cat.rows.map((r,ri)=>(
+                    <tr key={ri} style={{borderBottom:`1px solid ${C.border}22`}}>
+                      <td style={{padding:"6px 10px",fontFamily:"monospace",color:C.warn,fontWeight:600}}>{r.sym}</td>
+                      <td style={{padding:"6px 10px",color:C.t2}}>{r.desc}</td>
+                      <td style={{padding:"6px 10px",color:C.t3,fontSize:11}}>{r.detail}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+        ) : isExamModule ? (
+          /* ─── EXAM PRACTICE MODULE ─── */
+          <div>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+              <span style={{fontSize:28}}>🏆</span>
+              <div>
+                <h2 style={{fontSize:19,fontWeight:700,color:C.gold}}>Final Exam Practice — Chapter 2B</h2>
+                <span style={{fontSize:12,color:C.t3}}>12 questions based on Professor Iess's exam patterns (sms_oral_questions.pdf)</span>
+              </div>
+            </div>
+            <p style={{fontSize:12,color:C.t2,marginBottom:16,lineHeight:1.6}}>
+              Each question follows the oral exam format: opening statement → key derivation → real example → conclusion.
+              Practice speaking these answers aloud — timing yourself to ~3 minutes per question.
+            </p>
+            {activeModule.examQuestions.map((eq, i) => (
+              <div key={i} style={{marginBottom:16,background:C.bgCard,borderRadius:10,border:`1px solid ${C.border}`,overflow:"hidden"}}>
+                <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:600,color:C.t1}}>{eq.q}</div>
+                    <div style={{display:"flex",gap:8,marginTop:4}}>
+                      <span style={{fontSize:10,padding:"2px 8px",borderRadius:4,background:C.accentGlow,color:C.accent}}>{eq.topic}</span>
+                      <span style={{fontSize:10,color:C.t3}}>{eq.difficulty}</span>
+                    </div>
+                  </div>
+                  <button onClick={()=>setExamReveal(prev=>({...prev,[i]:!prev[i]}))}
+                    style={{fontSize:11,color:C.ok,background:"none",border:`1px solid ${C.ok}44`,borderRadius:6,padding:"5px 14px",cursor:"pointer",whiteSpace:"nowrap",fontWeight:600}}>
+                    {examReveal[i] ? "Hide Solution" : "Show Solution"}
+                  </button>
+                </div>
+                {examReveal[i] && (
+                  <div style={{padding:16}}>
+                    <pre style={{fontFamily:"'JetBrains Mono',monospace",fontSize:11.5,color:C.t2,whiteSpace:"pre-wrap",lineHeight:1.7,background:C.bg,borderRadius:8,padding:16,border:`1px solid ${C.border}`}}>{eq.answer}</pre>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : activeModule ? (
+          /* ─── REGULAR MODULE ─── */
+          <div>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
+              <span style={{fontSize:22}}>{activeModule.icon}</span>
+              <div>
+                <h2 style={{fontSize:17,fontWeight:700}}>Module {activeModule.num}: {activeModule.title}</h2>
+                <span style={{fontSize:11,color:C.t3,fontFamily:"monospace"}}>{activeModule.pages}</span>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:4,marginTop:12,marginBottom:16,flexWrap:"wrap"}}>
+              {TABS.map((tab,i) => (
+                <button key={tab} onClick={()=>setActiveTab(i)}
+                  style={{padding:"6px 14px",borderRadius:6,border:`1px solid ${activeTab===i?C.accent:C.border}`,background:activeTab===i?C.accentGlow:"transparent",color:activeTab===i?C.accent:C.t2,fontSize:12,cursor:"pointer",fontWeight:activeTab===i?600:400}}>
+                  {TAB_ICONS[i]} {tab}
+                </button>
+              ))}
+            </div>
+            <div style={{background:C.bgCard,borderRadius:10,border:`1px solid ${C.border}`,padding:20}}>
+              {activeTab===0 && (
+                <div>
+                  <div style={{background:C.accentGlow,borderRadius:8,padding:14,marginBottom:14,borderLeft:`3px solid ${C.accent}`}}>
+                    <div style={{fontSize:12,fontWeight:600,color:C.accent,marginBottom:4}}>💡 Why This Matters</div>
+                    <div style={{fontSize:13,color:C.t2,lineHeight:1.6}}>{activeModule.overview.why}</div>
+                  </div>
+                  <div style={{marginBottom:12}}>
+                    <div style={{fontSize:12,fontWeight:600,color:C.ok,marginBottom:4}}>🎯 Learning Objective</div>
+                    <div style={{fontSize:13,color:C.t2,lineHeight:1.6}}>{activeModule.overview.objective}</div>
+                  </div>
+                  <div style={{background:`${C.warn}11`,borderRadius:8,padding:14,borderLeft:`3px solid ${C.warn}`}}>
+                    <div style={{fontSize:12,fontWeight:600,color:C.warn,marginBottom:4}}>🛰️ Real Mission Example</div>
+                    <div style={{fontSize:13,color:C.t2,lineHeight:1.6}}>{activeModule.overview.realMission}</div>
+                  </div>
+                </div>
+              )}
+              {activeTab===1 && <div>{activeModule.equations.map((eq,i)=>(
+                <div key={i} style={{marginBottom:16,background:C.bg,borderRadius:8,padding:14,border:`1px solid ${C.border}`}}>
+                  <div style={{fontSize:12,fontWeight:600,color:C.accent,marginBottom:6}}>{eq.name}</div>
+                  <pre style={{fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.warn,whiteSpace:"pre-wrap",lineHeight:1.5,margin:0}}>{eq.eq}</pre>
+                  <div style={{fontSize:11,color:C.t3,marginTop:8,lineHeight:1.5}}>{eq.explain}</div>
+                </div>
+              ))}</div>}
+              {activeTab===2 && <div>
+                <button onClick={()=>setExpandedDeriv(!expandedDeriv)} style={{fontSize:12,color:C.accent,background:"none",border:"none",cursor:"pointer",marginBottom:8}}>
+                  {expandedDeriv?"▼ Collapse":"▶ Expand"} Full Derivation
+                </button>
+                {expandedDeriv && <pre style={{fontFamily:"'JetBrains Mono',monospace",fontSize:11.5,color:C.t2,whiteSpace:"pre-wrap",lineHeight:1.6,background:C.bg,borderRadius:8,padding:16,border:`1px solid ${C.border}`}}>{activeModule.derivation}</pre>}
+              </div>}
+              {activeTab===3 && <div>
+                <div style={{fontSize:11,color:C.ok,fontFamily:"monospace",marginBottom:10}}>% Ready-to-run MATLAB code</div>
+                <pre style={{fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.t1,whiteSpace:"pre-wrap",lineHeight:1.5,background:"#0a0d16",borderRadius:8,padding:16,border:`1px solid ${C.border}`}}>{activeModule.matlab}</pre>
+              </div>}
+              {activeTab===4 && <div>{activeModule.traps.map((trap,i)=>(
+                <div key={i} style={{background:`${C.err}11`,borderRadius:8,padding:12,marginBottom:10,borderLeft:`3px solid ${C.err}`,fontSize:13,color:C.t2,lineHeight:1.6}}>{trap}</div>
+              ))}</div>}
+              {activeTab===5 && <div>{activeModule.drills.map((d,i)=>(
+                <div key={i} style={{marginBottom:14}}>
+                  <div style={{background:C.bg,borderRadius:8,padding:12,border:`1px solid ${C.border}`}}>
+                    <div style={{fontSize:12,fontWeight:600,color:C.accent,marginBottom:4}}>Q{i+1}: {d.q}</div>
+                    <button onClick={()=>setDrillReveal(prev=>({...prev,[`${activeSection}-${i}`]:!prev[`${activeSection}-${i}`]}))}
+                      style={{fontSize:11,color:C.ok,background:"none",border:`1px solid ${C.ok}33`,borderRadius:4,padding:"3px 10px",cursor:"pointer",marginTop:4}}>
+                      {drillReveal[`${activeSection}-${i}`]?"Hide Answer":"Reveal Answer"}
+                    </button>
+                    {drillReveal[`${activeSection}-${i}`] && (
+                      <div style={{marginTop:8,padding:10,background:`${C.ok}11`,borderRadius:6,fontSize:12,color:C.t2,lineHeight:1.6,borderLeft:`3px solid ${C.ok}`}}>✅ {d.a}</div>
+                    )}
+                  </div>
+                </div>
+              ))}</div>}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(App));
+</script>
+</body>
+</html>

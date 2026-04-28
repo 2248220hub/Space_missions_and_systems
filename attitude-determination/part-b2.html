@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attitude Dynamics & Control — Advanced Topics (Part 2)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0c0f1a; color: #e2e8f0; min-height: 100vh; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo } = React;
+
+/* ═══════════════════════════════════════════════════════════
+   Chapter 2 Part B — Attitude Dynamics & Control (Next 35%)
+   Prof. Luciano Iess — Sapienza, SMS 2025-2026
+   Reference: Sidi, "Spacecraft Dynamics and Control" (1997)
+   Slides 68-118  (Modules 12-18)
+   ═══════════════════════════════════════════════════════════ */
+
+const C = {
+  bg: "#0c0f1a", bgCard: "#141828", bgHover: "#1a2038",
+  border: "#232946", borderLight: "#2e3560",
+  accent: "#5b8def", accentDim: "#3a5fad", accentGlow: "rgba(91,141,239,0.12)",
+  warn: "#f0ad4e", warnDim: "#8a6d34",
+  ok: "#4ecca3", okDim: "#2a7d62",
+  err: "#e74c3c",
+  t1: "#e8eaf6", t2: "#a8b2d1", t3: "#697399",
+};
+
+// ─── NOTATION (NEW SYMBOLS FOR THIS SECTION) ─────────────
+const NOTATION = [
+  { cat: "Librations & Stability", rows: [
+    { sym: "ω₁, ω₂", desc: "Roll-yaw libration frequencies", detail: "Roots of s⁴ + ω₀²(3σx+σxσz+1)s² + 4ω₀⁴σxσz = 0. Two distinct pure frequencies for stable triaxial SC." },
+    { sym: "Δ(s)", desc: "Characteristic polynomial (Laplace)", detail: "For symmetric case: Δ(s) = s²[s² + ω₀²(3σx+1)]. Poles at s=0 → secular growth." },
+    { sym: "θss", desc: "Steady-state pitch angle", detail: "Under constant Tdy: θss = Tdy/[3ω₀²(Ix−Iz)]. Decrease by increasing Ix (boom)." },
+    { sym: "C = Tdy/[3ω₀²(Ix−Iz)]", desc: "Pitch bias amplitude", detail: "Oscillation of form C(1−cos ωt). Inversely proportional to (Ix−Iz)." },
+  ]},
+  { cat: "Wheel Damper", rows: [
+    { sym: "D (viscous coeff.)", desc: "Wheel-damper viscous friction", detail: "Passive damper torque = D(θ̇ − ωw). Dissipates libration energy. NOT the same as disturbance D." },
+    { sym: "Ωw = θ̇ − ωw", desc: "Relative angular velocity (wheel vs body)", detail: "The viscous torque is proportional to Ωw. The damper slows the relative motion." },
+    { sym: "Iw (damper wheel)", desc: "Moment of inertia of damper wheel", detail: "Small passive flywheel immersed in viscous fluid. Not actively controlled." },
+  ]},
+  { cat: "Magnetic Control", rows: [
+    { sym: "M = (Mx, My, Mz)ᵀ", desc: "Magnetic dipole moment vector", detail: "Produced by torqrods (current coils). Units: A·m². Interacts with B to produce torque." },
+    { sym: "B = (Bx, By, Bz)ᵀ", desc: "Earth's magnetic field in BF", detail: "B ≈ d/r³ where d = 7.96×10¹⁵ Wb/m. Decreases as 1/r³ → torqrods limited to LEO." },
+    { sym: "T = M × B", desc: "Magnetic torque", detail: "Cross product → torque always ⊥ to B. Cannot produce torque parallel to B!" },
+    { sym: "M = (B×Tc)/|B|²", desc: "Optimal magnetic moment", detail: "Produces M always ⊥ to B. Resulting torque is projection of Tc onto plane ⊥ B." },
+  ]},
+  { cat: "Nadir Pointing & PD Control", rows: [
+    { sym: "kp' = kp + 3ω₀²(Ix−Iz)", desc: "Effective proportional gain", detail: "Gravity gradient adds to the controller's spring term. Reduces steady-state error." },
+    { sym: "θ∞ = Tdy/kp'", desc: "PD steady-state error (nadir)", detail: "Smaller than D/kp because GG helps. Still non-zero → need PID for θ∞ = 0." },
+    { sym: "kp' > Iy·ki/kd", desc: "PID stability (nadir pointing)", detail: "Routh-Hurwitz with GG: replace kp by kp' in the condition." },
+  ]},
+  { cat: "4-Wheel RWA Architecture", rows: [
+    { sym: "[AW] (3×4)", desc: "Wheel torque distribution matrix", detail: "[1 0 −1 0; 0 1 0 −1; 1 1 1 1]. Maps 4 wheel torques to 3 body torques." },
+    { sym: "β", desc: "Wheel cant angle", detail: "Inclination of wheel axes to XB-YB plane. T̂Cz = TCz/sinβ." },
+    { sym: "ΔT = T₁−T₂+T₃−T₄", desc: "Torque null-space component", detail: "Optimization sets ΔT = 0 (minimizes ||T||²). Ensures minimum power." },
+    { sym: "ΔhW = hW1−hW2+hW3−hW4", desc: "Momentum null-space component", detail: "Momentum management sets ΔhW = 0. Feedback: ΔTCi = (−1)ⁱ K·ΔhW." },
+  ]},
+];
+
+// ─── MODULES 12-18 ──────────────────────────────────────
+const MODULES = [
+  /* ═══ MODULE 12 ═══ */
+  {
+    id: "librations_pitch", num: "12", title: "Pitch Librations Under Constant Disturbance", pages: "Slides 79–82", icon: "🔔",
+    overview: {
+      why: "When a constant disturbance torque acts on a gravity-gradient stabilized satellite, the pitch angle doesn't diverge but oscillates around a BIAS. This module derives that solution using Laplace transforms and partial fractions — a technique the professor uses extensively.",
+      objective: "Solve the pitch libration equation via Laplace transform. Show θ(t) = C[1 − cos(ω₀√(3σy)·t)] and compute the bias C = Tdy/[3ω₀²(Ix−Iz)].",
+      realMission: "GOCE (ESA) used drag-free control precisely because gravity-gradient alone cannot keep pitch error small enough for its gradiometer — the residual bias C is too large for a low-area-to-mass satellite."
+    },
+    equations: [
+      { name: "Pitch equation with constant Tdy", eq: "Iy·θ̈ + 3ω₀²(Ix−Iz)·θ = Tdy\nθ(0) = θ̇(0) = 0", explain: "Undamped 2nd-order with constant forcing. The GG term 3ω₀²(Ix−Iz) acts as a spring." },
+      { name: "Laplace domain", eq: "Θ(s) = Tdy / [Iy·s·(s² + 3ω₀²σy)]", explain: "Poles at s = 0 and s = ±iω₀√(3σy). The s = 0 pole gives the steady-state bias." },
+      { name: "Time-domain solution", eq: "θ(t) = Tdy/[Iy·3ω₀²σy] · [1 − cos(ω₀√(3σy)·t)]\n     = C·[1 − cos(ωpitch·t)]", explain: "Oscillation about the bias C. Amplitude = C (swings between 0 and 2C). ωpitch = ω₀√(3σy)." },
+      { name: "Steady-state bias", eq: "θss = C = Tdy / [3ω₀²(Ix − Iz)]", explain: "Reduce by increasing (Ix − Iz): add a boom along the z-axis to increase Ix." },
+    ],
+    derivation: `**Laplace Transform Solution (Slides 79-81):**
+
+Start with: Iy·θ̈ + 3ω₀²(Ix−Iz)·θ = Tdy,  θ(0) = θ̇(0) = 0
+
+Apply LT (using L{θ̈} = s²Θ(s) − sθ(0) − θ̇(0)):
+  Iy·s²·Θ(s) + 3ω₀²(Ix−Iz)·Θ(s) = Tdy/s
+
+  Θ(s) = Tdy / [Iy·s·(s² + 3ω₀²σy)]
+
+**Partial Fraction Decomposition:**
+  1/[s(s² + ω²)] = A/s + (Bs+C)/(s² + ω²)
+
+  Setting ω² = 3ω₀²σy:
+  A = 1/ω²,  B = 0,  C = −1/ω² (... from residue calculation)
+
+  1/[s(s² + ω²)] = (1/ω²)[1/s − s/(s² + ω²)]
+
+**Inverse LT:**
+  L⁻¹{1/s} = 1,   L⁻¹{s/(s²+ω²)} = cos(ωt)
+
+  θ(t) = [Tdy/(Iy·3ω₀²σy)]·[1 − cos(ω₀√(3σy)·t)]
+
+**Key feature:** θ oscillates between 0 and 2C with NO damping.
+
+**Numerical Example (Slide 93):**
+  Ix=6, Iy=8, Iz=4 kg·m², ω₀=0.001038 rad/s, Tdy=10⁻⁵ N·m
+  θss = 10⁻⁵/(3×0.001038²×2) = 88.67°  ← UNACCEPTABLE!
+
+  Add boom: ΔI = 74 kg·m² → Ix = 80 → θss = 2.33°  ✓`,
+    matlab: `%% Pitch Librations Under Constant Disturbance
+Ix = 80; Iy = 82; Iz = 4;       % with boom [kg·m²]
+w0 = 0.001038;                   % circular orbit 800 km [rad/s]
+sy = (Ix - Iz)/Iy;
+Tdy = 1e-5;                      % constant disturbance [N·m]
+
+% Analytical solution
+w_pitch = w0*sqrt(3*sy);
+C_bias = Tdy / (3*w0^2*(Ix - Iz));
+fprintf('Pitch frequency: %.6f rad/s (period: %.0f s)\\n', w_pitch, 2*pi/w_pitch);
+fprintf('Steady-state bias: %.4f deg\\n', rad2deg(C_bias));
+
+T_orb = 2*pi/w0;
+t = 0:1:5*T_orb;
+theta_exact = C_bias * (1 - cos(w_pitch*t));
+
+% Numerical verification
+theta_num = zeros(size(t)); dtheta = zeros(size(t));
+dt = t(2)-t(1);
+for k = 1:length(t)-1
+    ddth = (Tdy - 3*w0^2*(Ix-Iz)*theta_num(k)) / Iy;
+    dtheta(k+1) = dtheta(k) + ddth*dt;
+    theta_num(k+1) = theta_num(k) + dtheta(k+1)*dt;
+end
+
+figure;
+plot(t/T_orb, rad2deg(theta_exact), 'b-', ...
+     t/T_orb, rad2deg(theta_num), 'r--', 'LineWidth', 1.5);
+yline(rad2deg(C_bias), ':k', sprintf('C = %.3f°', rad2deg(C_bias)));
+yline(rad2deg(2*C_bias), ':k', sprintf('2C = %.3f°', rad2deg(2*C_bias)));
+xlabel('Orbits'); ylabel('\\theta [deg]');
+title('Pitch Libration: \\theta(t) = C[1 - cos(\\omega_{pitch} t)]');
+legend('Exact (LT)', 'Numerical', 'Location', 'best'); grid on;
+
+% Without boom
+C_no_boom = Tdy / (3*w0^2*(6-4));
+fprintf('\\nWithout boom: theta_ss = %.2f deg (unacceptable!)\\n', rad2deg(C_no_boom));`,
+    traps: [
+      "⚠️ θ oscillates between 0 and 2C, NOT around C symmetrically. The mean is C but the amplitude envelope is [0, 2C].",
+      "⚠️ The professor's numerical example: without boom θss = 88.67° — this is WAY outside the linear regime! The formula is only valid for small angles.",
+      "⚠️ Don't confuse ωpitch = ω₀√(3σy) with ω₀√(3). The σy factor depends on the inertia distribution!",
+      "⚠️ This is UNDAMPED oscillation. Adding a boom reduces the bias but does NOT add damping — you need a damper or active control."
+    ],
+    drills: [
+      { q: "A satellite has Ix = 80, Iz = 4 kg·m², ω₀ = 0.001 rad/s, Tdy = 10⁻⁵ N·m. What is the pitch bias?", a: "C = 10⁻⁵ / [3 × 0.001² × 76] = 10⁻⁵ / 2.28×10⁻⁴ = 0.0439 rad ≈ 2.51°." },
+      { q: "How can you reduce the pitch bias without active control?", a: "Increase (Ix − Iz) by adding a boom along the z-axis (nadir direction). This increases Ix while keeping Iz small." },
+      { q: "What are the poles of Θ(s) for the pitch libration problem?", a: "s = 0 (gives the DC bias) and s = ±iω₀√(3σy) (gives the oscillatory part)." },
+    ]
+  },
+
+  /* ═══ MODULE 13 ═══ */
+  {
+    id: "librations_rollYaw", num: "13", title: "Roll-Yaw Librations & Symmetric Satellite Instability", pages: "Slides 83–90", icon: "🌀",
+    overview: {
+      why: "Roll-yaw librations are coupled and much harder to analyze than pitch. For a SYMMETRIC satellite (Ix = Iy), the system has poles at s = 0 with multiplicity 2 and 3, meaning angles grow with time — passive GG stabilization FAILS.",
+      objective: "Solve the roll-yaw equations using Cramer's rule in the Laplace domain. Show that the symmetric case has secular divergence. Know the triaxial case has oscillation + bias.",
+      realMission: "This is why no operational nadir-pointing satellite relies on passive GG alone for yaw control. The yaw GG torque is effectively zero, leading to secular drift."
+    },
+    equations: [
+      { name: "Roll-yaw in Laplace domain", eq: "[s²+4ω₀²σx    −sω₀(1−σx)] [Φ(s)]   [Tdx/(sIx)]\n[sω₀(1−σz)     s²+ω₀²σz  ] [Ψ(s)] = [Tdz/(sIz)]", explain: "2×2 system solved by Cramer's rule. Denominator Δ(s) = s⁴ + ω₀²(3σx+σxσz+1)s² + 4ω₀⁴σxσz." },
+      { name: "Symmetric case (Ix = Iy, σz = 0)", eq: "Δ(s) = s²·[s² + ω₀²(3σx + 1)]\nPoles at s = 0 (multiplicity ≥ 2) → secular growth", explain: "1/s² ↔ t·u(t), 1/s³ ↔ t²/2. Angles grow linearly or quadratically — UNSTABLE." },
+      { name: "Triaxial case (stable region)", eq: "Δ(s) = (s² + ω₁²)(s² + ω₂²)\nSolution: oscillatory with DC bias from 1/s pole", explain: "Two libration frequencies ω₁, ω₂ from the characteristic equation. Bias from constant disturbance." },
+    ],
+    derivation: `**Cramer's Rule Solution (Slides 83-84):**
+
+From the LT roll-yaw equations (zero IC, constant Td):
+
+  [Φ(s)]     1    [s²+ω₀²σz    sω₀(1−σx)] [Tdx/(sIx)]
+  [Ψ(s)] = ─── × [−sω₀(1−σz)  s²+4ω₀²σx] [Tdz/(sIz)]
+            Δ(s)
+
+**Symmetric case: Ix = Iy → σz = (Iy−Ix)/Iz = 0**
+
+  Δ(s) = s⁴ + ω₀²(3σx + 0 + 1)s² + 0
+       = s²[s² + ω₀²(3σx + 1)]
+
+The Φ(s) expression contains terms like:
+  Tdx(s²+0) / [Ix·s·s²(s²+ω²)] = Tdx / [Ix·s³(s²+ω²)]
+
+  L⁻¹{1/s³} = t²/2 → QUADRATIC GROWTH!
+
+**Conclusion: symmetric satellite CANNOT be passively 
+stabilized under constant disturbances.**
+
+**Triaxial case (DeBra-Delp stable region):**
+
+  Δ(s) = (s²+ω₁²)(s²+ω₂²)  [two distinct frequencies]
+
+  Φ(s) has terms like 1/[s(s²+ω₁²)(s²+ω₂²)]
+  
+  Partial fractions → DC bias + oscillation at ω₁ and ω₂
+  
+  Roll and yaw oscillate about a bias, similar to pitch 
+  but with TWO frequencies and cross-axis coupling.
+
+**Numerical example (Slide 88):**
+  Ix=80, Iy=82, Iz=4 (with z-boom):
+  - Yaw librations are large even for small disturbances
+  - Nearly impossible to control yaw passively with GG`,
+    matlab: `%% Roll-Yaw Librations: Symmetric vs Triaxial
+w0 = 0.001038; % [rad/s]
+
+%--- Case 1: Symmetric (Ix = Iy = 82, Iz = 4) ---
+Ix1 = 82; Iy1 = 82; Iz1 = 4;
+sx1 = (Iy1-Iz1)/Ix1;
+fprintf('Symmetric: sigma_x=%.3f, sigma_z=0\\n', sx1);
+fprintf('Char. eq: s^2[s^2 + %.4e] --> UNSTABLE (secular)\\n', w0^2*(3*sx1+1));
+
+%--- Case 2: Triaxial (Ix=80, Iy=82, Iz=4) ---
+Ix2 = 80; Iy2 = 82; Iz2 = 4;
+sx2 = (Iy2-Iz2)/Ix2; sz2 = (Iy2-Ix2)/Iz2;
+fprintf('\\nTriaxial: sigma_x=%.3f, sigma_z=%.3f\\n', sx2, sz2);
+
+% Solve characteristic eq for frequencies
+a4 = 1; a2 = w0^2*(3*sx2 + sx2*sz2 + 1); a0 = 4*w0^4*sx2*sz2;
+u_roots = roots([1, a2, a0]);
+fprintf('s^2 roots: %.6e, %.6e\\n', u_roots(1), u_roots(2));
+fprintf('Frequencies: w1 = %.6f, w2 = %.6f rad/s\\n', sqrt(-u_roots(1)), sqrt(-u_roots(2)));
+
+%--- Numerical simulation (triaxial, no damping) ---
+A = [0, 0, 1, 0;
+     0, 0, 0, 1;
+    -4*w0^2*sx2, 0, 0, w0*(1-sx2);
+     0, -w0^2*sz2, -w0*(1-sz2), 0];
+
+dt = 1; T = 10*(2*pi/w0); t = 0:dt:T;
+X = zeros(4, length(t));
+X(:,1) = [0; deg2rad(5); 0; 0]; % IC: psi(0) = 5 deg
+
+Tdx = 1e-5; Tdz = 0; % [N·m]
+B_dist = [0; 0; Tdx/Ix2; Tdz/Iz2];
+
+for k = 1:length(t)-1
+    dX = A*X(:,k) + B_dist;
+    X(:,k+1) = X(:,k) + dX*dt;
+end
+
+figure;
+subplot(2,1,1);
+plot(t/(2*pi/w0), rad2deg(X(1,:)), 'b', 'LineWidth', 1.5);
+ylabel('Roll \\phi [deg]'); title('Triaxial SC: Roll-Yaw Librations');
+grid on;
+subplot(2,1,2);
+plot(t/(2*pi/w0), rad2deg(X(2,:)), 'r', 'LineWidth', 1.5);
+xlabel('Orbits'); ylabel('Yaw \\psi [deg]');
+grid on;`,
+    traps: [
+      "⚠️ The symmetric satellite (σz = 0) ALWAYS diverges under constant disturbance — this is a KEY exam point.",
+      "⚠️ Poles at s = 0 with multiplicity ≥ 2 mean polynomial growth in time: L⁻¹{1/s²} = t, L⁻¹{1/s³} = t²/2.",
+      "⚠️ Even in the stable triaxial case, the yaw bias under constant Tdz is often very large because the GG yaw torque is very weak.",
+      "⚠️ The professor shows numerical simulations of nonlinear equations — pitch coupling appears even though the linearized pitch is decoupled."
+    ],
+    drills: [
+      { q: "Why does a symmetric satellite (Ix = Iy) diverge under constant disturbance?", a: "Because σz = 0 makes Δ(s) = s²[s²+ω₀²(3σx+1)], giving poles at s = 0 with multiplicity ≥ 2. This produces L⁻¹{1/s²} = t and L⁻¹{1/s³} = t²/2 — secular growth." },
+      { q: "In the triaxial stable case, how many libration frequencies exist for roll-yaw?", a: "Two: ω₁ and ω₂, from the roots of the biquadratic s⁴ + ω₀²(3σx+σxσz+1)s² + 4ω₀⁴σxσz = 0." },
+      { q: "What is the practical problem with passive GG yaw control?", a: "The GG torque along yaw is nearly zero (Gz ≈ 0 for small angles). Yaw librations are very large and nearly impossible to control passively." },
+    ]
+  },
+
+  /* ═══ MODULE 14 ═══ */
+  {
+    id: "wheel_damper", num: "14", title: "Libration Control with Passive Wheel Dampers", pages: "Slides 91–94", icon: "🛞",
+    overview: {
+      why: "Passive GG gives oscillation but NO damping. A wheel immersed in viscous fluid adds energy dissipation without active electronics. This is the simplest way to damp librations — but it's SLOW and has the same steady-state bias.",
+      objective: "Write the coupled satellite-damper equations. Derive the characteristic polynomial Δ(s). Show θss = Tdy/[3ω₀²(Ix−Iz)] is unchanged. Know the Routh-Hurwitz stability conditions.",
+      realMission: "Early gravity-gradient satellites (e.g., DODGE, ATS-3) used viscous wheel dampers for libration damping. Simple, reliable, but very slow convergence."
+    },
+    equations: [
+      { name: "Coupled equations (satellite + wheel)", eq: "Iy·θ̈ + 3ω₀²(Ix−Iz)·θ + Iw·ω̇w = Tdy\nIw·ω̇w = D(θ̇ − ωw)", explain: "D = viscous friction coefficient. The damper torque depends on the RELATIVE angular velocity between wheel and body." },
+      { name: "Characteristic polynomial", eq: "Δ(s) = Iw·s³ + D(Iw/Iy + 1)s² + 3Iw·ω₀²σy·s + 3D·ω₀²σy", explain: "3rd order. Routh-Hurwitz requires all coefficients positive (automatically satisfied for Iw>0, D>0, σy>0)." },
+      { name: "Steady-state angle", eq: "θss = lim[s→0] s·Θ(s) = Tdy / [3ω₀²(Ix−Iz)]", explain: "Same as undamped case! The damper removes oscillation but not the DC bias." },
+    ],
+    derivation: `**Coupled Equations (Slide 91):**
+
+Satellite pitch: Iy·θ̈ + 3ω₀²(Ix−Iz)·θ + Iw·ω̇w = Tdy
+Wheel:           Iw·ω̇w = D(θ̇ − ωw) = D·Ωw
+
+  where Ωw = θ̇ − ωw is the relative velocity.
+  D = viscous damping coefficient.
+
+**Laplace transform (θ(0) = θ₀, θ̇(0) = 0):**
+
+  [s² + 3ω₀²σy    s(Iw/Iy)] [Θ(s)]   [Tdy/(sIy) + sθ₀]
+  [−Ds             sIw + D  ] [ωw(s)] = [−Dθ₀           ]
+
+**Characteristic polynomial:**
+  Δ(s) = Iw·s³ + D(Iw/Iy + 1)·s² + 3Iw·ω₀²σy·s + 3D·ω₀²σy
+
+**Routh-Hurwitz:** all coefficients positive → automatic if Iw>0, D>0, σy>0.
+  Additional: D(Iw/Iy+1)·3Iw·ω₀²σy > Iw·3D·ω₀²σy → always true.
+
+**Final Value Theorem:**
+  θss = lim[s→0] sΘ(s)
+
+  Numerator at s=0: (sIw + D)·(Tdy/sIy) → D·Tdy/(0·Iy) ...
+  
+  More carefully:
+  θss = Tdy / [Iy·3ω₀²σy] = Tdy / [3ω₀²(Ix−Iz)]
+
+  ⟹ Same bias as undamped! Damper only removes oscillation.
+
+**Numerical example (Slide 93):**
+  Without boom: θss = 88.67° (way outside linear!)
+  With boom (Ix→80): θss = 2.33° (acceptable)
+  Note: passive damping is SLOW (many orbits to converge).`,
+    matlab: `%% Passive Wheel Damper for Pitch Libration
+Ix = 80; Iy = 82; Iz = 4;       % with boom [kg·m²]
+w0 = 0.001038;                   % [rad/s]
+sy = (Ix-Iz)/Iy; Iw = 0.5;
+D_visc = 0.01;                   % viscous coefficient [N·m·s]
+Tdy = 1e-5;
+
+% Steady-state prediction
+theta_ss = Tdy / (3*w0^2*(Ix-Iz));
+fprintf('Steady-state bias: %.4f deg\\n', rad2deg(theta_ss));
+
+% Numerical simulation
+dt = 1; T = 20*(2*pi/w0); t = 0:dt:T;
+theta = zeros(size(t)); dtheta = zeros(size(t));
+ww = zeros(size(t));    % wheel angular velocity
+theta(1) = deg2rad(5);  % initial perturbation
+
+for k = 1:length(t)-1
+    Omega_w = dtheta(k) - ww(k);        % relative vel
+    dww = D_visc * Omega_w / Iw;        % wheel accel
+    ddtheta = (Tdy - 3*w0^2*(Ix-Iz)*theta(k) - Iw*dww) / Iy;
+    dtheta(k+1) = dtheta(k) + ddtheta*dt;
+    theta(k+1) = theta(k) + dtheta(k+1)*dt;
+    ww(k+1) = ww(k) + dww*dt;
+end
+
+figure;
+subplot(2,1,1);
+plot(t/(2*pi/w0), rad2deg(theta), 'b', 'LineWidth', 1.5);
+yline(rad2deg(theta_ss), '--r', sprintf('\\theta_{ss} = %.2f°', rad2deg(theta_ss)));
+ylabel('\\theta [deg]'); title('Pitch with Passive Wheel Damper');
+grid on;
+subplot(2,1,2);
+plot(t/(2*pi/w0), ww*60/(2*pi), 'r', 'LineWidth', 1.5);
+xlabel('Orbits'); ylabel('\\omega_w [rpm]');
+title('Damper Wheel Speed'); grid on;`,
+    traps: [
+      "⚠️ The damper does NOT change the steady-state bias — only removes the oscillation. θss = Tdy/[3ω₀²(Ix−Iz)] in both cases.",
+      "⚠️ Don't confuse the viscous coefficient D (damper) with D (disturbance torque) — the professor uses the same letter!",
+      "⚠️ Passive damping is very slow: it takes many orbits to converge. This is a major practical limitation.",
+      "⚠️ The Routh-Hurwitz conditions are automatically satisfied for positive parameters — but the professor may ask you to verify it explicitly."
+    ],
+    drills: [
+      { q: "Does a passive wheel damper change the steady-state pitch angle?", a: "No. θss = Tdy/[3ω₀²(Ix−Iz)] — the same as without the damper. The damper only removes the oscillatory component." },
+      { q: "What physical mechanism provides the damping?", a: "Viscous friction between the wheel and the satellite body. The torque is D(θ̇ − ωw), proportional to the relative angular velocity." },
+      { q: "How do you reduce θss for a gravity-gradient satellite?", a: "Increase (Ix − Iz) by adding a gravity gradient boom along the z-axis (nadir). This increases Ix while keeping Iz small." },
+    ]
+  },
+
+  /* ═══ MODULE 15 ═══ */
+  {
+    id: "torqrods", num: "15", title: "Libration Control with Magnetotorquers", pages: "Slides 95–102", icon: "🧲",
+    overview: {
+      why: "Magnetotorquers (torqrods) are lightweight, low-power actuators ideal for LEO. The key physics: the torque T = M × B is always perpendicular to B — you CANNOT produce torque parallel to the magnetic field. This fundamental limitation drives the hybrid control architecture.",
+      objective: "Derive T = M × B and the constraint rank([B×]) = 2. Show the optimal magnetic moment M = (B×Tc)/|B|². Explain the hybrid scheme: torqrods for roll-yaw, wheel for pitch.",
+      realMission: "Most LEO Earth observation satellites (Sentinel-1, CryoSat-2) use magnetotorquers for roll-yaw + momentum dumping, with reaction wheels for pitch."
+    },
+    equations: [
+      { name: "Magnetic torque", eq: "T = M × B\n[Tx]   [0   −Bz  By ] [Mx]\n[Ty] = [Bz   0  −Bx] [My]\n[Tz]   [−By  Bx  0 ] [Mz]", explain: "Cross product matrix [B×] is singular (rank 2) — cannot produce torque along B direction." },
+      { name: "Earth's dipole field", eq: "B ≈ d/r³,   d = 7.96×10¹⁵ Wb/m", explain: "Decreases as 1/r³. Torqrods practical only for LEO (B ~ 10⁻⁵ T at 400 km, ~10⁻⁷ T at GEO)." },
+      { name: "Optimal magnetic moment", eq: "M = (B × Tc) / |B|²", explain: "Always ⊥ to B. Produces the closest achievable torque to the desired Tc." },
+      { name: "Hybrid scheme (torqrods + wheel)", eq: "[Tcx]   [0   0  −By] [Mx   ]\n[Tcy] = [−Bz 1   Bx] [ḣwy  ]\n[Tcz]   [By  0   0 ] [Mz   ]", explain: "Pitch controlled by reaction wheel (ḣwy). Roll-yaw by torqrods (Mx, Mz). Matrix is invertible!" },
+    ],
+    derivation: `**Magnetic Torque (Slide 95):**
+
+A coil with current i, area A, and N turns has magnetic moment:
+  M = NiA ê  [A·m²]
+
+The torque in a magnetic field B:
+  T = M × B
+
+In matrix form:
+  [Tx]   [ 0   −Bz   By] [Mx]
+  [Ty] = [ Bz   0   −Bx] [My]  = [B×] M
+  [Tz]   [−By   Bx   0 ] [Mz]
+
+**KEY: [B×] is a skew-symmetric matrix with rank 2.**
+  → det([B×]) = 0 → cannot invert → cannot command 
+    arbitrary torques with torqrods alone!
+
+**Optimal M (Slide 100):**
+
+Want T = M × B to be as close to desired Tc as possible.
+Choose M ⊥ B:  M = (B × Tc) / |B|²
+
+Verify: T = M × B = [(B×Tc)×B]/|B|²
+       = [B(Tc·B) − Tc|B|²]/|B|²   (BAC-CAB rule, note sign)
+       = ... projection of Tc onto plane ⊥ B.
+
+Not exactly Tc, but the best achievable.
+
+**Hybrid Control (Slide 101):**
+
+Control pitch with wheel (ḣwy), roll-yaw with torqrods:
+
+  [Tcx]   [0    0   −By] [Mx ]
+  [Tcy] = [−Bz  1    Bx] [ḣwy]
+  [Tcz]   [By   0    0 ] [Mz ]
+
+This 3×3 matrix is INVERTIBLE (det = By² ≠ 0 for most orbits).
+
+**Momentum Dumping (Slide 102):**
+
+Torqrods can dump wheel momentum:
+  Tc = −k(h − hN) = −k·Δh  (proportional to excess momentum)
+  M = (B × (−kΔh)) / |B|²
+
+The torque is not exactly −kΔh, but its projection ⊥ B.`,
+    matlab: `%% Magnetic Torque & Hybrid Control Simulation
+% LEO orbit, simplified dipole field
+mu0 = 7.96e15;     % Earth dipole [Wb·m]
+R = 6778e3;         % orbit radius [m]
+B_mag = mu0 / R^3;  % field magnitude at equator [T]
+w0 = sqrt(3.986e14/R^3);
+
+fprintf('B magnitude at %.0f km: %.2e T\\n', (R-6371e3)/1e3, B_mag);
+
+% Simulate one orbit with time-varying B (simplified)
+T_orb = 2*pi/w0; dt = 1; t = 0:dt:3*T_orb;
+
+% Desired control torques (to correct a perturbation)
+Tcx_des = 1e-4;    % [N·m]
+Tcy_des = 0;        % pitch: wheel handles this
+Tcz_des = 5e-5;
+
+% Time-varying B in body frame (simplified dipole model)
+inc = deg2rad(60); % orbit inclination
+Bx = B_mag * sin(inc) * sin(w0*t);
+By = -B_mag * cos(inc) * ones(size(t));
+Bz = B_mag * sin(inc) * cos(w0*t);
+
+% Compute optimal magnetic moment at each timestep
+Mx = zeros(size(t)); Mz = zeros(size(t));
+Tx_achieved = zeros(size(t)); Tz_achieved = zeros(size(t));
+
+for k = 1:length(t)
+    B = [Bx(k); By(k); Bz(k)];
+    Tc = [Tcx_des; 0; Tcz_des]; % pitch from wheel
+    
+    % Optimal M = (B × Tc) / |B|²
+    M_opt = cross(B, Tc) / (B'*B);
+    Mx(k) = M_opt(1); Mz(k) = M_opt(3);
+    
+    % Achieved torque
+    T_achieved = cross(M_opt, B);
+    Tx_achieved(k) = T_achieved(1);
+    Tz_achieved(k) = T_achieved(3);
+end
+
+figure;
+subplot(2,1,1);
+plot(t/T_orb, Tx_achieved*1e4, 'b', 'LineWidth', 1);
+yline(Tcx_des*1e4, '--r');
+ylabel('T_x [×10^{-4} N·m]'); title('Achieved Roll Torque');
+legend('Achieved','Desired'); grid on;
+subplot(2,1,2);
+plot(t/T_orb, Tz_achieved*1e4, 'r', 'LineWidth', 1);
+yline(Tcz_des*1e4, '--k');
+xlabel('Orbits'); ylabel('T_z [×10^{-4} N·m]');
+title('Achieved Yaw Torque'); grid on;`,
+    traps: [
+      "⚠️ T = M × B means torque is always ⊥ to B — you CANNOT control along B. This is the fundamental limitation.",
+      "⚠️ B ∝ 1/r³ → at GEO the field is ~1000× weaker than LEO. Torqrods are essentially useless beyond MEO.",
+      "⚠️ The hybrid scheme (torqrods + wheel) requires By ≠ 0 for the matrix to be invertible. Near the magnetic equator, By → 0 and control degrades.",
+      "⚠️ When using torqrods for momentum dumping, the achieved desaturation torque is not exactly the desired one — it's the projection ⊥ B."
+    ],
+    drills: [
+      { q: "Why can't you use torqrods alone for 3-axis control?", a: "The matrix [B×] has rank 2 (it's singular). The torque T = M × B is always perpendicular to B — you cannot produce a torque component along B." },
+      { q: "What is the optimal magnetic moment for a desired torque Tc?", a: "M = (B × Tc)/|B|². This ensures M is always perpendicular to B and produces the closest achievable torque to Tc." },
+      { q: "In the hybrid torqrod-wheel scheme, which axis does the wheel control?", a: "The wheel controls pitch (y-axis). Torqrods control roll and yaw (x and z axes). The resulting 3×3 matrix is invertible." },
+    ]
+  },
+
+  /* ═══ MODULE 16 ═══ */
+  {
+    id: "nadir_pd", num: "16", title: "Nadir Pointing: PD/PID with Gravity Gradient", pages: "Slides 103–111", icon: "🎯",
+    overview: {
+      why: "This is the practical synthesis of all previous theory: active PD/PID control for nadir-pointing, combined with the gravity gradient. The GG acts as a bonus spring term, reducing the effective error — but PD still has a non-zero bias, so PID is needed.",
+      objective: "Derive the effective gain kp' = kp + 3ω₀²(Ix−Iz). Show θ∞ = Tdy/kp' for PD. Know the PID stability condition kp' > Iy·ki/kd.",
+      realMission: "Every nadir-pointing LEO satellite (Sentinel, SPOT, Landsat) uses this exact formulation for pitch control: PD or PID gains combined with gravity gradient."
+    },
+    equations: [
+      { name: "Pitch dynamics with PD + GG", eq: "Iy·θ̈ + kd·θ̇ + [kp + 3ω₀²(Ix−Iz)]·θ = Tdy\nkp' = kp + 3ω₀²(Ix−Iz)", explain: "GG adds to the proportional gain. Stability: kd > 0, kp' > 0." },
+      { name: "PD steady-state error", eq: "θ∞ = Tdy / kp'\n   = Tdy / [kp + 3ω₀²(Ix−Iz)]", explain: "Smaller than Tdy/kp because GG helps. But still ≠ 0!" },
+      { name: "PID for zero error", eq: "Iy·θ⃛ + kd·θ̈ + kp'·θ̇ + ki·θ = 0\nStability: kp' > Iy·ki/kd", explain: "Same Routh-Hurwitz as before, but with kp replaced by kp' = kp + 3ω₀²(Ix−Iz)." },
+    ],
+    derivation: `**Nadir Pointing PD (Slides 103-106):**
+
+Starting point: pitch Euler equation with GG and control:
+  Iy·θ̈ + 3ω₀²(Ix−Iz)·θ = MCy + Tdy
+
+PD control: MCy = −kd·θ̇ − kp·θ
+
+Combine:
+  Iy·θ̈ + kd·θ̇ + [kp + 3ω₀²(Ix−Iz)]·θ = Tdy
+  
+Define effective gain: kp' = kp + 3ω₀²(Ix−Iz)
+
+This is IDENTICAL to the pure PD equation we saw before, 
+but with kp replaced by kp'.
+
+**Steady state (θ̈ = θ̇ = 0):**
+  kp'·θ∞ = Tdy → θ∞ = Tdy/kp'
+
+**Key insight:** GG reduces the error by augmenting kp.
+  Without GG: θ∞ = D/kp
+  With GG:    θ∞ = D/kp' < D/kp  (since kp' > kp when Ix > Iz)
+
+**PID for zero error:**
+  Add integral term: MCy = −kd·θ̇ − kp·θ − ki·∫θ dt
+
+  After differentiation:
+  Iy·θ⃛ + kd·θ̈ + kp'·θ̇ + ki·θ = 0
+
+  Routh-Hurwitz: kd > 0, ki > 0, kp' > Iy·ki/kd
+
+**Numerical Examples (Slides 107-108):**
+
+Case 1 (soft control):
+  Iy=1000, Ix=500, Iz=400, ω₀=7.292×10⁻⁵ (GEO)
+  kd=10, kp=0.5 → slow convergence, large oscillations
+
+Case 2 (stiff control):
+  kd=30, kp=3 → fast convergence, smaller oscillations
+  Trade-off: stiffer control → larger torques → more power`,
+    matlab: `%% Nadir Pointing: PD vs PID with Gravity Gradient
+Iy = 1000; Ix = 500; Iz = 400;    % GEO satellite [kg·m²]
+w0 = 7.292e-5;                     % GEO orbital rate [rad/s]
+Tdy = 5e-4;                        % disturbance [N·m]
+
+kd = 30; kp = 3; ki = 1e-4;
+kp_eff = kp + 3*w0^2*(Ix - Iz);
+fprintf('kp = %.3f,  kp'' = %.6f  (GG adds %.6f)\\n', kp, kp_eff, 3*w0^2*(Ix-Iz));
+fprintf('PD error: %.4f deg\\n', rad2deg(Tdy/kp_eff));
+fprintf('Routh: kp'' > Iy*ki/kd = %.6f  → %s\\n', Iy*ki/kd, mat2str(kp_eff > Iy*ki/kd));
+
+dt = 1; T = 30000; t = 0:dt:T;
+
+% PD simulation
+th_pd = zeros(size(t)); w_pd = zeros(size(t));
+th_pd(1) = deg2rad(0.1); w_pd(1) = deg2rad(0.001);
+for k = 1:length(t)-1
+    Mc = -kd*w_pd(k) - kp*th_pd(k);
+    gg = -3*w0^2*(Ix-Iz)*th_pd(k);
+    ddth = (Tdy + Mc + gg)/Iy;
+    w_pd(k+1) = w_pd(k) + ddth*dt;
+    th_pd(k+1) = th_pd(k) + w_pd(k+1)*dt;
+end
+
+% PID simulation
+th_pid = zeros(size(t)); w_pid = zeros(size(t)); intg = 0;
+th_pid(1) = deg2rad(0.1); w_pid(1) = deg2rad(0.001);
+for k = 1:length(t)-1
+    intg = intg + th_pid(k)*dt;
+    Mc = -kd*w_pid(k) - kp*th_pid(k) - ki*intg;
+    gg = -3*w0^2*(Ix-Iz)*th_pid(k);
+    ddth = (Tdy + Mc + gg)/Iy;
+    w_pid(k+1) = w_pid(k) + ddth*dt;
+    th_pid(k+1) = th_pid(k) + w_pid(k+1)*dt;
+end
+
+figure;
+plot(t/3600, rad2deg(th_pd), 'r', t/3600, rad2deg(th_pid), 'b', 'LineWidth', 1.5);
+yline(rad2deg(Tdy/kp_eff), '--r', sprintf('PD: %.3f°', rad2deg(Tdy/kp_eff)));
+yline(0, '--b', 'PID: 0°');
+xlabel('Time [hours]'); ylabel('\\theta [deg]');
+title('Nadir Pointing: PD vs PID (GEO, with GG)');
+legend('PD','PID'); grid on;`,
+    traps: [
+      "⚠️ At GEO, ω₀ is very small → 3ω₀²(Ix−Iz) is tiny compared to kp. The GG benefit is negligible for high-altitude orbits!",
+      "⚠️ The professor gives numerical examples with specific kd, kp values — be ready to compute settling time ts ≈ 4/(ωn·ζ) with the effective parameters.",
+      "⚠️ PID stability condition uses kp', NOT kp: kp + 3ω₀²(Ix−Iz) > Iy·ki/kd.",
+      "⚠️ Stiffer control (larger kp, kd) → faster convergence but larger control torques and power consumption."
+    ],
+    drills: [
+      { q: "What is the effective proportional gain for nadir-pointing with GG?", a: "kp' = kp + 3ω₀²(Ix−Iz). The gravity gradient adds a spring-like term to the controller." },
+      { q: "At GEO, is the gravity gradient term significant?", a: "No. ω₀(GEO) ≈ 7.3×10⁻⁵ rad/s, so 3ω₀² ~ 10⁻⁸. Even with (Ix−Iz) ~ 100, the GG contribution is ~10⁻⁶ compared to typical kp ~ 1." },
+      { q: "Under PD control with GG and constant disturbance, what is θ∞?", a: "θ∞ = Tdy / [kp + 3ω₀²(Ix−Iz)]. Non-zero — still need PID for zero steady-state error." },
+    ]
+  },
+
+  /* ═══ MODULE 17 ═══ */
+  {
+    id: "rw_pd_control", num: "17", title: "Reaction Wheel PD Control & Numerical Simulations", pages: "Slides 109–112", icon: "🔄",
+    overview: {
+      why: "This connects the theory to practice: how a reaction wheel implements PD control for pitch, the equivalent equations, and numerical simulation results. The professor shows MATLAB plots — you may need to reproduce them.",
+      objective: "Write the RW pitch dynamics: Iy·θ̈ + 3ω₀²(Ix−Iz)·θ = −Iw·Ω̇w. Show that after convergence, the wheel reaches a constant speed. Know the 3-axis extension with three wheels.",
+      realMission: "SPOT, Pleiades, and most modern EO satellites use exactly this architecture: 3 or 4 RWs implementing PD/PID on each axis."
+    },
+    equations: [
+      { name: "Pitch dynamics with RW", eq: "Iy·θ̈ + 3ω₀²(Ix−Iz)·θ = MCy = −Iw·Ω̇w\nMCy = −kd·θ̇ − kp·θ", explain: "The wheel torque implements the PD law. Iw·Ω̇w = −MCy → wheel accelerates/decelerates to produce the desired torque." },
+      { name: "After convergence", eq: "θ∞ = 0 (impulsive disturbance)\nMCy = 0 → Jw = Jw0 (constant)\nωw0 = Jw0/Iw", explain: "For impulsive disturbance (no constant D), the wheel reaches a new constant speed. No steady-state torque needed." },
+      { name: "3-axis PD with wheels", eq: "ḣWx = −Tcx = −kxp(φcom−φ) − kxd·φ̇\nḣWy = −Tcy = −kyp(θcom−θ) − kyd·θ̇\nḣWz = −Tcz = −kzp(ψcom−ψ) − kzd·ψ̇", explain: "Each wheel axis implements its own PD law. ḣS = −ḣW (momentum conservation)." },
+    ],
+    derivation: `**Reaction Wheel Pitch Control (Slides 109-111):**
+
+The RW exerts torque only when its speed changes:
+  MCy = −Iw·ω̇w ≈ −Iw·Ω̇w
+
+where Ωw = ωw − θ̇ (wheel speed wrt body)
+
+The PD controller sets:
+  MCy = −kd·θ̇ − kp·θ
+
+Substituting into pitch equation:
+  Iy·θ̈ + kd·θ̇ + [kp + 3ω₀²(Ix−Iz)]·θ = 0
+
+  (for impulsive disturbance, no constant D)
+
+**After transient:**
+  θ → 0, θ̇ → 0 → MCy → 0 → Ω̇w → 0
+  → wheel reaches constant speed ωw0 = Jw0/Iw
+
+**Under constant disturbance D:**
+  Same problem as Module 8: θ∞ = D/kp' (PD)
+  The wheel momentum grows: Jw = Jw0 + D·t → SATURATES!
+
+**3-Axis Extension (Slide 112):**
+
+Three wheels, axes aligned with body axes:
+  ḣWi = −Tci = −kip(φcom,i − φi) − kid·φ̇i
+
+Each axis decoupled (for small angles).
+Conservation: ḣS = −ḣW
+
+**Practical note:** 3 wheels → no redundancy.
+  Damage to one wheel → loss of control.
+  → Use 4 wheels (tetrahedral) for redundancy.`,
+    matlab: `%% Reaction Wheel PD Control: Pitch Axis
+Iy = 1000; Ix = 500; Iz = 400;
+Iw = 0.05;                      % wheel inertia [kg·m²]
+w0 = 7.292e-5;                  % GEO [rad/s]
+kd = 30; kp = 3;
+kp_eff = kp + 3*w0^2*(Ix-Iz);
+
+dt = 0.5; T = 2000; t = 0:dt:T;
+theta = zeros(size(t)); dtheta = zeros(size(t));
+Omega_w = zeros(size(t)); % wheel speed wrt body
+
+% Impulsive disturbance: initial angular velocity
+dtheta(1) = deg2rad(0.01); % [rad/s]
+
+for k = 1:length(t)-1
+    Mc = -kd*dtheta(k) - kp*theta(k);
+    gg = -3*w0^2*(Ix-Iz)*theta(k);
+    ddtheta = (Mc + gg)/Iy;
+    dtheta(k+1) = dtheta(k) + ddtheta*dt;
+    theta(k+1) = theta(k) + dtheta(k+1)*dt;
+    % Wheel dynamics
+    dOmega = -Mc/Iw;
+    Omega_w(k+1) = Omega_w(k) + dOmega*dt;
+end
+
+figure;
+subplot(3,1,1);
+plot(t, rad2deg(theta), 'b', 'LineWidth', 1.5);
+ylabel('\\theta [deg]'); title('Pitch Angle'); grid on;
+subplot(3,1,2);
+plot(t, rad2deg(dtheta), 'r', 'LineWidth', 1.5);
+ylabel('d\\theta/dt [deg/s]'); title('Pitch Rate'); grid on;
+subplot(3,1,3);
+plot(t, Omega_w*60/(2*pi), 'g', 'LineWidth', 1.5);
+xlabel('Time [s]'); ylabel('\\Omega_w [rpm]');
+title('Wheel Speed (wrt body)'); grid on;
+
+fprintf('Final wheel speed: %.2f rpm\\n', Omega_w(end)*60/(2*pi));
+fprintf('Final pitch angle: %.6f deg\\n', rad2deg(theta(end)));`,
+    traps: [
+      "⚠️ Under impulsive disturbance: θ∞ = 0 but the wheel has a NEW constant speed. The angular momentum is stored in the wheel.",
+      "⚠️ Under constant disturbance: wheel momentum grows linearly → saturation is inevitable. You MUST plan desaturation.",
+      "⚠️ The professor shows TWO numerical cases with different gains (slides 107-108, 111). Be ready to discuss the effect of gain changes on settling time and overshoot.",
+      "⚠️ 3 wheels minimum for 3-axis, but 4 recommended for redundancy. The professor asks 'quante ne usi e come le disponi?'"
+    ],
+    drills: [
+      { q: "After an impulsive disturbance, what happens to the reaction wheel?", a: "The wheel absorbs the angular momentum. After the transient, θ → 0, MCy → 0, and the wheel reaches a new constant speed ωw0 = Jw0/Iw." },
+      { q: "Why are at least 4 reaction wheels needed in practice?", a: "3 wheels provide 3-axis control but no redundancy. If one fails, an axis is uncontrolled. 4 wheels (e.g., tetrahedral) allow full 3-axis control even with one wheel failure." },
+      { q: "How does increasing kd affect the pitch response?", a: "Larger kd increases damping (larger ζ), reducing overshoot and oscillations but slowing the response. The settling time ts ≈ 4/(ωnζ) depends on the balance of kp and kd." },
+    ]
+  },
+
+  /* ═══ MODULE 18 ═══ */
+  {
+    id: "rwa_architecture", num: "18", title: "Complete RWA: 4-Wheel Architecture & Torque Optimization", pages: "Slides 113–116", icon: "🏗️",
+    overview: {
+      why: "With 4 wheels and 3 torque axes, the system is underdetermined (4 unknowns, 3 equations). The professor derives the optimal torque distribution that MINIMIZES power consumption using Lagrange multipliers. This is a classic constrained optimization problem.",
+      objective: "Write the [AW] matrix for a 4-wheel pyramidal configuration. Derive the optimal torque allocation: T = AW^T(AW·AW^T)⁻¹·T̂C (pseudo-inverse). Show ΔT = T₁−T₂+T₃−T₄ = 0.",
+      realMission: "BepiColombo uses 4 reaction wheels in a pyramidal configuration. The torque allocation algorithm runs in real-time on the OBC."
+    },
+    equations: [
+      { name: "Wheel distribution matrix", eq: "[AW] = [1  0  −1  0]\n       [0  1   0 −1]\n       [1  1   1  1]\n\nT̂C = AW · T", explain: "T̂Cx = TCx/cosβ, T̂Cy = TCy/cosβ, T̂Cz = TCz/sinβ. β = cant angle." },
+      { name: "Lagrangian optimization", eq: "Minimize H = Σ Ti²  subject to  T̂C = AW·T\nL = H + λ₁g₁ + λ₂g₂ + λ₃g₃\n∂L/∂Ti = 0  →  ΔT = T₁−T₂+T₃−T₄ = 0", explain: "The null-space of AW has dimension 1: spanned by (1,−1,1,−1). Optimization picks the projection with zero null-space component." },
+      { name: "Solution (pseudo-inverse)", eq: "T = AW^T(AW·AW^T)⁻¹ T̂C\n\nor equivalently:\n[T̂Cx]     [1  0 −1  0] \n[T̂Cy]  =  [0  1  0 −1] T  with  ΔT = 0\n[T̂Cz]     [1  1  1  1]\n[ 0  ]     [1 −1  1 −1]", explain: "4 equations, 4 unknowns → unique solution. Power (∝ Σi²) is minimized." },
+    ],
+    derivation: `**4-Wheel Configuration (Slide 113):**
+
+Wheels 1&3: in the x-z plane (±β from XB axis)
+Wheels 2&4: in the y-z plane (±β from YB axis)
+All wheels contribute to the z-axis torque.
+
+The body torques in terms of wheel torques:
+  T̂Cx = T₁ − T₃           (wheels 1 and 3)
+  T̂Cy = T₂ − T₄           (wheels 2 and 4)
+  T̂Cz = T₁ + T₂ + T₃ + T₄ (all contribute)
+
+where T̂C = TC/cos(β) for x,y and TC/sin(β) for z.
+
+**Optimization (Slides 115-116):**
+
+Minimize H = T₁² + T₂² + T₃² + T₄² subject to [AW]T = T̂C.
+
+The null space of [AW] is: n = (1, −1, 1, −1)ᵀ
+  (verify: AW·n = (1+1, −1+1, 1−1+1−1) = 0)
+
+Any T = T_particular + α·n satisfies the constraints.
+Minimizing ||T||² → choose α such that T·n = 0:
+  T₁ − T₂ + T₃ − T₄ = 0  (ΔT = 0)
+
+**Explicit solution (4×4 invertible system):**
+
+  [T̂Cx]   [1  0 −1  0] [T₁]
+  [T̂Cy] = [0  1  0 −1] [T₂]
+  [T̂Cz]   [1  1  1  1] [T₃]
+  [ 0  ]   [1 −1  1 −1] [T₄]
+
+Inverse:
+  T = ½[1 0 1 1; 0 1 1 −1; −1 0 1 1; 0 −1 1 −1] · [T̂Cx; T̂Cy; T̂Cz; 0]
+
+**Why minimize Σ Ti²?**
+  τ = kT·i → T ∝ i → H ∝ Σ i² ∝ total power
+  → minimizing H minimizes the total RWA power consumption!`,
+    matlab: `%% 4-Wheel Torque Optimization
+% Configuration: pyramidal, beta = 30 deg
+beta = deg2rad(30);
+
+AW = [1 0 -1 0; 0 1 0 -1; 1 1 1 1];
+
+% Desired body torques [N·m]
+Tcx = 0.05; Tcy = 0.03; Tcz = 0.01;
+That_C = [Tcx/cos(beta); Tcy/cos(beta); Tcz/sin(beta)];
+
+% Method 1: Pseudo-inverse (minimizes ||T||)
+T_opt = AW' * ((AW * AW')\\That_C);
+fprintf('Pseudo-inverse solution:\\n');
+fprintf('  T = [%.4f, %.4f, %.4f, %.4f] N·m\\n', T_opt);
+fprintf('  DeltaT = %.6f (should be ~0)\\n', T_opt(1)-T_opt(2)+T_opt(3)-T_opt(4));
+fprintf('  Power index: %.6f\\n', sum(T_opt.^2));
+
+% Method 2: Augmented matrix (explicit)
+AW_aug = [AW; 1 -1 1 -1];
+That_aug = [That_C; 0];
+T_aug = AW_aug \ That_aug;
+fprintf('\\nAugmented system solution:\\n');
+fprintf('  T = [%.4f, %.4f, %.4f, %.4f] N·m\\n', T_aug);
+
+% Verify
+Tc_achieved = AW * T_opt;
+fprintf('\\nAchieved torques: [%.4f, %.4f, %.4f]\\n', Tc_achieved);
+fprintf('Commanded:        [%.4f, %.4f, %.4f]\\n', That_C);
+
+% Compare with a naive (non-optimal) solution
+T_naive = [That_C(1); That_C(2); 0; 0]; % just use wheels 1&2
+T_naive(3) = -That_C(1);               % to cancel residual
+T_naive(4) = -That_C(2);
+T_naive = T_naive + [1;-1;1;-1]*(That_C(3)-sum(T_naive))/4; % fix z
+fprintf('\\nNaive power index: %.6f vs Optimal: %.6f\\n', sum(T_naive.^2), sum(T_opt.^2));`,
+    traps: [
+      "⚠️ The null space of AW is (1,−1,1,−1). Optimization sets this component to zero: ΔT = T₁−T₂+T₃−T₄ = 0.",
+      "⚠️ Minimizing ΣTi² also minimizes power because torque ∝ current and power ∝ current². Don't forget to state this physical interpretation!",
+      "⚠️ The cant angle β matters: T̂Cz = TCz/sinβ. If β → 0, the z-component becomes very large → impractical.",
+      "⚠️ The pseudo-inverse AW^T(AW·AW^T)⁻¹ gives the minimum-norm solution. This is the standard approach in ACS flight software."
+    ],
+    drills: [
+      { q: "What is the null space of the 4-wheel distribution matrix AW?", a: "n = (1, −1, 1, −1)ᵀ. Any scalar multiple of this vector satisfies AW·n = 0." },
+      { q: "Why does minimizing ΣTi² also minimize power consumption?", a: "Because wheel torque is proportional to motor current (T = kT·i), and power is proportional to i². So Σ Ti² ∝ Σ ii² ∝ total power." },
+      { q: "How many wheels are needed for redundant 3-axis control?", a: "4 wheels minimum. With 4 wheels, if one fails, the remaining 3 still span 3D torque space (no null space)." },
+    ]
+  },
+
+  /* ═══ MODULE 19 ═══ */
+  {
+    id: "momentum_mgmt", num: "19", title: "Momentum Management & RWA Control Summary", pages: "Slides 117–118", icon: "⚖️",
+    overview: {
+      why: "Torque optimization alone isn't enough — you also need to manage the MOMENTUM stored in the wheels. If the 4 wheel momenta become unbalanced, some wheels may saturate early. Momentum management feedback keeps ΔhW = 0.",
+      objective: "Write the momentum null-space condition ΔhW = h₁−h₂+h₃−h₄ = 0. Derive the feedback law ΔTCi = (−1)ⁱ K·ΔhW. Understand why this doesn't change the body torques.",
+      realMission: "The ISS EATCS (External Active Thermal Control System) uses CMGs with momentum management. When ΔhW drifts, the momentum manager biases wheel speeds to rebalance."
+    },
+    equations: [
+      { name: "Momentum null-space condition", eq: "ΔhW = hW1 − hW2 + hW3 − hW4 = 0", explain: "Same null-space direction (1,−1,1,−1) as torque. Minimizes norm of wheel momenta → delays saturation." },
+      { name: "Momentum management feedback", eq: "ΔTCi = (−1)ⁱ · K · ΔhW,   i = 1,...,4\nK₁ = −K₂ = K₃ = −K₄ = K", explain: "Feedback drives ΔhW → 0 without affecting body torques (since AW·ΔTC = 0 by construction)." },
+      { name: "Combined control", eq: "Ti = Ti,optimal + ΔTCi\n    = [AW^T(AW·AW^T)⁻¹ T̂C]i + (−1)ⁱ K·ΔhW", explain: "The first term provides the desired body torque. The second term manages momentum balance without changing body torques." },
+    ],
+    derivation: `**Momentum Management (Slides 117-118):**
+
+Two reasons to minimize ||hW||:
+  1. Minimize RWA power (viscous losses ∝ speed)
+  2. Maximize time to saturation (balance wheel speeds)
+
+The momentum null-space condition mirrors the torque one:
+  ΔhW = hW1 − hW2 + hW3 − hW4
+
+If ΔhW ≠ 0, some wheels are spinning faster than necessary.
+
+**Feedback Law:**
+  Add a correction torque: ΔTCi = (−1)ⁱ · K · ΔhW
+
+  Verify this doesn't affect body torques:
+  AW · ΔTC = AW · K·ΔhW·(1,−1,1,−1)ᵀ = K·ΔhW · AW·n = 0  ✓
+
+  (Because (1,−1,1,−1) is in the null space of AW)
+
+So the body sees ZERO net torque change, but the wheels 
+redistribute their momentum to equalize.
+
+**Complete RWA Control Chain:**
+  1. PD/PID controller computes desired body torque Tc
+  2. Transform to wheel coordinates: T̂C
+  3. Optimal torque allocation: T = AW^T(AW·AW^T)⁻¹ T̂C
+  4. Momentum management: Ti += (−1)ⁱ K·ΔhW
+  5. External desaturation (torqrods/thrusters) when needed`,
+    matlab: `%% Momentum Management for 4-Wheel RWA
+AW = [1 0 -1 0; 0 1 0 -1; 1 1 1 1];
+Iw = 0.05;  % each wheel [kg·m²]
+K_mm = 0.001; % momentum management gain
+
+dt = 1; T = 5000; t = 0:dt:T;
+hw = zeros(4, length(t)); % wheel momenta
+w_wheel = zeros(4, length(t));
+
+% Desired body torques (varying with time)
+for k = 1:length(t)-1
+    % Desired torque (simulating attitude control)
+    Tc_body = [0.001*sin(0.01*t(k)); ...
+               0.002*cos(0.005*t(k)); ...
+               0.0005];
+    That = [Tc_body(1)/0.866; Tc_body(2)/0.866; Tc_body(3)/0.5];
+    
+    % Optimal torque allocation
+    T_opt = AW' * ((AW*AW') \ That);
+    
+    % Momentum management correction
+    DeltahW = hw(1,k) - hw(2,k) + hw(3,k) - hw(4,k);
+    DeltaTC = K_mm * DeltahW * [1; -1; 1; -1];
+    
+    % Total wheel torque
+    T_total = T_opt + DeltaTC;
+    
+    % Integrate wheel momenta
+    hw(:,k+1) = hw(:,k) + T_total*dt;
+    w_wheel(:,k+1) = hw(:,k+1) / Iw;
+end
+
+% Plot results
+figure;
+subplot(2,1,1);
+for i = 1:4
+    plot(t, w_wheel(i,:)*60/(2*pi), 'LineWidth', 1);
+    hold on;
+end
+legend('Wheel 1','Wheel 2','Wheel 3','Wheel 4');
+ylabel('\\omega_w [rpm]'); title('Wheel Speeds (with momentum management)');
+grid on;
+
+subplot(2,1,2);
+DhW = hw(1,:) - hw(2,:) + hw(3,:) - hw(4,:);
+plot(t, DhW, 'r', 'LineWidth', 1.5);
+xlabel('Time [s]'); ylabel('\\Delta h_W [N·m·s]');
+title('Momentum Null-Space Component (\\Delta h_W \\rightarrow 0)');
+grid on;`,
+    traps: [
+      "⚠️ The momentum feedback ΔTC lives in the NULL SPACE of AW — it produces ZERO body torque. This is the key insight.",
+      "⚠️ K must be chosen carefully: too large → fast correction but may excite dynamics; too small → slow equalization.",
+      "⚠️ Momentum management delays saturation but doesn't prevent it. External desaturation (thrusters/torqrods) is still needed.",
+      "⚠️ The professor may ask: 'What is the complete ACS control chain?' Answer: sensor → observer → PID → torque allocation → momentum management → desaturation."
+    ],
+    drills: [
+      { q: "Why does the momentum management feedback not affect the body torques?", a: "Because ΔTCi = (−1)ⁱ K·ΔhW, which is proportional to the null-space vector (1,−1,1,−1). AW·(1,−1,1,−1)ᵀ = 0, so the net body torque is unchanged." },
+      { q: "What are the two benefits of momentum management?", a: "1) Minimize power consumption (viscous losses proportional to wheel speed). 2) Increase time to saturation by keeping wheel speeds balanced." },
+      { q: "Describe the complete RWA control chain from sensor to actuator.", a: "Sensors → observer (state estimation) → PID control law (compute body torque) → torque allocation (AW pseudo-inverse) → momentum management (null-space feedback) → external desaturation when needed." },
+    ]
+  },
+];
+
+// ─── SVG DIAGRAMS ───────────────────────────────────────
+function PitchLibrationDiagram() {
+  return (
+    <svg viewBox="0 0 420 200" style={{width:"100%",maxWidth:420,background:C.bgCard,borderRadius:8,padding:8}}>
+      <line x1={40} y1={180} x2={400} y2={180} stroke={C.t3} strokeWidth={1}/>
+      <line x1={40} y1={10} x2={40} y2={180} stroke={C.t3} strokeWidth={1}/>
+      <text x={405} y={185} fill={C.t3} fontSize={10}>t</text>
+      <text x={25} y={15} fill={C.t3} fontSize={10}>θ</text>
+      {/* Bias line at C */}
+      <line x1={40} y1={90} x2={400} y2={90} stroke={C.warn} strokeDasharray="4,3"/>
+      <text x={405} y={94} fill={C.warn} fontSize={9}>C</text>
+      {/* 2C line */}
+      <line x1={40} y1={40} x2={400} y2={40} stroke={C.err} strokeDasharray="4,3"/>
+      <text x={405} y={44} fill={C.err} fontSize={9}>2C</text>
+      {/* Zero line */}
+      <text x={405} y={184} fill={C.t3} fontSize={9}>0</text>
+      {/* Oscillation */}
+      <path d="M40,180 Q80,30 120,40 Q160,180 200,180 Q240,30 280,40 Q320,180 360,180 Q390,50 400,40" fill="none" stroke={C.accent} strokeWidth={2}/>
+      {/* Annotations */}
+      <text x={100} y={25} fill={C.accent} fontSize={9}>θ(t) = C[1 − cos(ωₚᵢₜ𝒸ₕ t)]</text>
+      <line x1={200} y1={40} x2={200} y2={180} stroke={C.ok} strokeDasharray="2,2" strokeWidth={0.8}/>
+      <text x={205} y={120} fill={C.ok} fontSize={8}>amplitude = 2C</text>
+    </svg>
+  );
+}
+
+function FourWheelDiagram() {
+  return (
+    <svg viewBox="0 0 300 280" style={{width:"100%",maxWidth:300,background:C.bgCard,borderRadius:8,padding:8}}>
+      {/* Axes */}
+      <line x1={150} y1={140} x2={280} y2={200} stroke={C.t3} strokeWidth={1}/>
+      <line x1={150} y1={140} x2={150} y2={30} stroke={C.t3} strokeWidth={1}/>
+      <line x1={150} y1={140} x2={40} y2={190} stroke={C.t3} strokeWidth={1}/>
+      <text x={285} y={205} fill={C.accent} fontSize={10}>XB</text>
+      <text x={155} y={25} fill={C.ok} fontSize={10}>ZB</text>
+      <text x={25} y={195} fill={C.warn} fontSize={10}>YB</text>
+      {/* Wheels */}
+      {[[210,100,"W1","#5b8def"],[100,110,"W2","#4ecca3"],[90,170,"W3","#f0ad4e"],[200,160,"W4","#e74c3c"]].map(([x,y,label,col])=>(
+        <g key={label}>
+          <ellipse cx={x} cy={y} rx={18} ry={8} fill="none" stroke={col} strokeWidth={2}/>
+          <text x={x} y={y+4} fill={col} fontSize={9} textAnchor="middle" fontWeight="bold">{label}</text>
+        </g>
+      ))}
+      {/* Lines to center */}
+      {[[210,100],[100,110],[90,170],[200,160]].map(([x,y],i)=>(
+        <line key={i} x1={150} y1={140} x2={x} y2={y} stroke={C.t3} strokeDasharray="3,3" strokeWidth={0.7}/>
+      ))}
+      {/* Beta angle */}
+      <text x={170} y={80} fill={C.t3} fontSize={9}>β</text>
+      {/* Label */}
+      <text x={150} y={260} fill={C.t2} fontSize={10} textAnchor="middle">4-Wheel Pyramidal RWA</text>
+      <text x={150} y={275} fill={C.t3} fontSize={8} textAnchor="middle">W1,W3: x-z plane  |  W2,W4: y-z plane</text>
+    </svg>
+  );
+}
+
+function MomentumMgmtDiagram() {
+  return (
+    <svg viewBox="0 0 400 160" style={{width:"100%",maxWidth:400,background:C.bgCard,borderRadius:8,padding:8}}>
+      <defs><marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill={C.accent}/></marker></defs>
+      {/* Blocks */}
+      {[["PID",20,55,50,35],["Torque\nAlloc",100,50,55,40],["Mom.\nMgmt",200,50,55,40],["4 RWs",300,55,55,35]].map(([t,x,y,w,h],i)=>(
+        <g key={i}>
+          <rect x={x} y={y} width={w} height={h} rx={4} fill="none" stroke={C.accent} strokeWidth={1.2}/>
+          <text x={x+w/2} y={y+h/2+3} fill={C.t1} fontSize={9} textAnchor="middle" fontFamily="monospace">{t}</text>
+        </g>
+      ))}
+      {/* Arrows */}
+      <line x1={70} y1={72} x2={98} y2={72} stroke={C.accent} markerEnd="url(#arr)"/>
+      <line x1={155} y1={70} x2={198} y2={70} stroke={C.accent} markerEnd="url(#arr)"/>
+      <line x1={255} y1={72} x2={298} y2={72} stroke={C.accent} markerEnd="url(#arr)"/>
+      {/* Labels */}
+      <text x={80} y={65} fill={C.t3} fontSize={8}>Tc</text>
+      <text x={170} y={63} fill={C.t3} fontSize={8}>T_opt</text>
+      <text x={270} y={65} fill={C.t3} fontSize={8}>T_total</text>
+      {/* Feedback */}
+      <path d="M330,90 L330,130 L225,130 L225,92" fill="none" stroke={C.ok} strokeDasharray="3,2"/>
+      <text x={280} y={142} fill={C.ok} fontSize={8}>hW feedback</text>
+      <text x={10} y={45} fill={C.warn} fontSize={8}>e(t)</text>
+      <line x1={10} y1={50} x2={18} y2={72} stroke={C.warn} strokeDasharray="2,2"/>
+      <text x={355} y={65} fill={C.t3} fontSize={8}>→ SC</text>
+    </svg>
+  );
+}
+
+const DIAGRAMS = {
+  librations_pitch: PitchLibrationDiagram,
+  rwa_architecture: FourWheelDiagram,
+  momentum_mgmt: MomentumMgmtDiagram,
+};
+
+// ─── TAB CONFIG ─────────────────────────────────────────
+const TABS = ["Overview","Equations","Derivation","MATLAB","Exam Traps","Drill"];
+const TAB_ICONS = ["📖","📝","🔍","💻","⚠️","🎯"];
+
+// ─── MAIN APP ───────────────────────────────────────────
+export default function App() {
+  const [activeSection, setActiveSection] = useState("notation");
+  const [activeTab, setActiveTab] = useState(0);
+  const [notationFilter, setNotationFilter] = useState("");
+  const [drillReveal, setDrillReveal] = useState({});
+  const [expandedDeriv, setExpandedDeriv] = useState(true);
+
+  const activeModule = MODULES.find(m => m.id === activeSection);
+  const DiagramComponent = DIAGRAMS[activeSection];
+
+  const filteredNotation = useMemo(() => {
+    if (!notationFilter) return NOTATION;
+    const q = notationFilter.toLowerCase();
+    return NOTATION.map(cat => ({...cat, rows: cat.rows.filter(r =>
+      r.sym.toLowerCase().includes(q) || r.desc.toLowerCase().includes(q) || r.detail.toLowerCase().includes(q)
+    )})).filter(cat => cat.rows.length > 0);
+  }, [notationFilter]);
+
+  return (
+    <div style={{display:"flex",height:"100vh",fontFamily:"'IBM Plex Sans','Segoe UI',system-ui,sans-serif",background:C.bg,color:C.t1,overflow:"hidden"}}>
+      {/* SIDEBAR */}
+      <div style={{width:235,minWidth:235,background:C.bgCard,borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        <div style={{padding:"14px 14px 10px",borderBottom:`1px solid ${C.border}`}}>
+          <div style={{fontSize:10,color:C.t3,fontFamily:"monospace",letterSpacing:1}}>SMS • SAPIENZA</div>
+          <div style={{fontSize:13,fontWeight:600,marginTop:2}}>Ch 2B: Attitude Control</div>
+          <div style={{fontSize:10,color:C.t3}}>Part 2 — Slides 68–118</div>
+        </div>
+        <div style={{flex:1,overflowY:"auto",padding:6}}>
+          <button onClick={()=>{setActiveSection("notation");setActiveTab(0);}}
+            style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:6,cursor:"pointer",border:"none",background:activeSection==="notation"?C.bgHover:"transparent",width:"100%",textAlign:"left",borderLeft:activeSection==="notation"?`3px solid ${C.accent}`:"3px solid transparent",transition:"all .15s"}}>
+            <span style={{fontSize:14}}>📑</span>
+            <span style={{fontSize:12,fontWeight:500,color:activeSection==="notation"?C.t1:C.t2}}>New Notation Table</span>
+          </button>
+          {MODULES.map(m => (
+            <button key={m.id} onClick={()=>{setActiveSection(m.id);setActiveTab(0);setDrillReveal({});}}
+              style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:6,cursor:"pointer",border:"none",background:activeSection===m.id?C.bgHover:"transparent",width:"100%",textAlign:"left",borderLeft:activeSection===m.id?`3px solid ${C.accent}`:"3px solid transparent",marginTop:2,transition:"all .15s"}}>
+              <span style={{fontSize:13,flexShrink:0}}>{m.icon}</span>
+              <div style={{minWidth:0}}>
+                <div style={{fontSize:11,fontWeight:500,color:activeSection===m.id?C.t1:C.t2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{m.num}. {m.title}</div>
+                <div style={{fontSize:9,color:C.t3,fontFamily:"monospace"}}>{m.pages}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* MAIN CONTENT */}
+      <div style={{flex:1,overflowY:"auto",padding:"20px 28px"}}>
+        {activeSection === "notation" ? (
+          <div>
+            <h2 style={{fontSize:18,fontWeight:700,marginBottom:4}}>📑 Notation Table — Part 2</h2>
+            <p style={{fontSize:12,color:C.t3,marginBottom:12}}>New symbols introduced in Slides 68–118</p>
+            <input placeholder="🔍 Search..." value={notationFilter} onChange={e=>setNotationFilter(e.target.value)}
+              style={{width:"100%",maxWidth:500,padding:"8px 12px",borderRadius:6,border:`1px solid ${C.border}`,background:C.bgCard,color:C.t1,fontSize:12,marginBottom:16,outline:"none"}}/>
+            {filteredNotation.map((cat,ci) => (
+              <div key={ci} style={{marginBottom:20}}>
+                <h3 style={{fontSize:14,fontWeight:600,color:C.accent,marginBottom:8,borderBottom:`1px solid ${C.border}`,paddingBottom:4}}>{cat.cat}</h3>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                  <thead><tr style={{borderBottom:`1px solid ${C.border}`}}>
+                    {["Symbol","Description","Details"].map(h=><th key={h} style={{textAlign:"left",padding:"6px 10px",color:C.t3,fontWeight:500,fontSize:11}}>{h}</th>)}
+                  </tr></thead>
+                  <tbody>{cat.rows.map((r,ri)=>(
+                    <tr key={ri} style={{borderBottom:`1px solid ${C.border}22`}}>
+                      <td style={{padding:"6px 10px",fontFamily:"monospace",color:C.warn,fontWeight:600,whiteSpace:"nowrap"}}>{r.sym}</td>
+                      <td style={{padding:"6px 10px",color:C.t2}}>{r.desc}</td>
+                      <td style={{padding:"6px 10px",color:C.t3,fontSize:11}}>{r.detail}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+        ) : activeModule ? (
+          <div>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
+              <span style={{fontSize:22}}>{activeModule.icon}</span>
+              <div>
+                <h2 style={{fontSize:17,fontWeight:700}}>Module {activeModule.num}: {activeModule.title}</h2>
+                <span style={{fontSize:11,color:C.t3,fontFamily:"monospace"}}>{activeModule.pages}</span>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:4,marginTop:12,marginBottom:16,flexWrap:"wrap"}}>
+              {TABS.map((tab,i) => (
+                <button key={tab} onClick={()=>setActiveTab(i)}
+                  style={{padding:"6px 14px",borderRadius:6,border:`1px solid ${activeTab===i?C.accent:C.border}`,background:activeTab===i?C.accentGlow:"transparent",color:activeTab===i?C.accent:C.t2,fontSize:12,cursor:"pointer",fontWeight:activeTab===i?600:400,transition:"all .15s"}}>
+                  {TAB_ICONS[i]} {tab}
+                </button>
+              ))}
+            </div>
+            <div style={{background:C.bgCard,borderRadius:10,border:`1px solid ${C.border}`,padding:20}}>
+              {activeTab===0 && (
+                <div>
+                  <div style={{background:C.accentGlow,borderRadius:8,padding:14,marginBottom:14,borderLeft:`3px solid ${C.accent}`}}>
+                    <div style={{fontSize:12,fontWeight:600,color:C.accent,marginBottom:4}}>💡 Why This Matters</div>
+                    <div style={{fontSize:13,color:C.t2,lineHeight:1.6}}>{activeModule.overview.why}</div>
+                  </div>
+                  <div style={{marginBottom:12}}>
+                    <div style={{fontSize:12,fontWeight:600,color:C.ok,marginBottom:4}}>🎯 Learning Objective</div>
+                    <div style={{fontSize:13,color:C.t2,lineHeight:1.6}}>{activeModule.overview.objective}</div>
+                  </div>
+                  <div style={{background:`${C.warn}11`,borderRadius:8,padding:14,borderLeft:`3px solid ${C.warn}`}}>
+                    <div style={{fontSize:12,fontWeight:600,color:C.warn,marginBottom:4}}>🛰️ Real Mission Example</div>
+                    <div style={{fontSize:13,color:C.t2,lineHeight:1.6}}>{activeModule.overview.realMission}</div>
+                  </div>
+                  {DiagramComponent && <div style={{marginTop:16}}><div style={{fontSize:12,fontWeight:600,color:C.t2,marginBottom:6}}>📊 Diagram</div><DiagramComponent/></div>}
+                </div>
+              )}
+              {activeTab===1 && <div>{activeModule.equations.map((eq,i)=>(
+                <div key={i} style={{marginBottom:16,background:C.bg,borderRadius:8,padding:14,border:`1px solid ${C.border}`}}>
+                  <div style={{fontSize:12,fontWeight:600,color:C.accent,marginBottom:6}}>{eq.name}</div>
+                  <pre style={{fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.warn,whiteSpace:"pre-wrap",lineHeight:1.5,margin:0}}>{eq.eq}</pre>
+                  <div style={{fontSize:11,color:C.t3,marginTop:8,lineHeight:1.5}}>{eq.explain}</div>
+                </div>
+              ))}</div>}
+              {activeTab===2 && <div>
+                <button onClick={()=>setExpandedDeriv(!expandedDeriv)} style={{fontSize:12,color:C.accent,background:"none",border:"none",cursor:"pointer",marginBottom:8}}>
+                  {expandedDeriv?"▼ Collapse":"▶ Expand"} Full Derivation
+                </button>
+                {expandedDeriv && <pre style={{fontFamily:"'JetBrains Mono',monospace",fontSize:11.5,color:C.t2,whiteSpace:"pre-wrap",lineHeight:1.6,background:C.bg,borderRadius:8,padding:16,border:`1px solid ${C.border}`}}>{activeModule.derivation}</pre>}
+              </div>}
+              {activeTab===3 && <div>
+                <div style={{fontSize:11,color:C.ok,fontFamily:"monospace",marginBottom:10}}>% Ready-to-run MATLAB code</div>
+                <pre style={{fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.t1,whiteSpace:"pre-wrap",lineHeight:1.5,background:"#0a0d16",borderRadius:8,padding:16,border:`1px solid ${C.border}`}}>{activeModule.matlab}</pre>
+              </div>}
+              {activeTab===4 && <div>{activeModule.traps.map((trap,i)=>(
+                <div key={i} style={{background:`${C.err}11`,borderRadius:8,padding:12,marginBottom:10,borderLeft:`3px solid ${C.err}`,fontSize:13,color:C.t2,lineHeight:1.6}}>{trap}</div>
+              ))}</div>}
+              {activeTab===5 && <div>{activeModule.drills.map((d,i)=>(
+                <div key={i} style={{marginBottom:14}}>
+                  <div style={{background:C.bg,borderRadius:8,padding:12,border:`1px solid ${C.border}`}}>
+                    <div style={{fontSize:12,fontWeight:600,color:C.accent,marginBottom:4}}>Q{i+1}: {d.q}</div>
+                    <button onClick={()=>setDrillReveal(prev=>({...prev,[`${activeSection}-${i}`]:!prev[`${activeSection}-${i}`]}))}
+                      style={{fontSize:11,color:C.ok,background:"none",border:`1px solid ${C.ok}33`,borderRadius:4,padding:"3px 10px",cursor:"pointer",marginTop:4}}>
+                      {drillReveal[`${activeSection}-${i}`]?"Hide Answer":"Reveal Answer"}
+                    </button>
+                    {drillReveal[`${activeSection}-${i}`] && (
+                      <div style={{marginTop:8,padding:10,background:`${C.ok}11`,borderRadius:6,fontSize:12,color:C.t2,lineHeight:1.6,borderLeft:`3px solid ${C.ok}`}}>✅ {d.a}</div>
+                    )}
+                  </div>
+                </div>
+              ))}</div>}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(App));
+</script>
+</body>
+</html>

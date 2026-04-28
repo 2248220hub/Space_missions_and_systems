@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TSB Ch.4 — First 20% · §4.1–§4.3.3</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#e2e8f0;min-height:100vh}
+.shell{display:flex;height:100vh;overflow:hidden}
+
+/* Sidebar */
+.sidebar{width:230px;background:#161b27;border-right:1px solid #1e2a3a;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+.sidebar-head{padding:16px;border-bottom:1px solid #1e2a3a}
+.sidebar-head .t1{font-size:10px;color:#4a6080;font-family:monospace;letter-spacing:.08em;text-transform:uppercase}
+.sidebar-head .t2{font-size:13px;font-weight:600;margin-top:3px;color:#e2e8f0}
+.sidebar-head .t3{font-size:10px;color:#4a6080;margin-top:2px}
+.sidebar-list{overflow-y:auto;flex:1;padding:8px}
+.sitem{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:7px;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background .15s;border-left:3px solid transparent}
+.sitem:hover{background:#1e2a3a}
+.sitem.active{background:#1a2540;border-left-color:#3b82f6}
+.sitem-icon{font-size:15px;flex-shrink:0;width:20px;text-align:center}
+.sitem-text{display:flex;flex-direction:column;min-width:0}
+.sitem-title{font-size:11px;font-weight:600;color:#c8d6e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sitem-pages{font-size:9px;color:#4a6080;font-family:monospace;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar-foot{padding:12px 16px;border-top:1px solid #1e2a3a;font-size:10px;color:#2d3f56}
+
+/* Main */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#0f1117}
+.mhead{padding:16px 22px 12px;border-bottom:1px solid #1a2333;background:#12161f}
+.mhead-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.mhead-icon{font-size:22px}
+.mhead-title{font-size:17px;font-weight:700;color:#e2e8f0}
+.mhead-pages{font-size:10px;color:#3d5a7a;font-family:monospace;margin-left:auto}
+.why-box{border-left:3px solid #3b82f6;padding:8px 12px;background:#0e1929;border-radius:0 6px 6px 0;font-size:12px;color:#7fa8cc;line-height:1.55}
+.why-box strong{color:#60a5fa;font-weight:600}
+
+/* Tabs */
+.tabs{display:flex;gap:2px;padding:8px 22px 0;background:#12161f;border-bottom:1px solid #1a2333;overflow-x:auto}
+.tab{padding:7px 13px;font-size:11px;font-weight:600;border:none;background:none;cursor:pointer;color:#4a6080;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;white-space:nowrap;letter-spacing:.02em}
+.tab:hover{color:#8bb4d8}
+.tab.active{color:#3b82f6;border-bottom-color:#3b82f6}
+
+/* Content */
+.content{flex:1;overflow-y:auto;padding:20px 22px;scrollbar-width:thin;scrollbar-color:#1e2a3a #0f1117}
+.content::-webkit-scrollbar{width:5px}
+.content::-webkit-scrollbar-track{background:#0f1117}
+.content::-webkit-scrollbar-thumb{background:#1e2a3a;border-radius:3px}
+
+/* Components */
+.obj-box{background:#0e1929;border:1px solid #1a3050;border-radius:8px;padding:11px 14px;margin-bottom:14px;font-size:12px;color:#7fa8cc;line-height:1.6}
+.obj-box strong{color:#a78bfa;font-weight:600}
+.ov-card{background:#12161f;border:1px solid #1a2333;border-radius:8px;padding:13px 15px;margin-bottom:9px}
+.ov-label{font-size:10px;font-weight:700;color:#3b82f6;margin-bottom:4px;letter-spacing:.06em;text-transform:uppercase}
+.ov-text{font-size:12px;color:#8aaccb;line-height:1.65}
+.eq-box{background:#12161f;border:1px solid #1e2a3a;border-radius:8px;margin-bottom:9px;overflow:hidden}
+.eq-label{padding:5px 13px;background:#0e1929;font-size:9px;color:#4a6080;font-family:monospace;border-bottom:1px solid #1a2333;letter-spacing:.05em}
+.eq-formula{padding:11px 15px;font-family:'Cascadia Code','Fira Code',monospace;font-size:12px;color:#fbbf24;white-space:pre-wrap;line-height:1.8}
+.eq-note{padding:5px 13px;font-size:10px;color:#3d5a7a;border-top:1px solid #1a2333}
+.deriv-box{background:#12161f;border:1px solid #1e2a3a;border-radius:8px;padding:15px;font-family:'Cascadia Code','Fira Code',monospace;font-size:11px;color:#8aaccb;white-space:pre-wrap;line-height:1.85;margin:10px 0}
+.matlab-box{background:#0a1a0f;border:1px solid #1a3a22;border-radius:8px;overflow:hidden}
+.matlab-head{padding:6px 13px;background:#061209;font-size:9px;color:#4ade80;font-family:monospace;border-bottom:1px solid #1a3a22;letter-spacing:.08em;text-transform:uppercase}
+.matlab-code{padding:13px 15px;font-family:'Cascadia Code','Fira Code',monospace;font-size:11px;color:#86efac;white-space:pre-wrap;line-height:1.8}
+.trap-item{display:flex;gap:9px;padding:10px 13px;background:#1a0a0a;border:1px solid #3a1a1a;border-radius:8px;margin-bottom:8px}
+.trap-icon{color:#f87171;flex-shrink:0;font-size:14px;margin-top:1px}
+.trap-text{font-size:12px;color:#f87171;line-height:1.6}
+.drill-item{border:1px solid #1e2a3a;border-radius:8px;margin-bottom:8px;overflow:hidden}
+.drill-q{display:flex;align-items:flex-start;gap:9px;padding:11px 13px;cursor:pointer;background:#12161f;border:none;width:100%;text-align:left;transition:background .15s}
+.drill-q:hover{background:#1a2333}
+.drill-num{font-size:10px;font-weight:700;color:#f59e0b;background:#2a1a00;padding:2px 8px;border-radius:999px;flex-shrink:0;letter-spacing:.04em}
+.drill-qtext{font-size:12px;color:#c8d6e8;flex:1;line-height:1.5}
+.drill-chev{color:#3d5a7a;font-size:11px;flex-shrink:0;margin-top:2px;transition:transform .2s}
+.drill-chev.open{transform:rotate(180deg)}
+.drill-ans{padding:11px 13px;background:#0e1929;border-top:1px solid #1e2a3a;font-size:11px;color:#7fa8cc;line-height:1.7;display:none}
+.drill-ans.open{display:block}
+.drill-ans code{font-family:monospace;color:#fbbf24;font-size:10px}
+.nav-row{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+.btn{padding:9px 20px;font-size:12px;font-weight:600;border:1px solid #1e2a3a;border-radius:7px;background:none;cursor:pointer;color:#8aaccb;transition:all .15s;letter-spacing:.02em}
+.btn:hover{background:#1a2333;color:#c8d6e8}
+.btn.primary{background:#1a2f5a;color:#60a5fa;border-color:#2a4a8a}
+.btn.primary:hover{background:#1f3870;color:#93c5fd}
+.svg-wrap{margin:12px 0;border-radius:8px;overflow:hidden;background:#12161f;border:1px solid #1a2333}
+.svg-wrap svg{display:block}
+h4{font-size:10px;font-weight:700;color:#3d5a7a;margin:14px 0 7px;letter-spacing:.1em;text-transform:uppercase}
+
+/* Progress pills */
+.prog{display:flex;gap:5px;margin-bottom:0}
+.prog-pip{width:28px;height:4px;border-radius:2px;background:#1a2333;cursor:pointer;transition:all .2s}
+.prog-pip.done{background:#3b82f6}
+.prog-pip.active{background:#60a5fa;height:6px}
+
+/* SVG text classes */
+svg .t{font-family:'Segoe UI',sans-serif;font-size:14px;fill:#c8d6e8}
+svg .ts{font-family:'Segoe UI',sans-serif;font-size:11px;fill:#7fa8cc}
+svg .th{font-family:'Segoe UI',sans-serif;font-size:14px;font-weight:600;fill:#e2e8f0}
+svg .mono{font-family:'Cascadia Code','Fira Code',monospace;font-size:11px;fill:#fbbf24}
+</style>
+</head>
+<body>
+<div class="shell">
+ <div class="sidebar">
+  <div class="sidebar-head">
+   <div class="t1">Tapley, Schutz &amp; Born</div>
+   <div class="t2">Ch.4 — First 20%</div>
+   <div class="t3">§4.1–§4.3.3 · pp.159–180</div>
+  </div>
+  <div class="sidebar-list" id="slist"></div>
+  <div class="sidebar-foot">7 sections · Sapienza MSc OD</div>
+ </div>
+ <div class="main">
+  <div class="mhead">
+   <div class="mhead-row">
+    <span class="mhead-icon" id="m-icon"></span>
+    <span class="mhead-title" id="m-title"></span>
+    <span class="mhead-pages" id="m-pages"></span>
+   </div>
+   <div class="why-box" id="m-why"></div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="content" id="content"></div>
+ </div>
+</div>
+
+<script>
+const MODULES=[
+{id:1,badge:"§4.1 · p.159",title:"Introduction — the OD problem",icon:"🛰️",pages:"§4.1 · p.159",
+why:"<strong>The big picture.</strong> OD asks: given noisy measurements of a spacecraft, what is its true orbit? We never observe X(t) directly. We observe imperfect functions of X (range, Doppler), corrupted by noise. The difficulty: the relationship is nonlinear.",
+svg:`<svg width="100%" viewBox="0 0 680 200" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect x="20" y="20" width="640" height="160" rx="10" fill="#0e1929" stroke="#1e2a3a" stroke-width="0.5"/>
+<text x="340" y="42" text-anchor="middle" font-size="10" fill="#2d4a6a" font-family="monospace">the orbit determination problem</text>
+<ellipse cx="130" cy="115" rx="68" ry="48" fill="#0a1e35" stroke="#1e4a7a" stroke-width="1"/>
+<text x="130" y="110" text-anchor="middle" class="th" fill="#60a5fa">True orbit</text>
+<text x="130" y="127" text-anchor="middle" class="ts" fill="#3b82f6">X(t) — unknown</text>
+<rect x="270" y="86" width="140" height="60" rx="8" fill="#1a1a0a" stroke="#4a3a10" stroke-width="0.5"/>
+<text x="340" y="110" text-anchor="middle" class="th" fill="#fbbf24">Instrument</text>
+<text x="340" y="127" text-anchor="middle" class="ts" fill="#d97706">Yᵢ=G(Xᵢ,tᵢ)+εᵢ</text>
+<rect x="490" y="86" width="140" height="60" rx="8" fill="#0a1a0e" stroke="#1a4a2a" stroke-width="0.5"/>
+<text x="560" y="110" text-anchor="middle" class="th" fill="#4ade80">Estimator</text>
+<text x="560" y="127" text-anchor="middle" class="ts" fill="#22c55e">outputs X̂(t)</text>
+<line x1="200" y1="115" x2="268" y2="115" stroke="#4a6080" stroke-width="1" marker-end="url(#a)"/>
+<line x1="412" y1="115" x2="488" y2="115" stroke="#4a6080" stroke-width="1" marker-end="url(#a)"/>
+<text x="234" y="107" text-anchor="middle" class="ts" fill="#4a6080">observes</text>
+<text x="450" y="107" text-anchor="middle" class="ts" fill="#4a6080">processes</text>
+</svg>`,
+overview:[
+ {label:"The nonlinear problem",text:"Dynamics: Ẋ = F(X,t). Observations: Yi = G(Xi,ti) + εi. Both F and G are highly nonlinear (gravity, range, rotational effects). Cannot be inverted directly."},
+ {label:"The core difficulty",text:"We want X(t) but we only observe noisy scalars that are nonlinear functions of X. For example range ρ = |r − rstation| involves a square root. No closed-form inversion exists."},
+ {label:"The solution strategy",text:"Every method in Ch.4 bypasses direct inversion by expanding F and G around a reference trajectory X*(t) and working with deviations x = X − X*. Linear algebra can then be applied."},
+ {label:"State vector components",text:"X(t) = [r(t), ṙ(t), β]ᵀ where r is 3D position, ṙ is 3D velocity, and β is a vector of model parameters (gravity coefficients, drag CD, SRP Cr, station coordinates)."},
+],
+equations:[],
+derivation:`No derivation for §4.1 — this is the problem statement.
+
+Key definitions to memorise:
+  X(t) = true state vector [n×1]
+  X*(t) = reference (nominal) trajectory
+  x(t) = X(t) − X*(t)  [STATE DEVIATION — what estimators solve for]
+  Yi   = observed measurement at time ti
+  G(Xi,ti) = computed observable from reference trajectory
+  yi = Yi − G(Xi*,ti)  [O−C residual — input to all estimators]
+  εi  = measurement noise  [zero mean, covariance Ri]`,
+matlab:`% No MATLAB for §4.1 — problem statement section.
+% Key MATLAB pattern for OD:
+%   1. Propagate reference orbit: [X_star] = ode113(@eom, tspan, X0)
+%   2. Compute O-C residuals:    yi = Yi - G(X_star_i, ti)
+%   3. Build H matrix:           Hi = Htilde_i * Phi(ti, t0)
+%   4. Solve normal equations:   x_hat = (H'*W*H) \\ (H'*W*y)
+%   5. Update reference:         X0_new = X0 + x_hat
+%   6. Iterate until |x_hat| < tol`,
+traps:["x(t) is the STATE DEVIATION X−X*, NOT the full state X(t). Very common confusion at oral exams.","G(Xi*,ti) is the COMPUTED observable — evaluated on X*(t), not on the true orbit.","The O−C residual yi = Yi − G(Xi*,ti) is NOT the raw measurement Yi. It is the difference from the model prediction."],
+drills:[{q:"What is x(t)? Write its definition precisely.",a:"x(t) = X(t) − X*(t) — the state deviation between the true orbit and the reference (nominal) trajectory. It is an n×1 vector. This is what ALL estimators in Chapter 4 solve for — not X(t) itself."},
+{q:"What does the O-C residual yi represent? Write the formula.",a:"yi = Yi − G(Xi*,ti) — Observed minus Computed. Yi is the raw instrument measurement; G(Xi*,ti) is what the reference trajectory predicts the observable would be. yi is the input to every estimator."}]
+},
+{id:2,badge:"§4.2 · pp.160–163",title:"Linearisation: the core trick",icon:"📐",pages:"§4.2 · pp.160–163",
+why:"<strong>Why linearise?</strong> F and G are nonlinear — we cannot invert them analytically. By Taylor-expanding around X*(t), we get linear equations in x = X−X*. This converts a hard nonlinear problem into tractable linear algebra. ALL estimators in Ch.4 depend on this.",
+svg:`<svg width="100%" viewBox="0 0 680 265" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<text x="40" y="26" class="ts" fill="#2d4a6a" font-family="monospace">position space (schematic)</text>
+<path d="M70 230 Q180 75 340 55 Q440 45 580 85" fill="none" stroke="#f87171" stroke-width="2.5" stroke-linecap="round"/>
+<path d="M70 230 Q175 95 330 80 Q430 73 570 108" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="594" y="82" class="ts" fill="#f87171" font-weight="bold">X(t) true</text>
+<text x="576" y="103" class="ts" fill="#3b82f6">X*(t) ref</text>
+<line x1="370" y1="59" x2="355" y2="83" stroke="#4ade80" stroke-width="2" marker-end="url(#a)"/>
+<text x="378" y="73" class="ts" fill="#4ade80" font-weight="bold">x(t)=X−X*</text>
+<circle cx="370" cy="59" r="4" fill="#f87171"/>
+<circle cx="355" cy="83" r="4" fill="#3b82f6"/>
+<line x1="70" y1="230" x2="620" y2="230" stroke="#2d4a6a" stroke-width="0.5" marker-end="url(#a)"/>
+<line x1="70" y1="230" x2="70" y2="24" stroke="#2d4a6a" stroke-width="0.5" marker-end="url(#a)"/>
+<text x="628" y="234" class="ts" fill="#2d4a6a">t</text>
+<text x="58" y="20" class="ts" fill="#2d4a6a">r</text>
+<rect x="35" y="155" width="290" height="50" rx="7" fill="#0a1e0a" stroke="#1a4a1a" stroke-width="0.5"/>
+<text x="180" y="173" text-anchor="middle" class="ts" fill="#4ade80" font-weight="bold">Linearised state ODE (Eq.4.2.6):</text>
+<text x="180" y="191" text-anchor="middle" font-family="monospace" font-size="13" fill="#86efac">ẋ(t) = A(t) · x(t)</text>
+<rect x="360" y="155" width="290" height="50" rx="7" fill="#0a0a1e" stroke="#1a1a4a" stroke-width="0.5"/>
+<text x="505" y="173" text-anchor="middle" class="ts" fill="#60a5fa" font-weight="bold">Linearised obs (Eq.4.2.6):</text>
+<text x="505" y="191" text-anchor="middle" font-family="monospace" font-size="13" fill="#93c5fd">yᵢ = H̃ᵢ xᵢ + εᵢ</text>
+</svg>`,
+overview:[
+ {label:"Dynamics Taylor expansion",text:"Ẋ = F(X,t) = F(X*,t) + [∂F/∂X]*(X−X*) + O(|x|²). Define A(t) = [∂F/∂X]*, discard O(|x|²): ẋ = A(t)x. Now linear in x!"},
+ {label:"Observation Taylor expansion",text:"G(X,ti) = G(X*,ti) + [∂G/∂X]*ᵢ(X−X*) + … Define yi=Yi−G(Xi*,ti) and H̃i=[∂G/∂X]*ᵢ. Then yi = H̃ixi + εi — linear in x!"},
+ {label:"Validity and iteration",text:"Linearisation only holds when |X−X*| is small. If initial guess is poor: solve for x̂, update X*←X*+x̂, recompute O−C, repeat. Iteration drives the residuals to zero."},
+ {label:"Range example",text:"For ρ=√[(X−Xs)²+(Y−Ys)²]: ∂ρ/∂X=(X−Xs)/ρ, ∂ρ/∂Y=(Y−Ys)/ρ. These are the entries of H̃ — evaluated on X*(t), not on the true orbit."},
+],
+equations:[
+{label:"Nonlinear dynamics (Eq.4.2.1)",eq:"Ẋ(t) = F(X, t),   X(tₖ) ≡ Xₖ",note:"True equations of motion — nonlinear, cannot invert directly"},
+{label:"Deviation definition",eq:"x(t) = X(t) − X*(t)   [n×1]",note:"THIS is what estimators solve for. X* satisfies Ẋ*=F(X*,t)."},
+{label:"A(t) dynamics matrix (Eq.4.2.5)",eq:"A(t) = [∂F/∂X]*  evaluated on X*(t)   [n×n]",note:"Time-varying along the orbit. Computed analytically or numerically."},
+{label:"Linearised state ODE (Eq.4.2.6) ★",eq:"ẋ(t) = A(t) · x(t)",note:"KEY: now linear in x — solvable via the STM"},
+{label:"H̃ᵢ observation partials (Eq.4.2.6)",eq:"H̃ᵢ = [∂G/∂X]*ᵢ   [p×n]  at (Xᵢ*,tᵢ)",note:"Evaluated on X*(t). p = number of observables per epoch."},
+{label:"Linearised observation + O−C (Eq.4.2.6) ★",eq:"yᵢ = H̃ᵢ xᵢ + εᵢ\nyᵢ = Yᵢ − G(Xᵢ*,tᵢ)   [O−C residual]",note:"The O−C residual is the input to all estimators"},
+],
+derivation:`STEP-BY-STEP LINEARISATION (TSB §4.2):
+
+1) True dynamics: Ẋ = F(X,t)
+   Reference:     Ẋ* = F(X*,t)
+   Subtract: ẋ = F(X,t) − F(X*,t)
+
+2) Taylor expand F around X*:
+   F(X,t) = F(X*,t) + [∂F/∂X]*(X−X*) + O(|x|²)
+
+3) Define A(t) = [∂F/∂X]*, drop O(|x|²):
+   ẋ = A(t)x   ← LINEAR! (Eq.4.2.6)
+
+4) For observations G(X,ti):
+   Yi = G(Xi*,ti) + [∂G/∂X]*i(Xi−Xi*) + εi
+   yi = Yi − G(Xi*,ti) = H̃i·xi + εi   ← LINEAR!
+
+RANGE EXAMPLE ρ = √[(X−Xs)²+(Y−Ys)²]:
+  ∂ρ/∂X = (X−Xs)/ρ    ∂ρ/∂Y = (Y−Ys)/ρ
+  ∂ρ/∂Ẋ = ∂ρ/∂Ẏ = 0   ∂ρ/∂μ = 0
+  H̃ = [(X−Xs)/ρ, (Y−Ys)/ρ, 0, 0, 0, −(X−Xs)/ρ, −(Y−Ys)/ρ]*
+                                    ↑ station coord partials`,
+matlab:`function [A, H_tilde] = linearise_system(X_star)
+% State X = [x;y;xdot;ydot;mu;xs;ys]  (n=7)
+% Observable: range rho = sqrt((x-xs)^2+(y-ys)^2)
+  x=X_star(1); y=X_star(2); mu=X_star(5);
+  xs=X_star(6); ys=X_star(7);
+  r   = sqrt(x^2 + y^2);
+  rho = sqrt((x-xs)^2 + (y-ys)^2);
+
+  %% A matrix — linearised dynamics (Eq.4.2.5)
+  A = zeros(7,7);
+  A(1,3)=1; A(2,4)=1;
+  A(3,1) = -mu/r^3 + 3*mu*x^2/r^5;
+  A(3,2) =  3*mu*x*y/r^5;       A(3,5) = -x/r^3;
+  A(4,1) =  3*mu*x*y/r^5;
+  A(4,2) = -mu/r^3 + 3*mu*y^2/r^5; A(4,5) = -y/r^3;
+  % rows 5-7: mu,xs,ys constant → zero
+
+  %% H_tilde — observation partials (Eq.4.2.6)
+  H_tilde = zeros(1,7);
+  H_tilde(1) =  (x-xs)/rho;
+  H_tilde(2) =  (y-ys)/rho;
+  H_tilde(6) = -(x-xs)/rho;
+  H_tilde(7) = -(y-ys)/rho;
+end`,
+traps:["x(t) is the STATE DEVIATION X−X*, NOT X(t). Answering 'what does the estimator solve for?' with 'the state X' is wrong — it solves for the deviation x.","H̃ᵢ must be evaluated on X*(t) — the REFERENCE trajectory. Never on the true or estimated trajectory.","A(t) is TIME-VARYING along the orbit — it is NOT a constant matrix in orbit mechanics.","Must iterate if initial X*(t₀) is far from truth. Linearisation breaks down for large deviations."],
+drills:[{q:"What exactly is x(t)? Write its definition and the ODE it satisfies.",a:"x(t) = X(t) − X*(t) is the n×1 state deviation. It satisfies the linearised ODE: ẋ = A(t)x (Eq.4.2.6), where A(t) = [∂F/∂X]* is evaluated on the reference trajectory X*(t). The solution is x(t) = Φ(t,tₖ)xₖ."},
+{q:"Define H̃ᵢ. On which trajectory is it evaluated?",a:"H̃ᵢ = [∂G/∂X]* is the p×n matrix of observation partial derivatives. It is evaluated on the REFERENCE trajectory X*(t) at time tᵢ — NEVER on the true or estimated trajectory. Its rows give how each observable changes with each state component."},
+{q:"Why must we iterate the linearisation?",a:"Linearisation discards O(|x|²) terms — valid only when |X−X*| is small. If the initial reference X*(t₀) is far from truth, these terms are large and the estimate x̂ is biased. After solving for x̂, we update X*₀←X*₀+x̂, recompute O−C residuals (now smaller), and repeat. Iteration drives |x̂|→0."}]
+},
+{id:3,badge:"§4.2.1 · pp.164–167",title:"State Transition Matrix (STM)",icon:"🔄",pages:"§4.2.1 · pp.164–167",
+why:"<strong>Why the STM?</strong> After linearising we have ẋ=A(t)x. The STM Φ(t,tₖ) is the matrix solution: x(t)=Φ(t,tₖ)xₖ. Without it we cannot connect observations at different times tᵢ back to a single epoch estimate xₖ. It appears in EVERY algorithm in Chapter 4.",
+svg:`<svg width="100%" viewBox="0 0 680 230" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<line x1="56" y1="195" x2="622" y2="195" stroke="#2d4a6a" stroke-width="0.5" marker-end="url(#a)"/>
+<text x="630" y="199" class="ts" fill="#2d4a6a">time</text>
+<circle cx="110" cy="195" r="6" fill="#3b82f6"/>
+<text x="110" y="212" text-anchor="middle" class="ts" fill="#3b82f6" font-weight="bold">tₖ epoch</text>
+<circle cx="260" cy="195" r="4" fill="#4a6080"/>
+<text x="260" y="212" text-anchor="middle" class="ts" fill="#4a6080">t₁</text>
+<circle cx="400" cy="195" r="4" fill="#4a6080"/>
+<text x="400" y="212" text-anchor="middle" class="ts" fill="#4a6080">t₂</text>
+<circle cx="555" cy="195" r="4" fill="#4a6080"/>
+<text x="555" y="212" text-anchor="middle" class="ts" fill="#4a6080">t₃</text>
+<rect x="74" y="38" width="100" height="50" rx="7" fill="#0a1829" stroke="#1e4a7a" stroke-width="1"/>
+<text x="124" y="60" text-anchor="middle" class="th" fill="#60a5fa">xₖ</text>
+<text x="124" y="78" text-anchor="middle" class="ts" fill="#3b82f6">state at epoch</text>
+<rect x="222" y="52" width="88" height="38" rx="6" fill="#0e1829" stroke="#2d4a6a" stroke-width="0.5"/>
+<text x="266" y="75" text-anchor="middle" font-family="monospace" font-size="10" fill="#fbbf24">x₁=Φ₁xₖ</text>
+<rect x="360" y="52" width="88" height="38" rx="6" fill="#0e1829" stroke="#2d4a6a" stroke-width="0.5"/>
+<text x="404" y="75" text-anchor="middle" font-family="monospace" font-size="10" fill="#fbbf24">x₂=Φ₂xₖ</text>
+<rect x="514" y="52" width="88" height="38" rx="6" fill="#0e1829" stroke="#2d4a6a" stroke-width="0.5"/>
+<text x="558" y="75" text-anchor="middle" font-family="monospace" font-size="10" fill="#fbbf24">x₃=Φ₃xₖ</text>
+<line x1="175" y1="63" x2="220" y2="71" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#a)"/>
+<line x1="175" y1="63" x2="358" y2="71" stroke="#3b82f6" stroke-width="1" stroke-dasharray="5 3" marker-end="url(#a)"/>
+<line x1="175" y1="63" x2="512" y2="71" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3 4" marker-end="url(#a)"/>
+<text x="196" y="54" class="ts" fill="#3b82f6">Φ(t₁,tₖ)</text>
+<text x="274" y="42" class="ts" fill="#3b82f6">Φ(t₂,tₖ)</text>
+<text x="380" y="30" class="ts" fill="#3b82f6">Φ(t₃,tₖ)</text>
+<line x1="124" y1="88" x2="124" y2="188" stroke="#1e4a7a" stroke-width="0.5" stroke-dasharray="3 3"/>
+<line x1="266" y1="90" x2="266" y2="188" stroke="#2d4a6a" stroke-width="0.5" stroke-dasharray="3 3"/>
+<line x1="404" y1="90" x2="404" y2="188" stroke="#2d4a6a" stroke-width="0.5" stroke-dasharray="3 3"/>
+<line x1="558" y1="90" x2="558" y2="188" stroke="#2d4a6a" stroke-width="0.5" stroke-dasharray="3 3"/>
+<text x="340" y="147" text-anchor="middle" class="ts" fill="#4ade80" font-weight="bold">single unknown xₖ connects all observations</text>
+<text x="340" y="163" text-anchor="middle" font-family="monospace" font-size="10" fill="#86efac">yᵢ = H̃ᵢ · Φ(tᵢ,tₖ) · xₖ + εᵢ = Hᵢ xₖ + εᵢ</text>
+</svg>`,
+overview:[
+ {label:"Definition",text:"Φ(t,tₖ) is the n×n matrix satisfying x(t) = Φ(t,tₖ)·xₖ. It solves the linearised ODE exactly for any initial condition xₖ. Initial condition: Φ(tₖ,tₖ) = I."},
+ {label:"How to compute",text:"Numerically: integrate Φ̇ = A(t)Φ alongside Ẋ* = F(X*,t). For n=6: 36+6 = 42 coupled ODEs. Use ode113 with tight tolerances in MATLAB."},
+ {label:"Mapping observations to epoch",text:"At time tᵢ: yᵢ = H̃ᵢxᵢ + εᵢ. Since xᵢ = Φ(tᵢ,tₖ)xₖ, substituting gives yᵢ = H̃ᵢΦ(tᵢ,tₖ)xₖ + εᵢ = Hᵢxₖ + εᵢ. All observations reference the single unknown xₖ."},
+ {label:"Covariance propagation",text:"If Pⱼ is the covariance at tⱼ, then Pₖ = Φ(tₖ,tⱼ)·Pⱼ·Φᵀ(tₖ,tⱼ). Φᵀ is on the RIGHT — a classic exam trap."},
+],
+equations:[
+{label:"STM definition (Eq.4.2.7)",eq:"x(t) = Φ(t,tₖ) · xₖ",note:"Solution to ẋ = A(t)x with xₖ given at epoch"},
+{label:"STM differential equation (Eq.4.2.10) ★",eq:"Φ̇(t,tₖ) = A(t) · Φ(t,tₖ)\nΦ(tₖ,tₖ) = I",note:"n² ODEs — integrate alongside orbit propagation"},
+{label:"Property 1: identity",eq:"Φ(tₖ,tₖ) = Iₙ",note:""},
+{label:"Property 2: composition (Eq.4.2.8)",eq:"Φ(tᵢ,tₖ) = Φ(tᵢ,tⱼ) · Φ(tⱼ,tₖ)",note:"Chain rule — multiply STMs for adjacent intervals"},
+{label:"Property 3: inverse (Eq.4.2.8)",eq:"Φ⁻¹(t,tₖ) = Φ(tₖ,t)",note:"Backward propagation without explicit inversion"},
+{label:"Map obs to epoch (Eq.4.2.37) ★",eq:"Hᵢ = H̃ᵢ · Φ(tᵢ,tₖ)   [p×n]",note:"MUST apply before stacking H matrix"},
+{label:"Full linear system (Eq.4.2.39) ★",eq:"y = H · xₖ + ε\nH = [H₁; H₂; …; Hₗ]   [m×n]",note:"Single epoch state xₖ connects all ℓ observations"},
+{label:"Covariance propagation (Eq.4.4.22) ★★",eq:"Pₖ = Φ(tₖ,tⱼ) · Pⱼ · Φᵀ(tₖ,tⱼ)",note:"Φᵀ on the RIGHT — most common single exam error"},
+],
+derivation:`DERIVATION OF STM DIFFERENTIAL EQUATION:
+
+1) STM maps deviations: x(t) = Φ(t,tₖ) · xₖ
+2) Differentiate wrt t (xₖ constant at epoch):
+   ẋ(t) = Φ̇(t,tₖ) · xₖ
+3) From linearised dynamics: ẋ(t) = A(t)x(t) = A(t)Φ(t,tₖ)xₖ
+4) Since xₖ is arbitrary — equate coefficients:
+   Φ̇(t,tₖ) = A(t)Φ(t,tₖ)   [n×n ODE]
+   Φ(tₖ,tₖ) = I             [initial condition]
+
+MAPPING TO EPOCH:
+5) At tᵢ: yᵢ = H̃ᵢ·xᵢ + εᵢ   (xᵢ at tᵢ)
+6) Use STM: xᵢ = Φ(tᵢ,tₖ)·xₖ
+7) Substitute:
+   yᵢ = H̃ᵢ·Φ(tᵢ,tₖ)·xₖ + εᵢ = Hᵢ·xₖ + εᵢ
+   where Hᵢ ≡ H̃ᵢΦ(tᵢ,tₖ)  [the mapped matrix]
+8) Stack all ℓ observations:
+   y = H·xₖ + ε  ← one linear system in xₖ ✓`,
+matlab:`function stm_demo()
+% Integrate STM alongside orbit — two-body, n=6
+  mu=3.986004418e14; r0=6778e3; v0=sqrt(mu/r0);
+  X0=[r0;0;0;0;v0;0]; n=6;
+  Z0=[X0; eye(n)(:)];     % 6+36=42 ODEs total
+  T=2*pi*sqrt(r0^3/mu);   % one orbital period
+  opts=odeset('RelTol',1e-12,'AbsTol',1e-14);
+  [~,Z]=ode113(@(t,z)eom_stm(t,z,mu,n),linspace(0,T,500),Z0,opts);
+
+  Phi_T=reshape(Z(end,n+1:end),n,n);   % STM after 1 orbit
+  fprintf('STM check: %.2e\\n',norm(Phi_T/Phi_T-eye(n)));
+
+  %% Covariance propagation: P(T) = Phi*P0*Phi'
+  P0=diag([100 100 100 0.1 0.1 0.1].^2);  % initial uncertainties
+  P_T=Phi_T*P0*Phi_T';                     % Eq.4.4.22
+  fprintf('Pos sigma after 1 orbit: %.2f m\\n',sqrt(P_T(1,1)));
+end
+function dZ=eom_stm(~,Z,mu,n)
+  X=Z(1:n); Phi=reshape(Z(n+1:end),n,n); r=X(1:3); rn=norm(r);
+  A=[zeros(3),eye(3); mu/rn^3*(-eye(3)+3*(r*r')/rn^2),zeros(3)];
+  dZ=[X(4:6);-mu/rn^3*r; (A*Phi)(:)];
+end`,
+traps:["Φ maps LINEAR DEVIATIONS only — a separate ODE propagates the full state X*(t).","Hᵢ=H̃ᵢΦ(tᵢ,tₖ): Φ goes FROM tₖ TO tᵢ. Wrong order gives catastrophically wrong results.","Covariance: Pₖ=Φ·Pⱼ·Φᵀ — Φᵀ on the RIGHT. Placing it on the left is the #1 exam error.","For nonlinear OD: Φ must be RECOMPUTED at every iteration as X*(t) changes."],
+drills:[{q:"Write Φ̇ with its initial condition. How many ODEs for n=6?",a:"Φ̇(t,tₖ)=A(t)Φ(t,tₖ), Φ(tₖ,tₖ)=I. For n=6: 6×6=36 scalar ODEs for Φ plus 6 for X*(t) = 42 total. All must be integrated simultaneously."},
+{q:"An observation at t₁ gives y₁=H̃₁x₁+ε₁. Express this in terms of xₖ at epoch t₀.",a:"Use STM: x₁=Φ(t₁,t₀)xₖ. Substitute: y₁=H̃₁·Φ(t₁,t₀)·xₖ+ε₁=H₁·xₖ+ε₁, where H₁=H̃₁Φ(t₁,t₀) is the p×n mapped observation matrix."},
+{q:"State all three STM properties. Write the covariance propagation formula.",a:"(1) Φ(tₖ,tₖ)=I; (2) Φ(tᵢ,tₖ)=Φ(tᵢ,tⱼ)Φ(tⱼ,tₖ) [composition]; (3) Φ⁻¹(t,tₖ)=Φ(tₖ,t) [inverse]. Covariance: Pₖ=Φ(tₖ,tⱼ)·Pⱼ·Φᵀ(tₖ,tⱼ). Φᵀ on the RIGHT."}]
+},
+{id:4,badge:"§4.2.2 · pp.167–171",title:"STM computation — constant-A example",icon:"🔬",pages:"§4.2.2 · pp.167–171",
+why:"<strong>Why this example?</strong> TSB Example 4.2.2 is the only case with a closed-form STM (constant A). It gives concrete intuition for what Φ looks like and demonstrates four computation methods. It is frequently set as an exam exercise — TSB item (1) in §4.19 inverts this directly.",
+svg:`<svg width="100%" viewBox="0 0 680 200" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<text x="340" y="20" text-anchor="middle" class="ts" fill="#2d4a6a" font-family="monospace">Example 4.2.2 — system ẋ₁=x₁, ẋ₂=βx₁ (constant A)</text>
+<rect x="30" y="34" width="280" height="110" rx="8" fill="#1a0a2a" stroke="#4a1a7a" stroke-width="0.5"/>
+<text x="170" y="56" text-anchor="middle" class="th" fill="#c084fc">System matrix A</text>
+<text x="170" y="80" text-anchor="middle" font-family="monospace" font-size="13" fill="#a855f7">A = [[1, 0], [β, 0]]</text>
+<text x="170" y="100" text-anchor="middle" class="ts" fill="#7c3aed">constant — eigenvalues λ=1, λ=0</text>
+<text x="170" y="118" text-anchor="middle" class="ts" fill="#7c3aed">x₁,x₂ are state components</text>
+<text x="170" y="134" text-anchor="middle" class="ts" fill="#6d28d9">4 computation methods</text>
+<line x1="312" y1="89" x2="366" y2="89" stroke="#4a6080" stroke-width="1.5" marker-end="url(#a)"/>
+<text x="339" y="82" text-anchor="middle" class="ts" fill="#4a6080">Φ̇=AΦ</text>
+<rect x="368" y="34" width="280" height="110" rx="8" fill="#0a1e0a" stroke="#1a4a1a" stroke-width="0.5"/>
+<text x="508" y="56" text-anchor="middle" class="th" fill="#4ade80">STM Φ(t,t₀)</text>
+<text x="508" y="78" text-anchor="middle" font-family="monospace" font-size="12" fill="#86efac">[[e^(t−t₀),       0],</text>
+<text x="508" y="95" text-anchor="middle" font-family="monospace" font-size="12" fill="#86efac"> [β(e^(t−t₀)−1),  1]]</text>
+<text x="508" y="115" text-anchor="middle" class="ts" fill="#22c55e">Eq.4.2.33 — exact closed form</text>
+<text x="508" y="132" text-anchor="middle" class="ts" fill="#16a34a">Verify: Φ(t₀,t₀)=I ✓</text>
+<rect x="30" y="158" width="618" height="30" rx="6" fill="#0a1a2a" stroke="#1e3a5a" stroke-width="0.5"/>
+<text x="339" y="178" text-anchor="middle" class="ts" fill="#3b82f6">Column j of Φ = response to unit initial condition in state component j at t₀</text>
+</svg>`,
+overview:[
+ {label:"System (Eq.4.2.28)",text:"ẋ₁=x₁, ẋ₂=βx₁ with initial conditions x₁(t₀)=x₁₀, x₂(t₀)=x₂₀. Constant A = [[1,0],[β,0]]. Eigenvalues λ₁=1, λ₂=0."},
+ {label:"Four computation methods (§4.2.2)",text:"(1) Solve ODE directly; (2) Integrate Φ̇=AΦ componentwise; (3) Laplace transforms: Φ=L⁻¹[(sI−A)⁻¹]; (4) Eigenvalues: Φ=VeΛτV⁻¹ (Eq.4.2.35). Method 2 is what we implement numerically for time-varying A."},
+ {label:"Physical interpretation of Φ",text:"Column j of Φ shows how a unit kick to state component j at t₀ propagates to ALL components at time t. It encodes sensitivity to initial conditions simultaneously for all directions."},
+ {label:"When constant A applies",text:"Constant A = constant orbit dynamics = only for simplified force models. In real orbit mechanics A(t) is time-varying → must integrate Φ̇=A(t)Φ numerically alongside orbit propagation."},
+],
+equations:[
+{label:"Example system in state space (Eq.4.2.29)",eq:"Ẋ = AX  with  A = [[1, 0], [β, 0]]",note:"x₁ grows exponentially; x₂ responds to x₁"},
+{label:"STM solution (Eq.4.2.33) ★",eq:"Φ(t,t₀) = [[e^(t−t₀),       0      ],\n            [β(e^(t−t₀)−1), 1      ]]",note:"Verify: set t=t₀ → [[1,0],[0,1]] = I ✓"},
+{label:"Eigenvalue method (Eq.4.2.35)",eq:"Φ(t,t₀) = V · exp(Λ(t−t₀)) · V⁻¹\nwhere V = matrix of normalised eigenvectors of A",note:"Works only for constant A — not applicable to orbit mechanics generally"},
+{label:"Verification check",eq:"Check 1: Φ(t₀,t₀) = I  (set t=t₀ → get I)\nCheck 2: Φ̇ = AΦ  (differentiate and verify)",note:"ALWAYS verify both conditions for any candidate STM"},
+],
+derivation:`METHOD 2: DIRECT INTEGRATION OF Φ̇=AΦ (Eq.4.2.34)
+
+A = [[1,0],[β,0]]  →  Φ̇ = AΦ with Φ(t₀,t₀)=I:
+
+Component equations:
+  φ̇₁₁ = φ₁₁   →  φ₁₁ = e^(t−t₀)   [φ₁₁(t₀)=1]
+  φ̇₂₁ = βφ₁₁  →  φ₂₁ = β(e^(t−t₀)−1)  [φ₂₁(t₀)=0]
+  φ̇₁₂ = φ₁₂   →  φ₁₂ = 0   [φ₁₂(t₀)=0]
+  φ̇₂₂ = βφ₁₂  →  φ₂₂ = 1   [φ₂₂(t₀)=1]
+
+Therefore:
+  Φ(t,t₀) = [[e^(t−t₀),      0],   (Eq.4.2.33)
+             [β(e^(t−t₀)−1), 1]]
+
+VERIFICATION:
+  t=t₀: Φ = [[e⁰,0],[β(e⁰−1),1]] = [[1,0],[0,1]] = I ✓
+  Φ̇ = [[ e^τ, 0],[βe^τ, 0]] = [[1,0],[β,0]]·Φ = AΦ ✓`,
+matlab:`% TSB Exercise 4.19 item (1): given Phi, find A
+% Phi(t) = diag(e^(-2at), e^(bt)) — what is A?
+% Use: A = Phi_dot * inv(Phi)
+
+syms a b t
+Phi = diag([exp(-2*a*t), exp(b*t)]);
+Phi_dot = diff(Phi, t);
+A = Phi_dot / Phi;   % = Phi_dot * inv(Phi)
+disp('A = '); disp(simplify(A))
+% Answer: A = diag(-2a, b)
+
+% Verify Example 4.2.2 STM:
+beta = 1.5; t0 = 0; t_end = 2;
+tau = t_end - t0;
+Phi_exact = [exp(tau), 0; beta*(exp(tau)-1), 1];  % Eq.4.2.33
+
+% Verify Phi_dot = A*Phi:
+A = [1 0; beta 0];
+dPhi_dt = expm(A*tau)*A;  % d/dt(e^(At)) = Ae^(At) for const A
+fprintf('Phi_dot - A*Phi = %.2e\\n', norm(A*Phi_exact - [exp(tau),0;beta*exp(tau),0]));`,
+traps:["Φ=exp(Aτ) ONLY works for constant A. For orbit mechanics with time-varying A(t), this formula is wrong — must integrate Φ̇=AΦ numerically.","ALWAYS verify your STM satisfies BOTH Φ(t₀,t₀)=I AND Φ̇=AΦ. Missing either check can mask errors.","TSB Exercise 4.19 item (6): Φ=diag(3e^(at),2e^(-bt)) satisfies Φ̇=AΦ but is NOT a valid STM — it doesn't satisfy Φ(t₀,t₀)=I when t₀≠0."],
+drills:[{q:"Verify that Φ(t,t₀)=[[e^(t−t₀),0],[β(e^(t−t₀)−1),1]] satisfies Φ(t₀,t₀)=I.",a:"Set t=t₀ (so τ=t−t₀=0): Φ=[[e⁰,0],[β(e⁰−1),1]]=[[1,0],[β·0,1]]=[[1,0],[0,1]]=I ✓"},
+{q:"TSB Exercise 4.19 item (1): given Φ(t)=diag(e^(−2at), e^(bt)), find matrix A.",a:"From Φ̇=AΦ → A=Φ̇·Φ⁻¹. Φ̇=diag(−2a·e^(−2at), b·e^(bt)). Φ⁻¹=diag(e^(2at), e^(−bt)) (diagonal, invert each entry). A=Φ̇·Φ⁻¹=diag(−2a, b). Physically: ẋ₁=−2ax₁ and ẋ₂=bx₂."}]
+},
+{id:5,badge:"§4.2.3 · pp.172–173",title:"Relating all observations to epoch",icon:"🔗",pages:"§4.2.3 · pp.172–173",
+why:"<strong>Why?</strong> We have ℓ observations at different times. Each says yᵢ=H̃ᵢxᵢ+εᵢ. The estimator can only solve for ONE state vector. By substituting xᵢ=Φ(tᵢ,tₖ)xₖ and defining Hᵢ=H̃ᵢΦ, we get y=Hxₖ+ε — a single linear system in the one unknown xₖ.",
+svg:`<svg width="100%" viewBox="0 0 680 235" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<text x="340" y="18" text-anchor="middle" class="ts" fill="#2d4a6a" font-family="monospace">mapping ℓ observations to epoch via STM</text>
+<rect x="28" y="30" width="95" height="38" rx="6" fill="#1a0a0a" stroke="#4a1a1a" stroke-width="0.5"/>
+<text x="75" y="53" text-anchor="middle" font-family="monospace" font-size="10" fill="#f87171">y₁=H̃₁x₁+ε₁</text>
+<rect x="28" y="82" width="95" height="38" rx="6" fill="#1a0a0a" stroke="#4a1a1a" stroke-width="0.5"/>
+<text x="75" y="105" text-anchor="middle" font-family="monospace" font-size="10" fill="#f87171">y₂=H̃₂x₂+ε₂</text>
+<rect x="28" y="134" width="95" height="38" rx="6" fill="#1a0a0a" stroke="#4a1a1a" stroke-width="0.5"/>
+<text x="75" y="157" text-anchor="middle" font-family="monospace" font-size="10" fill="#f87171">yₗ=H̃ₗxₗ+εₗ</text>
+<text x="75" y="122" text-anchor="middle" font-size="18" fill="#4a6080">⋮</text>
+<line x1="125" y1="49" x2="195" y2="95" stroke="#4ade80" stroke-width="1.2" marker-end="url(#a)"/>
+<line x1="125" y1="101" x2="195" y2="110" stroke="#4ade80" stroke-width="1.2" marker-end="url(#a)"/>
+<line x1="125" y1="153" x2="195" y2="128" stroke="#4ade80" stroke-width="1.2" marker-end="url(#a)"/>
+<text x="168" y="88" class="ts" fill="#4ade80" font-size="10">xᵢ=Φ(tᵢ,tₖ)xₖ</text>
+<rect x="197" y="80" width="148" height="52" rx="8" fill="#0a1e0a" stroke="#1a4a1a" stroke-width="0.5"/>
+<text x="271" y="102" text-anchor="middle" class="ts" fill="#4ade80" font-weight="bold">substitute STM</text>
+<text x="271" y="120" text-anchor="middle" font-family="monospace" font-size="10" fill="#86efac">Hᵢ=H̃ᵢ·Φ(tᵢ,tₖ)</text>
+<line x1="347" y1="106" x2="412" y2="106" stroke="#4a6080" stroke-width="1.2" marker-end="url(#a)"/>
+<text x="380" y="100" text-anchor="middle" class="ts" fill="#4a6080">stack</text>
+<rect x="414" y="38" width="200" height="140" rx="10" fill="#0a1829" stroke="#1e4a7a" stroke-width="1"/>
+<text x="514" y="62" text-anchor="middle" class="th" fill="#60a5fa">y = H · xₖ + ε</text>
+<text x="514" y="85" text-anchor="middle" font-family="monospace" font-size="11" fill="#93c5fd">H = [H₁]   [m×n]</text>
+<text x="514" y="101" text-anchor="middle" font-family="monospace" font-size="11" fill="#93c5fd">    [H₂]</text>
+<text x="514" y="117" text-anchor="middle" font-family="monospace" font-size="11" fill="#93c5fd">    [...]</text>
+<text x="514" y="133" text-anchor="middle" font-family="monospace" font-size="11" fill="#93c5fd">    [Hₗ]</text>
+<text x="514" y="158" text-anchor="middle" class="ts" fill="#3b82f6">one xₖ to solve</text>
+<text x="340" y="207" text-anchor="middle" class="ts" fill="#a855f7" font-weight="bold">Need m ≥ n for unique LS solution (overdetermined)</text>
+</svg>`,
+overview:[
+ {label:"The key mapping step (Eq.4.2.37)",text:"Hᵢ = H̃ᵢ·Φ(tᵢ,tₖ) [p×n]. This maps the observation partial at time tᵢ back to epoch tₖ via the STM. CRITICAL: do this BEFORE accumulating into normal equations."},
+ {label:"Stacked system (Eq.4.2.39)",text:"y = H·xₖ + ε where H = [H₁; H₂; …; Hₗ] [m×n] and m = p·ℓ. All observations in one linear system with single unknown xₖ at epoch."},
+ {label:"Epoch choice",text:"Epoch tₖ can be any reference time — often chosen at the midpoint of the data arc for best numerical conditioning. All STMs and state estimates are referenced to this time."},
+ {label:"Observability check",text:"For a unique solution need rank(H) = n, equivalently HᵀR⁻¹H positive definite. If rank(H) < n: unobservable state components — more/different data needed."},
+],
+equations:[
+{label:"Key mapping step (Eq.4.2.37) ★★",eq:"Hᵢ = H̃ᵢ · Φ(tᵢ,tₖ)   [p×n]",note:"Map H̃ to epoch FIRST. Never put H̃ directly into normal equations!"},
+{label:"Stacked system (Eq.4.2.39) ★★",eq:"y = H · xₖ + ε\ny = [y₁;…;yₗ]  [m×1]\nH = [H₁;…;Hₗ]  [m×n]  m=p·ℓ",note:"This is the linear system that ALL Ch.4 estimators then process"},
+],
+derivation:`OBSERVATION MAPPING DERIVATION:
+
+1) At time tᵢ: yᵢ = H̃ᵢ·xᵢ + εᵢ
+   (xᵢ is state deviation AT TIME tᵢ, not at epoch)
+
+2) Use STM to connect to epoch:
+   xᵢ = Φ(tᵢ,tₖ)·xₖ
+
+3) Substitute:
+   yᵢ = H̃ᵢ·Φ(tᵢ,tₖ)·xₖ + εᵢ
+      = Hᵢ·xₖ + εᵢ
+   where Hᵢ ≡ H̃ᵢΦ(tᵢ,tₖ)  [the MAPPED matrix]
+
+4) Repeat for all ℓ observation epochs.
+   Stack vertically:
+   y = [y₁] = [H₁] xₖ + [ε₁]
+       [y₂]   [H₂]       [ε₂]
+       [...]   [...]       [...]
+       [yₗ]   [Hₗ]       [εₗ]
+   y = H·xₖ + ε   ← ONE linear system ✓
+
+DIMENSION CHECK:
+  yᵢ:  [p×1]  (p obs per epoch)
+  H̃ᵢ:  [p×n]  (p obs, n states)
+  Φ:   [n×n]  (n×n STM)
+  Hᵢ:  [p×n]  (H̃ᵢ·Φ)
+  H:   [m×n]  (m=p·ℓ stacked)`,
+matlab:`%% Build H matrix and observation vector
+n_state = 6;    % state dimension
+p_obs   = 2;    % obs per epoch (range + rate)
+n_epochs= 20;   % number of observation times
+
+H_full = zeros(p_obs*n_epochs, n_state);
+y_full = zeros(p_obs*n_epochs, 1);
+
+for i = 1:n_epochs
+    t_i = t_obs(i);
+    
+    % 1. Propagate orbit and STM from t0 to t_i
+    [X_star_i, Phi_i] = propagate_orbit_stm(X_star_0, t0, t_i);
+    
+    % 2. Compute observation partials at (X_star_i, t_i)
+    [G_i, H_tilde_i] = obs_partials(X_star_i, t_i);
+    
+    % 3. MAP TO EPOCH: Hᵢ = H̃ᵢ · Φ(tᵢ,t₀)
+    H_i = H_tilde_i * Phi_i;           % [p×n]
+    
+    % 4. O-C residual
+    y_i = Y_obs(i,:)' - G_i;           % [p×1]
+    
+    % 5. Stack
+    rows = (i-1)*p_obs + (1:p_obs);
+    H_full(rows, :) = H_i;
+    y_full(rows)    = y_i;
+end
+
+% Now solve: x_hat = (H'*W*H) \\ (H'*W*y)`,
+traps:["NEVER put H̃ᵢ directly into the normal equations. Always apply STM: Hᵢ=H̃ᵢΦ(tᵢ,tₖ). Mixing unreferenced obs matrices is catastrophic.","H matrix has dimensions m×n (NOT n×m): rows = observations, columns = state components.","If m < n (fewer observations than unknowns): underdetermined system → use minimum norm solution (§4.3.1)."],
+drills:[{q:"An observation at t₁ gives y₁=H̃₁x₁+ε₁. Show the result at epoch t₀ and define H₁.",a:"Use STM: x₁=Φ(t₁,t₀)x₀. Substitute: y₁=H̃₁·Φ(t₁,t₀)·x₀+ε₁=H₁·x₀+ε₁, where H₁=H̃₁Φ(t₁,t₀) [p×n] is the mapped observation matrix. Note: H̃₁ is [p×n] and Φ is [n×n], so H₁=[p×n]. ✓"}]
+},
+{id:6,badge:"§4.3 · pp.173–176",title:"The least squares solution",icon:"📉",pages:"§4.3 · pp.173–176",
+why:"<strong>Why LS?</strong> We have y=Hxₖ+ε and m>n equations. No exact solution exists. Gauss (1809): choose x̂ₖ to minimise the sum of squared residuals. Requires NO statistical knowledge. This is the foundational estimator — all others improve on it.",
+svg:`<svg width="100%" viewBox="0 0 680 200" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<text x="340" y="18" text-anchor="middle" class="ts" fill="#2d4a6a" font-family="monospace">geometry of least squares — orthogonal projection</text>
+<path d="M110 180 L370 55 L620 130" fill="#0a1829" stroke="#1e3a5a" stroke-width="0.5" opacity="0.6"/>
+<text x="520" y="75" class="ts" fill="#1e4a7a">column space of H</text>
+<text x="565" y="91" class="ts" fill="#1e4a7a">range(H)</text>
+<circle cx="255" cy="48" r="5" fill="#f87171"/>
+<text x="266" y="45" class="ts" fill="#f87171" font-weight="bold">y</text>
+<text x="266" y="58" class="ts" fill="#f87171">observed+noise</text>
+<circle cx="295" cy="112" r="5" fill="#4ade80"/>
+<text x="308" y="110" class="ts" fill="#4ade80" font-weight="bold">Hx̂ₖ</text>
+<text x="308" y="124" class="ts" fill="#22c55e">LS fit (projection)</text>
+<line x1="255" y1="52" x2="291" y2="108" stroke="#4a6080" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#a)"/>
+<text x="233" y="90" class="ts" fill="#4a6080" font-weight="bold">ε̂ ⊥ H</text>
+<text x="218" y="105" class="ts" fill="#4a6080">(orthogonality)</text>
+<rect x="28" y="148" width="280" height="40" rx="7" fill="#0a1e0a" stroke="#1a4a1a" stroke-width="0.5"/>
+<text x="168" y="165" text-anchor="middle" class="ts" fill="#4ade80" font-weight="bold">Normal equations (Eq.4.3.4):</text>
+<text x="168" y="183" text-anchor="middle" font-family="monospace" font-size="12" fill="#86efac">(HᵀH) x̂ₖ = Hᵀy</text>
+<rect x="358" y="148" width="295" height="40" rx="7" fill="#0a0a1e" stroke="#1a1a4a" stroke-width="0.5"/>
+<text x="505" y="165" text-anchor="middle" class="ts" fill="#60a5fa" font-weight="bold">LS solution (Eq.4.3.6):</text>
+<text x="505" y="183" text-anchor="middle" font-family="monospace" font-size="12" fill="#93c5fd">x̂ₖ = (HᵀH)⁻¹ Hᵀy</text>
+</svg>`,
+overview:[
+ {label:"Standard LS (equal weights)",text:"Minimise ‖y−Hx‖². Normal equations: (HᵀH)x̂=Hᵀy → x̂=(HᵀH)⁻¹Hᵀy. Requires m≥n and H full column rank. (HᵀH)⁻¹Hᵀ is the Moore-Penrose pseudoinverse of H."},
+ {label:"Minimum norm (m<n)",text:"Underdetermined: infinitely many solutions. Minimise ‖x̂‖² subject to Hx=y. Solution: x̂=Hᵀ(HHᵀ)⁻¹y. Requires H full ROW rank. Inverts the m×m matrix HHᵀ instead of n×n HᵀH."},
+ {label:"Geometric interpretation",text:"Hx̂ₖ is the orthogonal projection of y onto the column space of H. The post-fit residual ε̂=y−Hx̂ₖ is perpendicular to every column of H: Hᵀε̂=0. This is the geometric statement of the normal equations."},
+ {label:"Shortcomings (§4.3.2)",text:"LS treats all observations equally (W=I). Different obs types (range vs Doppler) have different noise levels → unequal accuracy → LS gives suboptimal weight. WLS (§4.3.3) fixes this."},
+],
+equations:[
+{label:"LS cost function (Eq.4.3.1)",eq:"J(x) = ½(y − Hx)ᵀ(y − Hx) = ½‖y−Hx‖²",note:"Sum of squared residuals — no statistical knowledge required"},
+{label:"Gradient derivation → normal equations (Eq.4.3.4) ★",eq:"∂J/∂x = −Hᵀ(y−Hx) = 0\n→ (HᵀH) x̂ₖ = Hᵀy",note:"Set gradient to zero. HᵀH must be invertible (full rank H)."},
+{label:"LS solution (Eq.4.3.6)",eq:"x̂ₖ = (HᵀH)⁻¹ Hᵀy",note:"MATLAB: x_hat = (H'*H) \\ (H'*y)  — use backslash!"},
+{label:"Minimum norm (Eq.4.3.13) — when m<n",eq:"x̂ₖ = Hᵀ(HHᵀ)⁻¹ y",note:"Minimises ‖x̂‖² given Hx=y. Requires H full row rank."},
+{label:"Post-fit residuals",eq:"ε̂ = y − H x̂ₖ   [should look like white noise]",note:"Systematic patterns → model error or non-convergence"},
+],
+derivation:`DERIVING LS NORMAL EQUATIONS:
+
+1) Cost: J = ½(y−Hx)ᵀ(y−Hx)
+   Expand: = ½[yᵀy − 2xᵀHᵀy + xᵀHᵀHx]
+
+2) Gradient wrt x:
+   ∂J/∂x = −Hᵀ(y−Hx)
+
+3) Set to zero for minimum:
+   Hᵀ(y − Hx̂) = 0
+   HᵀHx̂ = Hᵀy   ← NORMAL EQUATIONS (Eq.4.3.4)
+
+4) Invert (if HᵀH positive definite):
+   x̂ = (HᵀH)⁻¹Hᵀy
+
+5) Verify minimum: ∂²J/∂x² = HᵀH > 0  ✓
+   (positive definite if rank(H)=n)
+
+GEOMETRIC INTERPRETATION:
+   Hᵀε̂ = HᵀHx̂ − Hᵀy = 0  (from normal equations)
+   → post-fit residual ε̂ ⊥ every column of H
+   → Hx̂ is the orthogonal projection of y onto range(H) ✓`,
+matlab:`%% Least squares — simple example
+H = [1 2; 3 1; 2 3; 1 1];   % 4 obs, 2 states (overdetermined)
+x_true = [5; 3];
+sigma = 0.1;
+y = H*x_true + sigma*randn(4,1);   % noisy obs
+
+%% Standard LS (Eq.4.3.6) — use backslash!
+x_hat = (H'*H) \\ (H'*y);         % NEVER use inv()
+e_hat = y - H*x_hat;               % post-fit residuals
+
+fprintf('True: [%.4f; %.4f]\\n', x_true);
+fprintf('Estimated: [%.4f; %.4f]\\n', x_hat);
+fprintf('RMS post-fit: %.5f\\n', rms(e_hat));
+
+%% Minimum norm (m<n case) — example
+H_under = [1 2 3];   % 1 obs, 3 states (underdetermined)
+y_under = 14;
+x_min_norm = H_under' / (H_under*H_under') * y_under;
+fprintf('Min norm solution: [%.3f; %.3f; %.3f]\\n', x_min_norm);
+fprintf('Check Hx=y: %.4f (should be %.1f)\\n', H_under*x_min_norm, y_under);`,
+traps:["NEVER use inv(H'*H)*H'*y in MATLAB. Use (H'*H)\\(H'*y) — backslash is faster and far more numerically stable.","HᵀH singular → state NOT observable from this data. This is a geometry problem, not numerical — more data of the same type won't fix it.","Post-fit residuals that look systematic (not white noise) → model error or non-convergence. Must investigate."],
+drills:[{q:"Derive the LS normal equations from J=½‖y−Hx‖². State the condition for a unique solution.",a:"J=½(y−Hx)ᵀ(y−Hx)=½[yᵀy−2xᵀHᵀy+xᵀHᵀHx]. ∂J/∂x=−Hᵀ(y−Hx)=0 → (HᵀH)x̂=Hᵀy → x̂=(HᵀH)⁻¹Hᵀy. Unique solution requires HᵀH invertible ↔ rank(H)=n (H full column rank) ↔ m≥n and no degenerate geometry."},
+{q:"When do you use minimum norm instead of standard LS? Write the formula.",a:"When m<n (underdetermined: fewer observations than unknowns). Infinitely many solutions satisfy Hx=y. Minimum norm picks the one with smallest ‖x̂‖²: x̂=Hᵀ(HHᵀ)⁻¹y. This inverts the m×m matrix HHᵀ (smaller when m<n)."}]
+},
+{id:7,badge:"§4.3.1–4.3.3 · pp.174–180",title:"Min. norm, shortcomings, and weighted LS",icon:"⚖️",pages:"§4.3.1–4.3.3 · pp.174–180",
+why:"<strong>Why extend LS?</strong> Standard LS ignores noise statistics (W=I). WLS with W=R⁻¹ is the first estimator that uses measurement noise knowledge — and it equals the Minimum Variance Estimate (§4.4). WLS with a priori (Eq.4.3.25) is the precursor to the Kalman filter measurement update.",
+svg:`<svg width="100%" viewBox="0 0 680 180" xmlns="http://www.w3.org/2000/svg">
+<text x="340" y="18" text-anchor="middle" class="ts" fill="#2d4a6a" font-family="monospace">choosing the right estimator</text>
+<rect x="20" y="30" width="196" height="136" rx="8" fill="#0e1e0e" stroke="#1a4a1a" stroke-width="0.5"/>
+<text x="118" y="54" text-anchor="middle" class="th" fill="#4ade80">Standard LS</text>
+<text x="118" y="72" text-anchor="middle" class="ts" fill="#22c55e">m ≥ n, equal weights</text>
+<text x="118" y="94" text-anchor="middle" font-family="monospace" font-size="10" fill="#86efac">(HᵀH)x̂=Hᵀy</text>
+<text x="118" y="112" text-anchor="middle" class="ts" fill="#16a34a">Ignores noise (W=I)</text>
+<text x="118" y="130" text-anchor="middle" class="ts" fill="#16a34a">Suboptimal in general</text>
+<text x="118" y="153" text-anchor="middle" class="ts" fill="#15803d">Gauss (1809)</text>
+<rect x="244" y="30" width="196" height="136" rx="8" fill="#1a1a0a" stroke="#4a4a1a" stroke-width="0.5"/>
+<text x="342" y="54" text-anchor="middle" class="th" fill="#fbbf24">Weighted LS</text>
+<text x="342" y="72" text-anchor="middle" class="ts" fill="#d97706">W = R⁻¹</text>
+<text x="342" y="94" text-anchor="middle" font-family="monospace" font-size="10" fill="#fde68a">(HᵀWH)x̂=HᵀWy</text>
+<text x="342" y="112" text-anchor="middle" class="ts" fill="#b45309">Uses noise statistics R</text>
+<text x="342" y="130" text-anchor="middle" class="ts" fill="#b45309">= MVE (§4.4)</text>
+<text x="342" y="153" text-anchor="middle" class="ts" fill="#92400e">P=(HᵀWH)⁻¹</text>
+<rect x="468" y="30" width="196" height="136" rx="8" fill="#0a0a1e" stroke="#1a1a4a" stroke-width="0.5"/>
+<text x="566" y="54" text-anchor="middle" class="th" fill="#60a5fa">WLS + a priori</text>
+<text x="566" y="72" text-anchor="middle" class="ts" fill="#3b82f6">x̄ₖ, Wₖ=P̄ₖ⁻¹</text>
+<text x="566" y="94" text-anchor="middle" font-family="monospace" font-size="10" fill="#93c5fd">(HᵀWH+Wₖ)x̂=...</text>
+<text x="566" y="112" text-anchor="middle" class="ts" fill="#2563eb">Regularises problem</text>
+<text x="566" y="130" text-anchor="middle" class="ts" fill="#2563eb">→ KF meas. update</text>
+<text x="566" y="153" text-anchor="middle" class="ts" fill="#1d4ed8">Eq.4.3.25 ★★</text>
+</svg>`,
+overview:[
+ {label:"§4.3.2 Shortcomings of standard LS",text:"LS treats all observations equally (W=I). This is suboptimal when observations have different noise levels (σ₁≠σ₂) or different types (range vs Doppler in different units). Cannot meaningfully combine different observable types without weighting."},
+ {label:"§4.3.3 Weighted LS — W=R⁻¹",text:"Minimise εᵀWε with W=R⁻¹. Result: x̂=(HᵀWH)⁻¹HᵀWy, P=(HᵀWH)⁻¹. Observations with small noise Rᵢ → large weight Wᵢ → pull estimate toward them more. OPTIMAL when W=R⁻¹."},
+ {label:"§4.3.3 WLS + a priori (Eq.4.3.25)",text:"Add penalty term for deviation from prior x̄ₖ with weight Wₖ=P̄ₖ⁻¹. Result: x̂=(HᵀWH+Wₖ)⁻¹(HᵀWy+Wₖx̄ₖ). Prevents ill-conditioning and regularises the problem. THIS IS the KF measurement update (§4.7)."},
+ {label:"Pre-normalisation (§4.3.4)",text:"If R is not diagonal (correlated observations): factorise R=VεVεᵀ (Cholesky), then z=Vε⁻¹y, H′=Vε⁻¹H. Standard LS on (z,H′) gives same answer as WLS with W=R⁻¹. Converts correlated obs to uncorrelated."},
+],
+equations:[
+{label:"WLS cost (Eq.4.3.18)",eq:"J(x) = ½(y−Hx)ᵀ W (y−Hx),   W = R⁻¹",note:"W diagonal → weight each obs by its inverse variance"},
+{label:"WLS solution (Eq.4.3.22) ★",eq:"x̂ₖ = (HᵀWH)⁻¹ HᵀWy\nPₖ  = (HᵀWH)⁻¹",note:"Optimal when W=R⁻¹. Equals MVE (§4.4). Use backslash in MATLAB!"},
+{label:"WLS + a priori (Eq.4.3.25) ★★",eq:"x̂ₖ = (HᵀWH + Wₖ)⁻¹(HᵀWy + Wₖx̄ₖ)\nWₖ = P̄ₖ⁻¹",note:"The precursor to the KF measurement update. Memorise this equation."},
+{label:"MATLAB implementation ★",eq:"Lambda = H'*W*H + Wk;   % normal matrix\nNu     = H'*W*y + Wk*x_bar;\nx_hat  = Lambda \\ Nu;    % BACKSLASH not inv()!\nP_hat  = inv(Lambda);",note:"Always use backslash operator — never inv() for solving linear systems"},
+],
+derivation:`WLS NORMAL EQUATIONS DERIVATION:
+
+J = ½(y−Hx)ᵀ W (y−Hx)  [W = R⁻¹ symmetric PD]
+
+∂J/∂x = −HᵀW(y−Hx) = 0
+→ HᵀWy − HᵀWHx̂ = 0
+→ (HᵀWH) x̂ = HᵀWy   ← WLS NORMAL EQUATIONS ✓
+
+WLS + A PRIORI:
+Add penalty: J_total = ½(y−Hx)ᵀW(y−Hx) + ½(x−x̄ₖ)ᵀWₖ(x−x̄ₖ)
+∂J_total/∂x = −HᵀW(y−Hx) + Wₖ(x−x̄ₖ) = 0
+→ (HᵀWH + Wₖ)x̂ = HᵀWy + Wₖx̄ₖ   ← Eq.4.3.25 ✓
+
+CONNECTION TO KF: Eq.4.3.25 with W=R⁻¹ and Wₖ=P̄ₖ⁻¹:
+  (HᵀR⁻¹H + P̄ₖ⁻¹)x̂ = HᵀR⁻¹y + P̄ₖ⁻¹x̄ₖ
+  x̂ₖ = (HᵀR⁻¹H + P̄ₖ⁻¹)⁻¹(HᵀR⁻¹y + P̄ₖ⁻¹x̄ₖ) ← Eq.4.4.29 (MVE with prior)`,
+matlab:`%% WLS with a priori (Eq.4.3.25) — complete example
+% Setup: estimate position from range observations
+n = 2;   % state: [x; y]
+H = [cos(0), sin(0); cos(pi/4), sin(pi/4); cos(pi/2), sin(pi/2)];
+sigma = [2; 1; 3];   % different noise per obs
+R = diag(sigma.^2);  W = inv(R);
+
+% Simulated observations (O-C residuals)
+x_true  = [5; 3];
+y = H*x_true + sigma.*randn(3,1);   % noisy obs
+
+% A priori information
+x_bar = [4; 4];       % prior estimate
+P_bar = 2*eye(2);     % prior covariance
+Wk    = inv(P_bar);   % prior weight
+
+%% WLS + a priori (Eq.4.3.25)
+Lambda = H'*W*H + Wk;
+Nu     = H'*W*y + Wk*x_bar;
+x_hat  = Lambda \\ Nu;    % BACKSLASH! Never inv()
+P_hat  = inv(Lambda);
+
+fprintf('True:      [%.4f; %.4f]\\n', x_true);
+fprintf('Estimated: [%.4f; %.4f]\\n', x_hat);
+fprintf('1-sigma:   [%.4f; %.4f]\\n', sqrt(diag(P_hat)));`,
+traps:["WLS with arbitrary W is valid but NOT optimal. Only W=R⁻¹ gives minimum variance (MVE). Students often use W=I (equal weights) without realising it's suboptimal.","NEVER inv(H'*W*H)*H'*W*y in MATLAB. Always (H'*W*H)\\(H'*W*y) — backslash is essential.","Eq.4.3.25 with W=R⁻¹, Wₖ=P̄ₖ⁻¹ IS the Kalman filter measurement update (§4.7). Recognise this connection.","TSB Exercise 4.19 item (3): this is asking you to derive Eq.4.3.25 — set up J=½εᵀWε+½ηᵀWₖη and differentiate."],
+drills:[{q:"Derive the WLS normal equations from J=½(y−Hx)ᵀW(y−Hx). What is W when WLS=MVE?",a:"∂J/∂x=−HᵀW(y−Hx)=0 → (HᵀWH)x̂=HᵀWy → x̂=(HᵀWH)⁻¹HᵀWy. WLS = MVE (minimum variance) when W=R⁻¹. Any other W gives valid but suboptimal solution."},
+{q:"Write Eq.4.3.25 (WLS with a priori). What are x̄ₖ and Wₖ, and where does this equation reappear in Chapter 4?",a:"x̂ₖ=(HᵀWH+Wₖ)⁻¹(HᵀWy+Wₖx̄ₖ) where x̄ₖ is the a priori state estimate and Wₖ=P̄ₖ⁻¹ is its information. This is the precursor to: Eq.4.4.29 (MVE with prior), the batch processor (§4.6), and the Kalman filter measurement update (§4.7.18) — all three are reformulations of this same equation."},
+{q:"TSB Exercise 4.19 item (3): performance index J=½εᵀWε+½ηᵀW̄η where η=x−x̄. Find x̂.",a:"J=½(y−Hx)ᵀW(y−Hx)+½(x−x̄)ᵀW̄(x−x̄). ∂J/∂x=−HᵀW(y−Hx)+W̄(x−x̄)=0. → (HᵀWH+W̄)x̂=HᵀWy+W̄x̄. x̂=(HᵀWH+W̄)⁻¹(HᵀWy+W̄x̄) — exactly Eq.4.3.25. Here W corresponds to R⁻¹ and W̄ to P̄₀⁻¹."}]
+}
+]
+
+const TABS=[{k:'overview',lbl:'📖 Overview'},{k:'equations',lbl:'⚡ Equations'},{k:'derivation',lbl:'🔬 Derivation'},{k:'matlab',lbl:'💻 MATLAB'},{k:'traps',lbl:'⚠️ Traps'},{k:'drill',lbl:'💪 Drill'}]
+
+let cur=0, activeTab='overview', drillStates={}
+
+function buildSidebar(){
+ const sl=document.getElementById('slist'); sl.innerHTML=''
+ MODULES.forEach((m,i)=>{
+  const b=document.createElement('button'); b.className='sitem'+(i===cur?' active':'')
+  b.innerHTML=`<span class="sitem-icon">${m.icon}</span><div class="sitem-text"><div class="sitem-title">${m.title}</div><div class="sitem-pages">${m.pages}</div></div>`
+  b.onclick=()=>{cur=i;activeTab='overview';render()}; sl.appendChild(b)
+ })
+}
+
+function buildHead(){
+ const m=MODULES[cur]
+ document.getElementById('m-icon').textContent=m.icon
+ document.getElementById('m-title').textContent=m.title
+ document.getElementById('m-pages').textContent=m.badge
+ document.getElementById('m-why').innerHTML=m.why
+}
+
+function buildTabs(){
+ const tc=document.getElementById('tabs'); tc.innerHTML=''
+ TABS.forEach(t=>{
+  const b=document.createElement('button'); b.className='tab'+(activeTab===t.k?' active':'')
+  b.textContent=t.lbl; b.onclick=()=>{activeTab=t.k;buildContent()}; tc.appendChild(b)
+ })
+}
+
+function buildContent(){
+ // update tab active states
+ document.querySelectorAll('.tab').forEach((b,i)=>{b.className='tab'+(TABS[i].k===activeTab?' active':'')})
+ const cc=document.getElementById('content'); cc.innerHTML=''
+ const m=MODULES[cur]
+ if(activeTab==='overview'){
+  if(m.svg) cc.innerHTML+=`<div class="svg-wrap">${m.svg}</div>`
+  if(m.overview){
+   m.overview.forEach(o=>{cc.innerHTML+=`<div class="ov-card"><div class="ov-label">${o.label}</div><div class="ov-text">${o.text}</div></div>`})
+  }
+ } else if(activeTab==='equations'){
+  cc.innerHTML='<h4>Key equations — TSB notation</h4>'
+  if(!m.equations||m.equations.length===0){cc.innerHTML+='<div class="ov-card"><div class="ov-text" style="color:#4a6080">No separate equations for this section — see Overview.</div></div>'; return}
+  m.equations.forEach(e=>{cc.innerHTML+=`<div class="eq-box"><div class="eq-label">${e.label}</div><div class="eq-formula">${e.eq}</div>${e.note?`<div class="eq-note">${e.note}</div>`:''}</div>`})
+ } else if(activeTab==='derivation'){
+  cc.innerHTML='<h4>Step-by-step derivation — professor may stop you at any line</h4>'
+  cc.innerHTML+=`<div class="deriv-box">${m.derivation}</div>`
+ } else if(activeTab==='matlab'){
+  cc.innerHTML=`<div class="matlab-box"><div class="matlab-head">MATLAB — complete runnable code</div><pre class="matlab-code">${m.matlab}</pre></div>`
+ } else if(activeTab==='traps'){
+  cc.innerHTML='<h4>Exam traps — where marks are lost</h4>'
+  m.traps.forEach(t=>{cc.innerHTML+=`<div class="trap-item"><span class="trap-icon">⚠</span><span class="trap-text">${t}</span></div>`})
+ } else if(activeTab==='drill'){
+  cc.innerHTML='<h4>Rapid-fire oral questions — click to reveal guidance</h4>'
+  m.drills.forEach((d,i)=>{
+   const key=`${cur}_${i}`, open=drillStates[key]
+   cc.innerHTML+=`<div class="drill-item"><button class="drill-q" onclick="toggleDrill('${key}')"><span class="drill-num">Q${i+1}</span><span class="drill-qtext">${d.q}</span><span class="drill-chev${open?' open':''}">▼</span></button><div class="drill-ans${open?' open':''}">${d.a}</div></div>`
+  })
+  cc.innerHTML+=`<div style="margin-top:14px;padding:10px 13px;background:#0e1929;border-radius:8px;border:1px solid #1e3a5a"><div style="font-size:11px;color:#4a6080">After completing this section, continue to the next or jump directly to §4.4 (MVE) — the master formula.</div></div>`
+ }
+ // nav buttons
+ cc.innerHTML+=`<div class="nav-row">`
+ if(cur>0) cc.innerHTML+=`<button class="btn" onclick="navSec(-1)">← Previous</button>`
+ if(cur<MODULES.length-1) cc.innerHTML+=`<button class="btn primary" onclick="navSec(1)">Next section →</button>`
+ else cc.innerHTML+=`<div style="padding:10px 0;font-size:12px;color:#4ade80">✓ First 20% complete — §4.1 to §4.3.3 (pp.159–180)</div>`
+ cc.innerHTML+=`</div>`
+}
+
+window.toggleDrill=function(key){
+ drillStates[key]=!drillStates[key]
+ const items=document.querySelectorAll('.drill-item')
+ const idx=parseInt(key.split('_')[1])
+ const item=items[idx]
+ if(item){
+  item.querySelector('.drill-chev').classList.toggle('open',drillStates[key])
+  item.querySelector('.drill-ans').classList.toggle('open',drillStates[key])
+ }
+}
+
+window.navSec=function(d){cur=Math.max(0,Math.min(MODULES.length-1,cur+d));activeTab='overview';render()}
+
+function render(){buildSidebar();buildHead();buildTabs();buildContent()}
+render()
+</script>
+</body>
+</html>

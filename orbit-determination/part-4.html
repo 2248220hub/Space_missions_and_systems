@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TSB Ch.4 — Final 30% · §4.10–§4.17</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1a0d;color:#e2e8f0;min-height:100vh}
+.shell{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:232px;background:#0f1f0f;border-right:1px solid #1a3a1a;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+.sidebar-head{padding:16px;border-bottom:1px solid #1a3a1a}
+.sh-label{font-size:10px;color:#2d5a2d;font-family:monospace;letter-spacing:.08em;text-transform:uppercase}
+.sh-title{font-size:13px;font-weight:600;margin-top:3px;color:#e2e8f0}
+.sh-sub{font-size:10px;color:#2d5a2d;margin-top:2px}
+.sidebar-list{overflow-y:auto;flex:1;padding:8px}
+.sitem{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:7px;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background .15s;border-left:3px solid transparent}
+.sitem:hover{background:#1a3a1a}
+.sitem.active{background:#0f2a1a;border-left-color:#22c55e}
+.sitem-icon{font-size:15px;flex-shrink:0;width:20px;text-align:center}
+.sitem-text{display:flex;flex-direction:column;min-width:0}
+.sitem-title{font-size:11px;font-weight:600;color:#c8d6e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sitem-pages{font-size:9px;color:#2d5a2d;font-family:monospace;margin-top:1px}
+.sidebar-foot{padding:12px 16px;border-top:1px solid #1a3a1a;font-size:10px;color:#1a4a1a}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.mhead{padding:16px 22px 12px;border-bottom:1px solid #1a3a1a;background:#0f1f0f}
+.mhead-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.mhead-icon{font-size:22px}
+.mhead-title{font-size:17px;font-weight:700;color:#e2e8f0}
+.mhead-pages{font-size:10px;color:#2d5a2d;font-family:monospace;margin-left:auto}
+.why-box{border-left:3px solid #22c55e;padding:8px 12px;background:#071a07;border-radius:0 6px 6px 0;font-size:12px;color:#86efac;line-height:1.55}
+.why-box strong{color:#22c55e;font-weight:600}
+.tabs{display:flex;gap:2px;padding:8px 22px 0;background:#0f1f0f;border-bottom:1px solid #1a3a1a;overflow-x:auto}
+.tab{padding:7px 13px;font-size:11px;font-weight:600;border:none;background:none;cursor:pointer;color:#2d5a2d;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;white-space:nowrap}
+.tab:hover{color:#4ade80}
+.tab.active{color:#22c55e;border-bottom-color:#22c55e}
+.content{flex:1;overflow-y:auto;padding:20px 22px;scrollbar-width:thin;scrollbar-color:#1a3a1a #0d1a0d}
+.content::-webkit-scrollbar{width:5px}
+.content::-webkit-scrollbar-thumb{background:#1a3a1a;border-radius:3px}
+.obj-box{background:#071a07;border:1px solid #1a4a1a;border-radius:8px;padding:11px 14px;margin-bottom:14px;font-size:12px;color:#86efac;line-height:1.6}
+.obj-box strong{color:#22c55e;font-weight:600}
+.ov-card{background:#0f1f0f;border:1px solid #1a3a1a;border-radius:8px;padding:13px 15px;margin-bottom:9px}
+.ov-label{font-size:10px;font-weight:700;color:#22c55e;margin-bottom:4px;letter-spacing:.06em;text-transform:uppercase}
+.ov-text{font-size:12px;color:#8aaccb;line-height:1.65}
+.eq-box{background:#0f1f0f;border:1px solid #1a3a1a;border-radius:8px;margin-bottom:9px;overflow:hidden}
+.eq-label{padding:5px 13px;background:#071a07;font-size:9px;color:#2d5a2d;font-family:monospace;border-bottom:1px solid #1a3a1a;letter-spacing:.05em}
+.eq-formula{padding:11px 15px;font-family:'Cascadia Code','Fira Code',monospace;font-size:12px;color:#fbbf24;white-space:pre-wrap;line-height:1.8}
+.eq-note{padding:5px 13px;font-size:10px;color:#1a4a2a;border-top:1px solid #1a3a1a}
+.deriv-box{background:#0f1f0f;border:1px solid #1a3a1a;border-radius:8px;padding:15px;font-family:'Cascadia Code','Fira Code',monospace;font-size:11px;color:#8aaccb;white-space:pre-wrap;line-height:1.85;margin:10px 0}
+.matlab-box{background:#071a0f;border:1px solid #1a4a22;border-radius:8px;overflow:hidden}
+.matlab-head{padding:6px 13px;background:#041209;font-size:9px;color:#4ade80;font-family:monospace;border-bottom:1px solid #1a4a22;letter-spacing:.08em;text-transform:uppercase}
+.matlab-code{padding:13px 15px;font-family:'Cascadia Code','Fira Code',monospace;font-size:11px;color:#86efac;white-space:pre-wrap;line-height:1.8;overflow-x:auto}
+.trap-item{display:flex;gap:9px;padding:10px 13px;background:#1a0a0a;border:1px solid #3a1a1a;border-radius:8px;margin-bottom:8px}
+.trap-icon{color:#f87171;flex-shrink:0;font-size:14px;margin-top:1px}
+.trap-text{font-size:12px;color:#f87171;line-height:1.6}
+.drill-item{border:1px solid #1a3a1a;border-radius:8px;margin-bottom:8px;overflow:hidden}
+.drill-q{display:flex;align-items:flex-start;gap:9px;padding:11px 13px;cursor:pointer;background:#0f1f0f;border:none;width:100%;text-align:left;transition:background .15s}
+.drill-q:hover{background:#1a3a1a}
+.drill-num{font-size:10px;font-weight:700;color:#22c55e;background:#064e3b;padding:2px 8px;border-radius:999px;flex-shrink:0}
+.drill-qtext{font-size:12px;color:#c8d6e8;flex:1;line-height:1.5}
+.drill-chev{color:#2d5a2d;font-size:11px;flex-shrink:0;margin-top:2px;transition:transform .2s}
+.drill-chev.open{transform:rotate(180deg)}
+.drill-ans{padding:11px 13px;background:#071a07;border-top:1px solid #1a3a1a;font-size:11px;color:#86efac;line-height:1.7;display:none}
+.drill-ans.open{display:block}
+.drill-ans code{font-family:monospace;color:#fbbf24;font-size:10px}
+.nav-row{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+.btn{padding:9px 20px;font-size:12px;font-weight:600;border:1px solid #1a3a1a;border-radius:7px;background:none;cursor:pointer;color:#4a8a6a;transition:all .15s}
+.btn:hover{background:#1a3a1a;color:#c8d6e8}
+.btn.primary{background:#064e3b;color:#a7f3d0;border-color:#059669}
+.btn.primary:hover{background:#065f46;color:#d1fae5}
+.svg-wrap{margin:12px 0;border-radius:8px;overflow:hidden;background:#0f1f0f;border:1px solid #1a3a1a}
+h4{font-size:10px;font-weight:700;color:#2d5a2d;margin:14px 0 7px;letter-spacing:.1em;text-transform:uppercase}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.sum-card{background:#0f1f0f;border:1px solid #1a3a1a;border-radius:8px;padding:10px 12px}
+.sum-card .lbl{font-size:10px;color:#2d5a2d;font-family:monospace;margin-bottom:3px;letter-spacing:.04em}
+.sum-card .val{font-family:'Cascadia Code','Fira Code',monospace;font-size:11px;color:#fbbf24;line-height:1.7}
+.complete-banner{background:#064e3b;border:1px solid #059669;border-radius:10px;padding:16px;margin-top:18px}
+.complete-banner .title{font-size:13px;font-weight:700;color:#a7f3d0;margin-bottom:10px}
+</style>
+</head>
+<body>
+<div class="shell">
+ <div class="sidebar">
+  <div class="sidebar-head">
+   <div class="sh-label">Tapley, Schutz &amp; Born</div>
+   <div class="sh-title">Ch.4 — Final 30%</div>
+   <div class="sh-sub">§4.10–§4.17 · pp.233–261</div>
+  </div>
+  <div class="sidebar-list" id="slist"></div>
+  <div class="sidebar-foot">6 sections · Sapienza MSc OD</div>
+ </div>
+ <div class="main">
+  <div class="mhead">
+   <div class="mhead-row">
+    <span class="mhead-icon" id="m-icon"></span>
+    <span class="mhead-title" id="m-title"></span>
+    <span class="mhead-pages" id="m-pages"></span>
+   </div>
+   <div class="why-box" id="m-why"></div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="content" id="content"></div>
+ </div>
+</div>
+<script>
+const M=[
+{id:1,icon:"λ",title:"Information filter",badge:"§4.10 · pp.233–236",
+why:"<strong>Why the information filter?</strong> The standard covariance KF fails when P̄ₖ >> Rₖ (catastrophic numerical cancellation) and cannot initialise with P₀=∞ (complete ignorance). The information filter works in terms of Λₖ=Pₖ⁻¹ — which grows monotonically — making the measurement update pure addition with no inversion required.",
+objective:"Define the information matrix Λₖ=Pₖ⁻¹ and information state dₖ=Λₖx̂ₖ. Write the measurement update as Λ̂ₖ=Λ̄ₖ+HᵀR⁻¹H (addition only). Show the filter handles P₀=∞ (Λ₀=0) correctly where the covariance filter fails.",
+overview:[
+{label:"The covariance KF failure mode",text:"When P̄ₖ is large and Rₖ is tiny (very accurate measurements): K≈H⁻¹ and Pₖ=(I−KH)P̄ₖ is the difference of two nearly equal large matrices → catastrophic cancellation → Pₖ loses positive-definiteness. The information filter avoids this because Λ grows monotonically (only addition)."},
+{label:"Information state definitions",text:"Λₖ=Pₖ⁻¹ [information matrix, n×n]. dₖ=Λₖx̂ₖ [information state vector, n×1]. Recover state: x̂ₖ=Λₖ⁻¹dₖ (only computed when needed). Start with Λ₀=0 (P₀=∞): complete ignorance, mathematically valid."},
+{label:"Measurement update — pure addition",text:"Λ̂ₖ=Λ̄ₖ+HₖᵀRₖ⁻¹Hₖ. d̂ₖ=d̄ₖ+HₖᵀRₖ⁻¹yₖ. Each observation contributes a positive semidefinite term +HᵀR⁻¹H to Λ. Information only ever increases at a measurement update."},
+{label:"Numerical comparison (TSB p.236)",text:"TSB example: P₀=σ²I=ε²I (very small), H₁=[1|ε], R=I, ε≪1. Covariance KF loses positive-definiteness. Joseph form correct to O(ε). Information filter: Λ̂₁=ε²I+[1;ε][1,ε] → P₁=Λ̂₁⁻¹ symmetric PD to O(ε). Matches batch processor accuracy exactly."},
+],
+equations:[
+{label:"Definitions (Eq.4.10.1–2)",eq:"Λₖ = Pₖ⁻¹   [information matrix, n×n]\ndₖ = Λₖ x̂ₖ  [information state, n×1]\n\nRecover state: x̂ₖ = Λₖ⁻¹dₖ  (only when needed)\nInitialise: Λ₀ = 0  (P₀ = ∞: complete ignorance)",note:"Λ₀=0 means zero prior knowledge — valid starting point"},
+{label:"Measurement update — ADDITION only (Eq.4.10.26–28) ★★",eq:"Λ̂ₖ = Λ̄ₖ + HₖᵀRₖ⁻¹Hₖ   ← information ADDS, no p×p inversion!\nd̂ₖ = d̄ₖ + HₖᵀRₖ⁻¹yₖ\nx̂ₖ = Λ̂ₖ⁻¹d̂ₖ  (compute only when state is needed)",note:"Each observation contributes HᵀR⁻¹H ≥ 0. Λ grows monotonically."},
+{label:"Time update (Eq.4.10.22–25)",eq:"M(tₖ₊₁) = Φᵀ(tₖ,tₖ₊₁) Λ̂ₖ Φ(tₖ,tₖ₊₁)\nLₖ₊₁ = M(tₖ₊₁)Γ[ΓᵀM(tₖ₊₁)Γ + Qₖ⁻¹]⁻¹\nd̄ₖ₊₁ = [I−Lₖ₊₁Γᵀ]Φᵀ(tₖ,tₖ₊₁)d̂ₖ\nΛ̄ₖ₊₁ = [I−Lₖ₊₁Γᵀ]M(tₖ₊₁)",note:"Time update still requires solving a system (inverts Qₖ⁻¹, q×q). No free lunch."},
+{label:"Connection to batch normal equations",eq:"After ℓ observations without time updates:\nΛ = Λ₀ + ΣHᵢᵀRᵢ⁻¹Hᵢ\n  = P̄₀⁻¹ + ΣHᵢᵀRᵢ⁻¹Hᵢ  ← exact batch normal matrix!\n\nInfo filter measurement accumulation = sequential batch",note:"Info filter and batch processor give identical Λ and d, hence identical x̂"},
+],
+derivation:`INFORMATION FILTER MEASUREMENT UPDATE DERIVATION:
+
+Start with Eq.4.4.29 (MVE with prior):
+  x̂ₖ = (HᵀR⁻¹H + P̄ₖ⁻¹)⁻¹(HᵀR⁻¹y + P̄ₖ⁻¹x̄ₖ)
+
+Define:
+  Λ̄ₖ = P̄ₖ⁻¹            [prior information]
+  d̄ₖ = Λ̄ₖ x̄ₖ           [prior information state]
+
+Multiply both sides by (HᵀR⁻¹H + Λ̄ₖ):
+  (HᵀR⁻¹H + Λ̄ₖ) x̂ₖ = HᵀR⁻¹y + Λ̄ₖx̄ₖ
+
+Define:
+  Λ̂ₖ = Λ̄ₖ + HᵀR⁻¹H    [posterior information]
+  d̂ₖ = d̄ₖ + HᵀR⁻¹y    [posterior info state]
+
+Then:
+  Λ̂ₖ x̂ₖ = d̂ₖ
+  x̂ₖ = Λ̂ₖ⁻¹ d̂ₖ  ✓
+
+Measurement update: just TWO additions (no matrix inversion!):
+  Λ̂ₖ ← Λ̄ₖ + HᵀR⁻¹H   [add HᵀR⁻¹H to information]
+  d̂ₖ ← d̄ₖ + HᵀR⁻¹y   [add HᵀR⁻¹y to information state]
+
+WHY NUMERICALLY STABLE:
+  Covariance KF: Pₖ=(I−KH)P̄ₖ = SUBTRACTION of large matrices
+  Info filter:   Λₖ=Λ̄ₖ+HᵀR⁻¹H = ADDITION of positive terms ✓`,
+matlab:`function info_filter_demo()
+% Information filter — compare with covariance KF for ill-conditioned case
+  eps = 1e-6;                    % very accurate measurement
+  P0  = eps^2 * eye(2);         % tiny prior covariance (large Λ₀)
+  H1  = [1, eps];               % obs matrix
+  R1  = eye(1);                 % unit obs noise
+
+  %% COVARIANCE KF (standard form) — may fail
+  K1_cov = P0*H1' / (H1*P0*H1' + R1);
+  P1_cov = (eye(2) - K1_cov*H1)*P0;
+  fprintf('Covariance KF — P1 eigenvalues: %.3e, %.3e\\n', eig(P1_cov)');
+  fprintf('  PD? %d (should be 1)\\n', all(eig(P1_cov)>0));
+
+  %% INFORMATION FILTER — robust
+  Lam0 = inv(P0);               % Λ₀ = P₀⁻¹ = large diagonal
+  Lam1 = Lam0 + H1'*(R1\H1);   % just ADDITION — no subtraction!
+  P1_inf = inv(Lam1);
+  fprintf('Info filter — P1 eigenvalues: %.3e, %.3e\\n', eig(P1_inf)');
+  fprintf('  PD? %d (should be 1)\\n', all(eig(P1_inf)>0));
+
+  %% Start from complete ignorance: Λ₀=0 (P₀=∞)
+  Lam_zero = zeros(2);          % Λ₀=0 means P₀=∞
+  d_zero   = zeros(2,1);        % no prior state info
+  y1 = 3.5;                     % first observation
+  Lam_after = Lam_zero + H1'*(R1\H1);
+  d_after   = d_zero   + H1'*(R1\y1);
+  x_hat = Lam_after \ d_after;  % solve when needed
+  fprintf('\\nFrom P₀=∞: x̂ = [%.4f; %.4f]\\n', x_hat);
+  fprintf('Only computable from data — prior contributes nothing ✓\\n');
+end`,
+traps:["Measurement update ADDS (no inversion) but TIME UPDATE still requires solving a system. There is no free lunch — just a different matrix being inverted.","Λ₀=0 is NOT a bad initialisation — it is physically correct for complete ignorance. The covariance filter crashes at P₀=∞, the info filter handles it cleanly.","Info filter is equivalent to batch for static problems (no time updates): Λ=P̄₀⁻¹+ΣHᵢᵀRᵢ⁻¹Hᵢ = exact batch normal matrix. They give identical estimates.","If you need x̂ₖ every step, you must invert Λₖ each time — same computational cost as covariance KF. The advantage is numerical stability, not speed."],
+drills:[{q:"Why is the information filter more numerically stable than the standard covariance KF when measurements are very accurate (Rₖ very small)?",a:"Covariance KF: Pₖ=(I−KH)P̄ₖ. With P̄ₖ large and Rₖ tiny: K≈H⁻¹ → (I−KH)≈0 → Pₖ is large-minus-large → catastrophic cancellation. Result: wrong (possibly non-positive-definite) Pₖ.\n\nInfo filter: Λₖ=Λ̄ₖ+HᵀR⁻¹H. Both terms are positive semidefinite → only addition, no subtraction → Λ grows monotonically → always stable. Then P₁=Λ₁⁻¹ recovered at the end."},
+{q:"Starting from Λ₀=0 (P₀=∞), write the information filter measurement update after the first observation y₁ with H₁=[1,0] and R₁=σ².",a:"Λ̄₁=Λ₀=0 (no prior). d̄₁=0. Measurement update:\nΛ̂₁=0+H₁ᵀR₁⁻¹H₁=(1/σ²)[1;0][1,0]=[[1/σ²,0];[0,0]].\nd̂₁=0+H₁ᵀR₁⁻¹y₁=(y₁/σ²)[1;0]=[y₁/σ²;0].\nP₁=Λ̂₁⁻¹ is SINGULAR (only one obs, two unknowns) → need at least 2 independent observations to recover x̂. Info filter correctly reflects this — x̂ is uncomputable until Λ is full rank."}]
+},
+{id:2,icon:"⚖",title:"Batch vs sequential, and observability",badge:"§4.11–§4.12 · pp.237–241",
+why:"<strong>Why together?</strong> §4.11 states when batch=KF (linear, Q=0). §4.12 defines when NEITHER can solve the problem (rank deficiency). Both address the same question: CAN we determine the orbit, and with which method? A rank-deficient H means no estimator — batch or sequential — can produce a unique answer.",
+objective:"State the batch-sequential equivalence conditions. Explain why SNC breaks equivalence. Define observability via rank(Λ)=n. Work through the single-station range example (TSB Fig.4.11.1) to show why the orbit plane is unobservable.",
+overview:[
+{label:"§4.11 Equivalence theorem",text:"For LINEAR system with Q=0 (no process noise): batch and sequential KF give identical x̂ and P at any common epoch. Proven by showing both accumulate the same information matrix Λ=P̄₀⁻¹+ΣHᵢᵀRᵢ⁻¹Hᵢ."},
+{label:"When equivalence breaks",text:"(1) Q>0 (SNC/DMC): SNC adds temporal correlations making R non-block-diagonal. Batch requires m×m dense inversion — computationally impossible for 5000+ obs. (2) EKF: different reference at each step → different Hₖ → not exactly equivalent."},
+{label:"§4.12 Observability definition",text:"State xₖ is OBSERVABLE iff rank(H)=n ↔ normal matrix Λ=ΣHᵢᵀRᵢ⁻¹Hᵢ is non-singular. This is a GEOMETRIC property of the measurement geometry — not a numerical precision issue."},
+{label:"Classic unobservable example (TSB Fig.4.11.1)",text:"Single ground station tracking a satellite in circular orbit with range only. Rotating the orbital plane around the station-Earth axis gives identical range histories → orbit plane unobservable → Λ singular. Fix: add second station OR add Doppler (range-rate)."},
+],
+equations:[
+{label:"Batch-sequential equivalence (§4.11)",eq:"For LINEAR system, Q=0:\n  Batch x̂₀  [all obs at once]\n  KF x̂ₖ mapped to t₀\n  → IDENTICAL x̂ and P at any common epoch\n\nBoth accumulate: Λ = P̄₀⁻¹ + Σ HᵢᵀRᵢ⁻¹Hᵢ",note:"Proven via info filter: same Λ → same x̂. Equivalence fails for Q>0 or EKF."},
+{label:"Equivalence breaks (§4.11 final paragraph)",eq:"SNC (Q>0): obs error covariance R̄ becomes m×m dense\n  → batch requires inv(m×m) → impractical for large m\n\nEKF: reference updated each step → different Hₖ\n  → not exactly equivalent, but numerically close",note:"Exam answer: batch = sequential ONLY for linear + Q=0"},
+{label:"Observability condition (§4.12) ★",eq:"State xₖ OBSERVABLE ↔\n  rank(H) = n   ↔\n  Λ = Σ HᵢᵀRᵢ⁻¹Hᵢ non-singular (n×n invertible)\n\nFix unobservability: different tracking geometry\nor different observable type (range-rate vs range)",note:"More data of the SAME TYPE from the SAME geometry does NOT fix unobservability"},
+{label:"Single-station unobservable example (Fig.4.11.1)",eq:"Obs: range ρ = |r − rₛ|  (scalar per epoch)\nStation at fixed position rₛ in orbit plane\n\nProblem: rotating orbital plane h around rₛ direction\ngives SAME ρ history → orbit plane angle UNOBSERVABLE\n\nH has a null direction → rank(H) < n → Λ singular",note:"Fix 1: second station at different location. Fix 2: add Doppler ρ̇."},
+],
+derivation:`WHY THE SINGLE-STATION RANGE PROBLEM IS UNOBSERVABLE:
+
+Setup:
+  Station at rₛ (fixed, non-rotating wrt orbit plane)
+  Satellite in circular orbit, state X = [r; ṙ; β]
+  Observable: ρ = |r − rₛ|  (range only)
+
+The critical symmetry:
+  Rotate the orbital angular momentum vector h around
+  the direction r̂ₛ (Earth→station direction).
+  
+  This rotation changes the orbit plane orientation
+  but does NOT change ρ at any point in the orbit
+  because |r − rₛ| depends only on the magnitudes
+  and the angle between r and rₛ, not the orbital plane.
+
+Mathematical consequence:
+  H = [∂ρ/∂X]*  has a null vector in the h-rotation direction
+  → rank(H) < n
+  → HᵀH is singular (and so is Λ)
+  → Cannot invert normal equations → no unique x̂
+
+FIX 1: Second station
+  Different station position breaks the rotational symmetry.
+  The combined H from two stations has full rank.
+
+FIX 2: Add range-rate ρ̇
+  ρ̇ = r̂·ṙ  is sensitive to the velocity direction,
+  which changes when h rotates.
+  H̃_ρ̇ adds a linearly independent row → full rank ✓`,
+matlab:`%% Observability check — is the normal matrix full rank?
+function check_observability(H, R)
+% H: [m×n] stacked mapped observation matrix
+% R: [m×m] noise covariance (usually block diagonal)
+  n = size(H,2);
+  Lambda = H' * (R \ H);          % information matrix HᵀR⁻¹H
+  r = rank(Lambda);
+  cn = cond(Lambda);               % condition number
+
+  fprintf('State dimension n = %d\\n', n);
+  fprintf('rank(Λ) = %d  (need %d for full observability)\\n', r, n);
+  fprintf('cond(Λ) = %.2e\\n', cn);
+
+  if r < n
+    fprintf('WARNING: UNOBSERVABLE! %d state directions not constrained\\n', n-r);
+    % Find null space directions:
+    [~,~,V] = svd(Lambda);
+    fprintf('Null space directions (unobservable state components):\\n');
+    disp(V(:, end-n+r+1:end));
+  elseif cn > 1e8
+    fprintf('WARNING: NEAR-SINGULAR Λ — poor observability\\n');
+    fprintf('Some state directions poorly constrained\\n');
+  else
+    fprintf('OBSERVABLE — full rank, well-conditioned ✓\\n');
+  end
+
+  % Example: single station, range only (reproduces TSB Fig.4.11.1)
+  % H_range = [(x-xs)/rho, (y-ys)/rho, (z-zs)/rho, 0, 0, 0]  (1×6 per epoch)
+  % After stacking many epochs: rank(H) = 5 not 6 → unobservable!
+end`,
+traps:["Observability is GEOMETRIC — more accurate sensors or more data of the same type from the same geometry do NOT fix unobservability. You need different geometry or different observable type.","Near-unobservability (large condition number of Λ) is far more common than exact rank deficiency. It leads to large uncertainties in specific directions.","Batch=sequential ONLY for linear+Q=0. Adding SNC IMMEDIATELY breaks equivalence — batch becomes computationally impractical with process noise.","'Physically observable' (can see the satellite) ≠ 'mathematically observable' (can uniquely determine the state). They are completely different concepts."],
+drills:[{q:"State the conditions for batch-sequential equivalence (§4.11). Why does SNC break it?",a:"Conditions: (1) LINEAR system (Φ,H fixed or pre-specified); (2) No process noise Q=0; (3) Same observation data and initial conditions. When these hold: both accumulate the same Λ=P̄₀⁻¹+ΣHᵢᵀRᵢ⁻¹Hᵢ → same x̂ and P.\n\nSNC breaks it: with Q>0, the state at tₖ depends on u(τ) for τ∈[tₖ₋₁,tₖ]. The full observation error covariance R̄ becomes m×m non-block-diagonal (temporal correlations). Inverting 7000×7000 for a TOPEX arc: computationally impossible. KF handles SNC naturally with just n×n additions per step."},
+{q:"Why is the single-station range-only tracking problem unobservable? What is the mathematical signature?",a:"Range ρ=|r−rₛ| depends only on spacecraft-station distance. Rotating the orbital plane h around the station-Earth axis leaves ρ unchanged at every orbit point — the range history is identical for a family of orbit planes.\n\nMathematically: H̃=[∂ρ/∂X]* has a null vector in the h-rotation direction. After stacking all epochs: rank(H)<n → normal matrix Λ=ΣHᵢᵀRᵢ⁻¹Hᵢ is singular → cannot invert → no unique solution.\n\nFix: add second station (breaks symmetry) or add ρ̇ (Doppler, sensitive to velocity direction → adds rank)."}]
+},
+{id:3,icon:"⚠",title:"Error sources and consider covariance",badge:"§4.13–§4.14 · pp.241–245",
+why:"<strong>Why?</strong> Formal Pₖ=(HᵀR⁻¹H)⁻¹ assumes a perfect model. In practice, unmodelled forces (drag fluctuations, SRP, gravity truncation) and measurement biases make the true covariance much larger. Consider analysis quantifies this honestly using the sensitivity matrix Sxc. Every real mission accuracy statement requires it.",
+objective:"Enumerate the main OD error sources. Define sensitivity matrix Sxc=∂x̂/∂ĉ. Write the consider covariance Pₖ(consider)=Pₖ(formal)+Sxc·Pcc·Sxcᵀ. State the ordering: formal ≤ consider ≤ true.",
+overview:[
+{label:"§4.13 Main error categories",text:"Force model: atmospheric drag (CD uncertain ~10–30%), solar radiation pressure (Cr ~10%), gravity harmonics truncation. Measurement: tropospheric delay (~2m zenith), ionospheric delay (dispersive → dual-frequency fix), station position (~1mm ITRF), clock bias/drift. TOPEX/Poseidon 2cm radial dominated by gravity model errors."},
+{label:"The formal covariance is optimistic",text:"Pₖ(formal)=(HᵀR⁻¹H)⁻¹ accounts ONLY for measurement noise. It ignores unmodelled forces, biases, and parameter errors. TSB §4.14: 'The formal uncertainty is almost always an optimistic estimate of the true uncertainty.' Never quote formal sigma as mission accuracy."},
+{label:"§4.14 Consider covariance model",text:"Augment observations: y=Hx+Hc·c+ε where c=unestimated parameters (CD, Cr, station bias). If we estimate x only (ignoring c): the estimation error has extra term. Consider covariance = formal + Sxc·Pcc·Sxcᵀ."},
+{label:"Decision rule for state inclusion",text:"Compute Sxc for each candidate parameter cᵢ. If trace(Sxc·Pcc·Sxcᵀ) >> trace(Pₖ(formal)): add cᵢ to estimated state. If adding cᵢ more than doubles the mission uncertainty budget: it should be estimated. Otherwise: accept the consider covariance inflation."},
+],
+equations:[
+{label:"Consider covariance model (§4.14) ★",eq:"Augmented obs: y = Hx + Hc·c + ε\nc = unestimated parameters, Pcc = their covariance\n\nIf we estimate x only:\nPₖ(consider) = Pₖ(formal) + Sxc · Pcc · Sxcᵀ",note:"Sxc·Pcc·Sxcᵀ ≥ 0 always → consider ≥ formal always"},
+{label:"Sensitivity matrix Sxc ★",eq:"Sxc = −(HᵀR⁻¹H)⁻¹ HᵀR⁻¹ Hc   [n×q]\n\n= ∂x̂/∂ĉ  (how unit c-error corrupts x̂)\n\nDecision: if trace(Sxc·Pcc·Sxcᵀ) > trace(Pₖ(formal))\n  → add c to estimated state vector",note:"Large ‖Sxcᵢ‖ → parameter cᵢ strongly corrupts x̂ → must estimate it"},
+{label:"Covariance hierarchy ★★",eq:"Pₖ(formal) ≤ Pₖ(consider) ≤ Pₖ(true)\n\nFormal:   (HᵀR⁻¹H)⁻¹  [measurement noise only]\nConsider: formal + Sxc·Pcc·Sxcᵀ  [+ unmodelled params]\nTrue:     from residual analysis or Monte Carlo",note:"Mission accuracy statements require at minimum the consider covariance"},
+{label:"TOPEX example (§4.14, p.244)",eq:"Formal radial 1σ:   ~1 cm\nConsider (drag CD):  ~2 cm\nConsider (gravity):  ~2 cm  (dominant)\nTrue (tide gauge):   ~2–3 cm\n\nConclusion: formal underestimates by ~2×",note:"External validation via tide gauges confirmed the consider estimate"},
+],
+derivation:`CONSIDER COVARIANCE DERIVATION:
+
+Augmented observation model:
+  y = H·x + Hc·c + ε   [true model with unestimated c]
+
+If we estimate only x, ignoring c:
+  Normal equations: (HᵀR⁻¹H)x̂ = HᵀR⁻¹y
+
+Substitute true y:
+  (HᵀR⁻¹H)x̂ = HᵀR⁻¹(Hx + Hc·c + ε)
+
+Solve:
+  x̂ = x + (HᵀR⁻¹H)⁻¹HᵀR⁻¹Hc·c + (HᵀR⁻¹H)⁻¹HᵀR⁻¹ε
+
+Estimation error:
+  x̃ = x̂ − x = Sxc·c + M·ε
+  where Sxc = (HᵀR⁻¹H)⁻¹HᵀR⁻¹Hc  [sensitivity matrix]
+  and   M   = (HᵀR⁻¹H)⁻¹HᵀR⁻¹
+
+Covariance:
+  E[x̃x̃ᵀ] = Sxc·Pcc·Sxcᵀ + M·R·Mᵀ
+           = Sxc·Pcc·Sxcᵀ + Pₖ(formal)
+           = Pₖ(consider) ✓
+
+Note: Sxc·Pcc·Sxcᵀ ≥ 0 → consider ≥ formal always.
+      For independent c and ε (E[cεᵀ]=0) — cross term vanishes.`,
+matlab:`function consider_covariance_analysis(H, R, Hc, Pcc)
+% Consider covariance analysis — TSB §4.14
+% H:   [m×n] observation matrix (mapped to epoch)
+% R:   [m×m] measurement noise covariance
+% Hc:  [m×q] partial derivatives wrt unestimated params c
+% Pcc: [q×q] covariance of unestimated parameters
+
+  %% Formal covariance
+  Lambda = H'*(R\H);
+  P_formal = inv(Lambda);         % (HᵀR⁻¹H)⁻¹
+
+  %% Sensitivity matrix Sxc = (HᵀR⁻¹H)⁻¹HᵀR⁻¹Hc
+  Sxc = P_formal * H' * (R \ Hc);
+
+  %% Consider covariance
+  P_consider = P_formal + Sxc * Pcc * Sxc';
+
+  %% Print comparison
+  fprintf('Formal  1-sigma [m]: '); fprintf('%.4f  ', sqrt(diag(P_formal))'); fprintf('\\n');
+  fprintf('Consider 1-sigma [m]: '); fprintf('%.4f  ', sqrt(diag(P_consider))'); fprintf('\\n');
+  fprintf('Inflation factor: '); fprintf('%.2f  ', sqrt(diag(P_consider))./sqrt(diag(P_formal))'); fprintf('\\n');
+
+  %% Decision: should c be added to state?
+  consider_contribution = trace(Sxc*Pcc*Sxc');
+  formal_contribution   = trace(P_formal);
+  ratio = consider_contribution / formal_contribution;
+  fprintf('\\nConsider/Formal trace ratio: %.2f\\n', ratio);
+  if ratio > 1.0
+    fprintf('RECOMMENDATION: Add c to state vector (consider dominates)\\n');
+  else
+    fprintf('OK: c can remain unestimated (consider < formal)\\n');
+  end
+
+  %% Example: TOPEX drag coefficient CD
+  % Pcc = (0.3)^2  (30% uncertainty in CD)
+  % Sxc = sensitivity of radial position to CD error
+end`,
+traps:["Formal Pₖ ALWAYS underestimates true covariance — never quote formal sigma as mission accuracy without consider analysis or external validation (tide gauges, SLR, etc.).","Consider covariance accounts for the STATISTICAL effect of ignoring c, NOT the deterministic bias Sxc·ĉ. Both exist and must be assessed separately.","Adding c to the state reduces the consider term but INCREASES formal Pₖ (more unknowns → less overdetermined). Always a tradeoff.","Sxc=∂x̂/∂ĉ. If Sxc≈0: c does not corrupt x̂ even if Pcc is large. Check Sxc before panicking about unestimated parameters."],
+drills:[{q:"Define Sxc and the consider covariance formula. What is the ordering of formal, consider, and true covariance?",a:"Sensitivity matrix: Sxc=(HᵀR⁻¹H)⁻¹HᵀR⁻¹Hc [n×q] = ∂x̂/∂ĉ — how a unit error in unestimated parameter c corrupts state estimate x̂.\n\nConsider covariance: Pₖ(consider)=Pₖ(formal)+Sxc·Pcc·Sxcᵀ.\n\nOrdering (always): Pₖ(formal) ≤ Pₖ(consider) ≤ Pₖ(true). Formal = optimistic (only meas noise). Consider = realistic (adds unmodelled params). True = from external validation."}]
+},
+{id:4,icon:"↩",title:"Smoothing — Rauch-Tung-Striebel algorithm",badge:"§4.15 · pp.246–251",
+why:"<strong>Why smoothing?</strong> The KF uses observations [t₀,…,tₖ]. The smoother uses ALL observations [t₀,…,tℓ]. In post-processing, all data is available — why not use it all for every epoch? The RTS smoother does exactly this in two passes. P*ₖ ≤ Pₖₖ always — smoother never makes things worse.",
+objective:"Write the two-phase RTS algorithm (Eq.4.15.29). Derive Sₖ=Pₖₖ·Φᵀ·(P̄ₖ₊₁)⁻¹. Show that for Q=0 the smoother reduces to back-propagating the final estimate. Prove P*ₖ ≤ Pₖₖ.",
+overview:[
+{label:"Phase 1 — Forward KF (store everything)",text:"Run standard KF for k=0 to ℓ. At each k store: x̂ₖₖ, Pₖₖ (after measurement update) AND x̄ₖ₊₁, P̄ₖ₊₁ (before next measurement update — time-updated but not yet corrected). Both a priori and a posteriori must be stored. Initialise smoother: x̂*ₗ=x̂ₗₗ, P*ₗ=Pₗₗ."},
+{label:"Phase 2 — Backward RTS sweep",text:"For k=ℓ−1 down to 0: compute smoother gain Sₖ=Pₖₖ·Φᵀ(tₖ₊₁,tₖ)·(P̄ₖ₊₁)⁻¹. Smoothed state: x̂*ₖ=x̂ₖₖ+Sₖ(x̂*ₖ₊₁−x̄ₖ₊₁). Smoothed covariance: P*ₖ=Pₖₖ+Sₖ(P*ₖ₊₁−P̄ₖ₊₁)Sₖᵀ."},
+{label:"Key property",text:"P*ₖ₊₁−P̄ₖ₊₁ ≤ 0 (smoother covariance ≤ predicted covariance). This ensures P*ₖ ≤ Pₖₖ by induction — smoother NEVER increases uncertainty. Using future data can only help."},
+{label:"Special case Q=0",text:"With no process noise: Sₖ=Φ⁻¹(tₖ₊₁,tₖ)=Φ(tₖ,tₖ₊₁). Smoother reduces to simply back-propagating the final estimate: x̂*ₖ=Φ(tₖ,tℓ)x̂*ₗ. The smoother = batch = propagating the final KF estimate backward."},
+],
+equations:[
+{label:"Phase 1 — forward KF (store both)",eq:"Run KF for k=0 to ℓ. Store at each k:\n  x̂ₖₖ, Pₖₖ   (a posteriori — after meas. update)\n  x̄ₖ₊₁, P̄ₖ₊₁  (a priori — after time update)\n\nInitialise: x̂*ₗ = x̂ₗₗ,  P*ₗ = Pₗₗ",note:"Must store BOTH a priori AND a posteriori — need both in backward pass"},
+{label:"Phase 2 — backward RTS (Eq.4.15.29) ★★★",eq:"FOR k = ℓ−1 DOWN TO 0:\n\n  Sₖ = Pₖₖ · Φᵀ(tₖ₊₁,tₖ) · (P̄ₖ₊₁)⁻¹    [smoother gain]\n\n  x̂*ₖ = x̂ₖₖ + Sₖ(x̂*ₖ₊₁ − x̄ₖ₊₁)       [smoothed state]\n\n  P*ₖ  = Pₖₖ + Sₖ(P*ₖ₊₁ − P̄ₖ₊₁)Sₖᵀ    [smoothed cov]",note:"(P*ₖ₊₁−P̄ₖ₊₁)≤0 ensures P*ₖ≤Pₖₖ. If P*ₖ>Pₖₖ in code: index alignment bug!"},
+{label:"Special case Q=0 (Eq.4.15.25–28) ★",eq:"With Q=0: P̄ₖ₊₁ = Φ·Pₖₖ·Φᵀ\n\nSmoother gain: Sₖ = Φ(tₖ,tₖ₊₁)   [just inverse STM]\n\nSmoothed state: x̂*ₖ = Φ(tₖ,tₖ₊₁)x̂*ₖ₊₁\n             = Φ(tₖ,tℓ)x̂*ₗ   [back-propagate final estimate!]\n\nSmoothed cov:  P*ₖ = Φ(tₖ,tₖ₊₁)P*ₖ₊₁Φᵀ(tₖ,tₖ₊₁)",note:"Q=0: smoother = batch = backward propagation of final KF estimate"},
+{label:"Optimality property",eq:"P*ₖ ≤ Pₖₖ   ALWAYS (smoother never worse than filter)\n\nPhysical reason: smoother uses ALL observations [t₀,…,tℓ]\nFilter at tₖ uses only [t₀,…,tₖ] — less information.",note:"Equality P*ₖ=Pₖₖ only if all future observations carry no information about xₖ"},
+],
+derivation:`RTS SMOOTHER DERIVATION — KEY STEPS (TSB §4.15):
+
+We seek x̂*ₖ = E[xₖ | y₀,y₁,...,yₗ]  (all observations)
+
+The RTS smoother links x̂*ₖ to x̂*ₖ₊₁ using:
+  xₖ = Φ⁻¹(tₖ₊₁,tₖ)[xₖ₊₁ − Γ(tₖ₊₁,tₖ)uₖ]  (backward dynamics)
+
+Via Bayesian argument (Eq.4.15.7):
+  Maximise ln p(xₖ|Y*) = Maximise:
+    −½[xₖ₊₁−Φxₖ]ᵀ[ΓQΓᵀ]⁻¹[xₖ₊₁−Φxₖ]  [dynamics term]
+    −½[xₖ−x̂ₖₖ]ᵀPₖₖ⁻¹[xₖ−x̂ₖₖ]           [filter term]
+
+Differentiate wrt xₖ, set to zero:
+  x̂*ₖ = x̂ₖₖ + Pₖₖ·Φᵀ·(ΦPₖₖΦᵀ+ΓQΓᵀ)⁻¹·(x̂*ₖ₊₁−Φx̂ₖₖ)
+        = x̂ₖₖ + Sₖ·(x̂*ₖ₊₁ − x̄ₖ₊₁)
+  where x̄ₖ₊₁ = Φx̂ₖₖ  and  P̄ₖ₊₁ = ΦPₖₖΦᵀ+ΓQΓᵀ
+
+Smoother gain:
+  Sₖ = Pₖₖ·Φᵀ·(P̄ₖ₊₁)⁻¹   (Eq.4.15.29) ✓
+
+Smoother covariance (via variance of x̂*ₖ):
+  P*ₖ = Pₖₖ + Sₖ(P*ₖ₊₁ − P̄ₖ₊₁)Sₖᵀ  ✓`,
+matlab:`function [x_smooth, P_smooth] = rts_smoother(x_filt, P_filt, x_pred, P_pred, Phi_all)
+% Rauch-Tung-Striebel smoother — TSB §4.15.1 (Eq.4.15.29)
+% Inputs (from forward KF pass):
+%   x_filt:  [n × ℓ] a posteriori state estimates x̂ₖₖ
+%   P_filt:  [n×n × ℓ] a posteriori covariances Pₖₖ
+%   x_pred:  [n × ℓ] a priori state estimates x̄ₖ (time-updated)
+%   P_pred:  [n×n × ℓ] a priori covariances P̄ₖ
+%   Phi_all: [n×n × ℓ] STMs Φ(tₖ,tₖ₋₁) at each step
+
+  n = size(x_filt,1);  ell = size(x_filt,2);
+  x_smooth = x_filt;   P_smooth = P_filt;  % initialise
+
+  % Phase 2: backward sweep k = ℓ-1 down to 1
+  for k = ell-1 : -1 : 1
+    Phi_k = Phi_all(:,:,k+1);  % Φ(tₖ₊₁,tₖ)
+    Pkk   = P_filt(:,:,k);     % Pₖₖ  (a posteriori)
+    P_bar = P_pred(:,:,k+1);   % P̄ₖ₊₁ (a priori, time-updated)
+
+    %% Smoother gain (Eq.4.15.29)
+    Sk = Pkk * Phi_k' / P_bar;   % Sₖ = Pₖₖ·Φᵀ·P̄ₖ₊₁⁻¹
+
+    %% Smoothed state
+    x_smooth(:,k) = x_filt(:,k) + Sk*(x_smooth(:,k+1) - x_pred(:,k+1));
+
+    %% Smoothed covariance
+    diff_P = P_smooth(:,:,k+1) - P_bar;  % P*ₖ₊₁ − P̄ₖ₊₁ ≤ 0
+    P_smooth(:,:,k) = Pkk + Sk*diff_P*Sk';
+
+    %% Sanity check: P*ₖ should be ≤ Pₖₖ
+    if any(eig(Pkk - P_smooth(:,:,k)) < -1e-10)
+      warning('P*_%d > P_%d: check index alignment!', k, k);
+    end
+  end
+end
+
+% USAGE PATTERN:
+% [x_f, P_f, x_p, P_p, Phi] = run_kalman_filter(Y, t_obs, ...);
+% [x_s, P_s] = rts_smoother(x_f, P_f, x_p, P_p, Phi);
+% % Compare filter vs smoother uncertainty:
+% sigma_filt   = sqrt(squeeze(P_f(1,1,:)));  % position sigma from KF
+% sigma_smooth = sqrt(squeeze(P_s(1,1,:)));  % position sigma from smoother
+% % sigma_smooth(k) <= sigma_filt(k) always ✓`,
+traps:["Must store BOTH x̂ₖₖ/Pₖₖ (a posteriori) AND x̄ₖ₊₁/P̄ₖ₊₁ (a priori) from the forward pass. Storing only the filter output is insufficient.","Backward pass runs k=ℓ−1 DOWN to 0. INITIALISE at k=ℓ (final filter step): x̂*ₗ=x̂ₗₗ.","P*ₖ<Pₖₖ always. If P*ₖ>Pₖₖ in code: check that Phi_all(:,:,k+1) corresponds to Φ(tₖ₊₁,tₖ) — the forward STM from tₖ to tₖ₊₁, not the reverse.","RTS smoother = offline algorithm. Cannot be used for real-time control. The smoother is a post-processing tool."],
+drills:[{q:"Write the complete RTS smoother algorithm from memory (both phases, Eq.4.15.29). What is the smoother gain Sₖ?",a:"Phase 1 — forward KF: run KF for k=0 to ℓ. Store at each k: x̂ₖₖ,Pₖₖ (a posteriori) and x̄ₖ₊₁,P̄ₖ₊₁ (a priori). Initialise: x̂*ₗ=x̂ₗₗ, P*ₗ=Pₗₗ.\n\nPhase 2 — backward (k=ℓ−1 to 0):\nSₖ=Pₖₖ·Φᵀ(tₖ₊₁,tₖ)·(P̄ₖ₊₁)⁻¹  [smoother gain]\nx̂*ₖ=x̂ₖₖ+Sₖ(x̂*ₖ₊₁−x̄ₖ₊₁)  [smoothed state]\nP*ₖ=Pₖₖ+Sₖ(P*ₖ₊₁−P̄ₖ₊₁)Sₖᵀ  [smoothed cov]\n\nProperty: P*ₖ≤Pₖₖ always ✓"},
+{q:"Show that for Q=0, the RTS smoother reduces to simple backward propagation of the final estimate (Eq.4.15.25–28).",a:"With Q=0: P̄ₖ₊₁=Φ·Pₖₖ·Φᵀ. Smoother gain: Sₖ=Pₖₖ·Φᵀ·(ΦPₖₖΦᵀ)⁻¹=Pₖₖ·Φᵀ·(Φᵀ)⁻¹·Pₖₖ⁻¹·Φ⁻¹=Φ⁻¹(tₖ₊₁,tₖ)=Φ(tₖ,tₖ₊₁) ✓.\n\nSmoothed state: x̂*ₖ=x̂ₖₖ+Φ(tₖ,tₖ₊₁)(x̂*ₖ₊₁−Φ(tₖ₊₁,tₖ)x̂ₖₖ)=Φ(tₖ,tₖ₊₁)x̂*ₖ₊₁.\nRecursively: x̂*ₖ=Φ(tₖ,tℓ)x̂*ₗ — just back-propagate the final estimate ✓."}]
+},
+{id:5,icon:"⬡",title:"Probability ellipsoid",badge:"§4.16 · pp.251–258",
+why:"<strong>Why?</strong> Pₖ is a matrix — the probability ellipsoid makes it visual and interpretable. For orbit accuracy reporting, the standard practice gives σᴿ, σᵀ, σᴺ (radial, along-track, cross-track) — obtained by transforming Pₖ from ECI to the RTN frame. The chi-squared probability content table is mandatory knowledge.",
+objective:"Define the probability ellipsoid {x̃:x̃ᵀPₖ⁻¹x̃≤c²}. Compute semi-axes aᵢ=c√λᵢ from eigenvalues. Give probability content for n=3 at c=1,2,3. Write the ECI→RTN covariance transformation (Eq.4.16.18).",
+overview:[
+{label:"Definition and geometry",text:"The probability ellipsoid is the set of deviations x̃ within Mahalanobis distance c from x̂ₖ: {x̃: x̃ᵀPₖ⁻¹x̃≤c²}. Its shape is given by the eigendecomposition Pₖ=VΛVᵀ. Semi-axis i has length aᵢ=c√λᵢ in the direction of column i of V."},
+{label:"Chi-squared probability — NOT 68.3%!",text:"P(x̃∈ε)=P(χ²(n)≤c²). For n=3 (3D position): c=1→19.9%, c=2→73.9%, c=3→97.1%. The 68.3/95.4/99.7% rule is valid ONLY for n=1 (scalar Gaussian). Quoting 68.3% for a 3D ellipsoid is a guaranteed exam error."},
+{label:"TSB Example 4.16.1 (p.253)",text:"P=[[4,2];[2,5]] (2D case). Eigenvalues λ₁=6.56, λ₂=2.44. Semi-axes at c=1: a₁=2.56m, a₂=1.56m. Principal axis angle φ=31.7° (from eigenvectors). Know this example for oral."},
+{label:"RTN coordinate transformation (§4.16.1)",text:"RTN: Radial (r̂), Transverse (along-track), Normal (orbit normal). γ=[r̂,t̂,n̂] is the 3×3 rotation matrix. ψ=diag(γ,γ,I) for the full state. Pₖ(RTN)=ψ·Pₖ(ECI)·ψᵀ. Diagonal entries give σᴿ, σᵀ, σᴺ."},
+],
+equations:[
+{label:"Probability ellipsoid (Eq.4.16.1)",eq:"ε = { x̃ : x̃ᵀ Pₖ⁻¹ x̃ ≤ c² }\n\nc² = chi2inv(p, n)   in MATLAB\np = desired probability level, n = state dimension",note:"Mahalanobis distance ≤ c from x̂ₖ defines the ellipsoid"},
+{label:"Semi-axes from eigendecomposition (Eq.4.16.7) ★",eq:"Pₖ = V Λ Vᵀ   (eigendecomposition)\nλᵢ = eigenvalues (ordered λ₁≥λ₂≥…≥λₙ)\nvᵢ = eigenvectors (principal axis directions)\n\nSemi-axis i: aᵢ = c · √λᵢ\nDirection:   column i of V\n\nMATLAB: [V,D]=eig(Pk); a=c*sqrt(diag(D))",note:"Largest eigenvalue = direction of maximum uncertainty"},
+{label:"Chi-squared probability table ★★★",eq:"P(x̃ ∈ ε) = P(χ²(n) ≤ c²)\n\nn=1:  c=1 → 68.3%   (the familiar rule)\nn=2:  c=1 → 39.3%\nn=3:  c=1 → 19.9%   ← orbit 3D position!\n      c=2 → 73.9%\n      c=3 → 97.1%\n\nMATLAB: p=chi2cdf(c^2,n);  c=sqrt(chi2inv(p,n))",note:"68.3/95.4/99.7% valid ONLY for n=1. For n=3 ALWAYS use chi-squared!"},
+{label:"RTN transformation (Eq.4.16.18) ★",eq:"γ = [r̂, t̂, n̂]    [3×3 rotation ECI→RTN]\nψ = diag(γ, γ, I)  [full state transformation]\n\nPₖ(RTN) = ψ · Pₖ(ECI) · ψᵀ\n\nOrbit accuracy: σᴿ=√P(1,1), σᵀ=√P(2,2), σᴺ=√P(3,3)\n  in RTN frame",note:"For LEO: σᵀ (along-track) typically 5–10× larger than σᴿ (radial)"},
+],
+derivation:`EIGENDECOMPOSITION AND SEMI-AXES (TSB Example 4.16.1):
+
+Given P = [[4, 2], [2, 5]]
+
+1) Find eigenvalues (det(P−λI)=0):
+   (4−λ)(5−λ) − 4 = 0
+   λ² − 9λ + 16 = 0
+   λ = (9 ± √(81−64))/2 = (9 ± √17)/2
+   λ₁ = 6.56,  λ₂ = 2.44  ✓ (TSB p.255)
+
+2) Find eigenvectors:
+   For λ₁=6.56: (P−λ₁I)v=0 → v₁ = [0.851; 0.526]
+   For λ₂=2.44: v₂ = [−0.526; 0.851]
+   V = [[0.851, −0.526], [0.526, 0.851]]
+
+3) Principal axis angle:
+   U = [[cosφ, −sinφ], [sinφ, cosφ]]
+   → φ = arctan(0.526/0.851) = 31.7°
+
+4) Semi-axes at c=1:
+   a₁ = 1·√6.56 = 2.56 m
+   a₂ = 1·√2.44 = 1.56 m
+
+5) For 95% confidence (n=2):
+   c² = chi2inv(0.95, 2) = 5.99 → c = 2.45
+   a₁ = 2.45·√6.56 = 6.27 m
+   a₂ = 2.45·√2.44 = 3.83 m`,
+matlab:`function probability_ellipsoid_demo(Pk, confidence_levels)
+% Probability ellipsoid analysis — TSB §4.16
+% Pk: n×n covariance matrix
+% confidence_levels: e.g. [0.683, 0.954, 0.997]
+
+  n = size(Pk,1);
+
+  %% Eigendecomposition
+  [V, D] = eig(Pk, 'vector');    % V: eigenvectors, D: eigenvalues
+  [D, idx] = sort(D, 'descend');
+  V = V(:,idx);
+
+  fprintf('Eigenvalues (variance along principal axes):\\n');
+  for i=1:n; fprintf('  λ%d = %.4f m²  →  σ%d = %.4f m\\n', i,D(i),i,sqrt(D(i))); end
+
+  %% Chi-squared table
+  fprintf('\\nProbability content by c (n=%d):\\n', n);
+  for c = [1, 2, 3, sqrt(chi2inv(0.95,n))]
+    p = chi2cdf(c^2, n);
+    semi_axes = c * sqrt(D);
+    fprintf('  c=%.2f: P=%.1f%%  semi-axes: ', c, 100*p);
+    fprintf('%.2f  ', semi_axes'); fprintf('m\\n');
+  end
+
+  fprintf('\\nNOTE: For n=3, 1-sigma (c=1) contains %.1f%%\\n', 100*chi2cdf(1,3));
+  fprintf('      NOT 68.3%% — that rule is for n=1 only!\\n');
+
+  %% ECI to RTN transformation (§4.16.1)
+  % Given position r and velocity v in ECI:
+  % r_vec = r/norm(r);                   % radial unit vector
+  % h_vec = cross(r,v)/norm(cross(r,v)); % orbit normal
+  % t_vec = cross(h_vec, r_vec);         % along-track
+  % gamma = [r_vec, t_vec, h_vec]';      % ECI→RTN rotation
+  % psi = blkdiag(gamma, gamma, eye(n-6)); % full state transform
+  % P_RTN = psi * Pk * psi';
+  % fprintf('RTN: σR=%.4f m  σT=%.4f m  σN=%.4f m\\n', ...
+  %         sqrt(P_RTN(1,1)), sqrt(P_RTN(2,2)), sqrt(P_RTN(3,3)));
+end`,
+traps:["For n=3: 1σ ellipsoid contains 19.9% probability — NOT 68.3%. The 68.3% rule is SCALAR (n=1) only. Quoting 68.3% for a 3D uncertainty in an oral exam is a serious error.","Semi-axis: aᵢ=c·√λᵢ (square root of eigenvalue, scaled by c). Missing the square root gives wrong dimensions (m² instead of m).","Eigenvectors of Pₖ give the PRINCIPAL AXIS DIRECTIONS — not aligned with coordinate axes in general. The covariance matrix can be tilted at any angle.","RTN frame is defined by the current orbit geometry (r,v vectors) — it rotates with the satellite. Must recompute γ at each epoch."],
+drills:[{q:"For a 3D position covariance P with eigenvalues [10000, 100, 25] m², compute the 95% confidence ellipsoid semi-axes and state the probability at c=1.",a:"95%: c²=chi2inv(0.95,3)=7.81 → c=2.80. Semi-axes: a₁=2.80·100=280m, a₂=2.80·10=28m, a₃=2.80·5=14m.\n\nProbability at c=1: p=chi2cdf(1,3)=0.199=19.9% — only 19.9%, NOT 68.3%! The 68.3% rule applies ONLY for n=1 (scalar). For n=3, the chi-squared distribution with 3 DOF gives much less probability in the unit sphere."},
+{q:"Why is the 68.3% rule invalid for the 3D probability ellipsoid? Derive the correct probability for c=1, n=3.",a:"For scalar Gaussian: P(|x̃|≤σ)=68.3%. For n-dimensional Gaussian x̃~N(0,P): the Mahalanobis distance q=x̃ᵀP⁻¹x̃ follows χ²(n), NOT χ²(1).\n\nFor n=3: P(q≤1)=P(χ²(3)≤1)=chi2cdf(1,3)=0.199=19.9%.\n\nIntuitively: in 3D, probability spreads over all directions. The fraction of Gaussian probability inside the unit sphere (c=1) is much smaller than the fraction inside [−σ,σ] for n=1."}]
+},
+{id:6,icon:"⊕",title:"Combining independent estimates",badge:"§4.17 · pp.258–261",
+why:"<strong>Why?</strong> Multiple independent OD solutions (different tracking networks, different analysis centres, different arc lengths) should be combined information-optimally rather than averaged. The result Pc=(P₁⁻¹+P₂⁻¹)⁻¹ is ALWAYS better than either P₁ or P₂ alone. Used routinely in IGS GPS orbit combination (~15 centres) and VLBI+SLR+GPS astrometry.",
+objective:"Derive Pc=(P₁⁻¹+P₂⁻¹)⁻¹ and x̂c=Pc(P₁⁻¹x̂₁+P₂⁻¹x̂₂) by treating each estimate as a noisy observation and applying MVE. Verify scalar case: Pc=P₁P₂/(P₁+P₂).",
+overview:[
+{label:"Setup — each estimate as an observation",text:"Treat x̂₁ as a noisy observation of the true state xₖ: x̂₁=I·xₖ+η₁, E[η₁η₁ᵀ]=P₁. Same for x̂₂. The noise η₁,η₂ must be INDEPENDENT (no shared data). Augmented system: H̄=[I;I], R̄=diag(P₁,P₂). Apply MVE."},
+{label:"Combined covariance — information adds",text:"Pc=(P₁⁻¹+P₂⁻¹)⁻¹. In information form: Λc=Λ₁+Λ₂ — information simply adds. Pc<P₁ AND Pc<P₂ always. Scalar: Pc=P₁P₂/(P₁+P₂) — harmonic mean, always less than either."},
+{label:"Combined estimate — weighted mean",text:"x̂c=Pc·(P₁⁻¹x̂₁+P₂⁻¹x̂₂) — information-weighted combination. NOT a 50/50 average. Higher precision estimate gets more weight. Equal precision: x̂c=(x̂₁+x̂₂)/2, Pc=P/2."},
+{label:"Practical applications",text:"IGS: ~15 analysis centres each compute GPS satellite orbits independently. Combined solution more accurate than any individual. GRACE: two satellites, different arc overlap strategies combined. Multi-arc OD: combine separate arc solutions."},
+],
+equations:[
+{label:"Setup (Eq.4.17.1–2)",eq:"x̂₁ = I·xₖ + η₁,  E[η₁η₁ᵀ] = P₁\nx̂₂ = I·xₖ + η₂,  E[η₂η₂ᵀ] = P₂\nη₁ ⊥ η₂  (MUST be independent — no shared data!)\n\nAugmented: ȳ=[x̂₁;x̂₂], H̄=[I;I], R̄=diag(P₁,P₂)",note:"Independence is essential — violated if estimates share ANY common observations"},
+{label:"Combined covariance (Eq.4.17.3) ★★",eq:"Pc = (P₁⁻¹ + P₂⁻¹)⁻¹\n\nInformation form: Λc = Λ₁ + Λ₂   ← information ADDS\n\nScalar: Pc = P₁P₂/(P₁+P₂) < min(P₁,P₂)  always ✓",note:"ALWAYS Pc < P₁ AND Pc < P₂. Combining independent estimates always helps."},
+{label:"Combined estimate (Eq.4.17.4) ★",eq:"x̂c = Pc · (P₁⁻¹x̂₁ + P₂⁻¹x̂₂)\n\nInformation form: dc = d₁+d₂,  x̂c = Λc⁻¹dc\n\nScalar: x̂c = (x̂₁/P₁+x̂₂/P₂) / (1/P₁+1/P₂) = weighted mean",note:"NOT a simple average. Higher precision estimate (smaller P) gets more weight."},
+{label:"Limit cases and N estimates",eq:"P₁≪P₂ (est.1 much better): Pc≈P₁, x̂c≈x̂₁\nP₁=P₂=P (equal):          Pc=P/2, x̂c=(x̂₁+x̂₂)/2\n\nN estimates: Λc=Σᵢ Λᵢ,  dc=Σᵢ dᵢ\n  → Pc=P/N for N equal-precision estimates",note:"Equal precision: N independent solutions → variance reduced by factor N"},
+],
+derivation:`DERIVATION VIA MVE (TSB §4.17):
+
+Treat each estimate as a measurement of xₖ:
+  x̂₁ = I·xₖ + η₁  (noise P₁)
+  x̂₂ = I·xₖ + η₂  (noise P₂)
+  η₁ ⊥ η₂ → E[η₁η₂ᵀ] = 0
+
+Augmented system:
+  ȳ = [x̂₁; x̂₂],  H̄ = [I; I],  R̄ = diag(P₁, P₂)
+
+Apply MVE formula (Eq.4.4.18):
+  x̂c = (H̄ᵀR̄⁻¹H̄)⁻¹ H̄ᵀR̄⁻¹ȳ
+
+Compute H̄ᵀR̄⁻¹H̄:
+  = [I,I] · diag(P₁⁻¹,P₂⁻¹) · [I;I]
+  = P₁⁻¹ + P₂⁻¹   ← sum of information matrices!
+  → Pc = (P₁⁻¹+P₂⁻¹)⁻¹  (Eq.4.17.3) ✓
+
+Compute H̄ᵀR̄⁻¹ȳ:
+  = [I,I] · diag(P₁⁻¹,P₂⁻¹) · [x̂₁;x̂₂]
+  = P₁⁻¹x̂₁ + P₂⁻¹x̂₂
+
+Therefore:
+  x̂c = (P₁⁻¹+P₂⁻¹)⁻¹(P₁⁻¹x̂₁ + P₂⁻¹x̂₂)  (Eq.4.17.4) ✓
+
+SCALAR VERIFICATION:
+  Pc = 1/(1/P₁+1/P₂) = P₁P₂/(P₁+P₂) < min(P₁,P₂) ✓
+  x̂c = Pc·(x̂₁/P₁+x̂₂/P₂) = (x̂₁P₂+x̂₂P₁)/(P₁+P₂) ✓`,
+matlab:`function [x_combined, P_combined] = combine_estimates(x_hat, P_cells)
+% Combine N independent estimates optimally — TSB §4.17
+% x_hat:   [n×N] matrix of N state estimates
+% P_cells: {1×N} cell array of n×n covariance matrices
+% Returns: combined x̂c and Pc
+
+  n = size(x_hat,1);  N = length(P_cells);
+  Lambda_c = zeros(n);  d_c = zeros(n,1);
+
+  for i = 1:N
+    Pi_inv = inv(P_cells{i});       % Λᵢ = Pᵢ⁻¹
+    Lambda_c = Lambda_c + Pi_inv;   % Λc += Λᵢ  (information adds!)
+    d_c      = d_c + Pi_inv*x_hat(:,i);  % dc += Λᵢx̂ᵢ
+  end
+
+  P_combined = inv(Lambda_c);
+  x_combined = P_combined * d_c;    % x̂c = Λc⁻¹dc
+
+  %% Verification: Pc < each Pᵢ
+  fprintf('Combined 1-sigma: '); fprintf('%.4f  ', sqrt(diag(P_combined))'); fprintf('m\\n');
+  for i=1:N
+    fprintf('  vs estimate %d: ', i);
+    fprintf('%.4f  ', sqrt(diag(P_cells{i}))'); fprintf('m\\n');
+    if any(eig(P_cells{i} - P_combined) < -1e-10)
+      error('Combined Pc > P%d: independence assumption violated!', i);
+    end
+  end
+  fprintf('  → Combined is better than all %d estimates ✓\\n', N);
+
+  %% Scalar example (TSB §4.17):
+  % x_hat1=5, P1=4, x_hat2=7, P2=1
+  % Pc = 4*1/(4+1) = 0.8
+  % x_c = 0.8*(5/4+7) = 0.8*8.25 = 6.6
+  % est.2 dominates: P2=1 >> P1=4 (four times more information)
+end`,
+traps:["Independence η₁⊥η₂ is REQUIRED. If the two estimates share ANY common observations (same tracking station, same arc), this formula over-counts information → Pc falsely small → overconfident.","Pc=P₁P₂/(P₁+P₂) is the HARMONIC mean of variances, NOT the arithmetic mean. The arithmetic mean (P₁+P₂)/2 would give larger Pc — wrong answer.","x̂c is NOT (x̂₁+x̂₂)/2 unless P₁=P₂. The formula heavily favours the more precise estimate when P₁≠P₂.","N estimates with equal precision: Pc=P/N. Each independent solution reduces variance by factor N — this is the basic principle of averaging independent measurements."],
+drills:[{q:"Derive Pc=(P₁⁻¹+P₂⁻¹)⁻¹ and x̂c=Pc(P₁⁻¹x̂₁+P₂⁻¹x̂₂) from the MVE applied to the augmented system.",a:"Augmented: H̄=[I;I], R̄=diag(P₁,P₂), ȳ=[x̂₁;x̂₂]. Apply MVE (Eq.4.4.18): x̂c=(H̄ᵀR̄⁻¹H̄)⁻¹H̄ᵀR̄⁻¹ȳ.\nH̄ᵀR̄⁻¹H̄=[I,I]diag(P₁⁻¹,P₂⁻¹)[I;I]=P₁⁻¹+P₂⁻¹ → Pc=(P₁⁻¹+P₂⁻¹)⁻¹ ✓.\nH̄ᵀR̄⁻¹ȳ=P₁⁻¹x̂₁+P₂⁻¹x̂₂ → x̂c=Pc(P₁⁻¹x̂₁+P₂⁻¹x̂₂) ✓"},
+{q:"Scalar case: x̂₁=5, P₁=4, x̂₂=7, P₂=1. Compute x̂c and Pc. Which estimate dominates and why?",a:"Pc=P₁P₂/(P₁+P₂)=4·1/5=0.8. x̂c=Pc·(x̂₁/P₁+x̂₂/P₂)=0.8·(5/4+7)=0.8·8.25=6.6.\n\nEstimate 2 (P₂=1) dominates: Λ₂=1 vs Λ₁=0.25 — four times more information. Combined x̂c=6.6 is pulled strongly toward x̂₂=7.\nPc=0.8 < P₂=1 < P₁=4 — combined more certain than either ✓"}]
+}
+]
+
+const TABS=[{k:'overview',lbl:'📖 Overview'},{k:'equations',lbl:'⚡ Equations'},{k:'derivation',lbl:'🔬 Derivation'},{k:'matlab',lbl:'💻 MATLAB'},{k:'traps',lbl:'⚠️ Traps'},{k:'drill',lbl:'💪 Drill'}]
+let cur=0,activeTab='overview',DS={}
+
+function buildSidebar(){
+ document.getElementById('slist').innerHTML=''
+ M.forEach((m,i)=>{
+  const b=document.createElement('button')
+  b.className='sitem'+(i===cur?' active':'')
+  b.innerHTML=`<span class="sitem-icon">${m.icon}</span><div class="sitem-text"><div class="sitem-title">${m.title}</div><div class="sitem-pages">${m.badge}</div></div>`
+  b.onclick=()=>{cur=i;activeTab='overview';render()}
+  document.getElementById('slist').appendChild(b)
+ })
+}
+
+function buildHead(){
+ const m=M[cur]
+ document.getElementById('m-icon').textContent=m.icon
+ document.getElementById('m-title').textContent=m.title
+ document.getElementById('m-pages').textContent=m.badge
+ document.getElementById('m-why').innerHTML=m.why
+}
+
+function buildTabs(){
+ document.getElementById('tabs').innerHTML=''
+ TABS.forEach(t=>{
+  const b=document.createElement('button')
+  b.className='tab'+(activeTab===t.k?' active':'')
+  b.textContent=t.lbl
+  b.onclick=()=>{activeTab=t.k;buildContent()}
+  document.getElementById('tabs').appendChild(b)
+ })
+}
+
+function buildContent(){
+ document.querySelectorAll('.tab').forEach((b,i)=>{b.className='tab'+(TABS[i].k===activeTab?' active':'')})
+ const cc=document.getElementById('content'); cc.innerHTML=''
+ const m=M[cur]
+
+ if(activeTab==='overview'){
+  cc.innerHTML=`<div class="obj-box"><strong>🎯 Objective:</strong> ${m.objective}</div>`
+  m.overview.forEach(o=>{cc.innerHTML+=`<div class="ov-card"><div class="ov-label">${o.label}</div><div class="ov-text">${o.text}</div></div>`})
+ } else if(activeTab==='equations'){
+  cc.innerHTML='<h4>Key equations — exact TSB notation</h4>'
+  m.equations.forEach(e=>{cc.innerHTML+=`<div class="eq-box"><div class="eq-label">${e.label}</div><div class="eq-formula">${e.eq}</div>${e.note?`<div class="eq-note">${e.note}</div>`:''}</div>`})
+ } else if(activeTab==='derivation'){
+  cc.innerHTML='<h4>Step-by-step — professor may stop you at any line</h4>'
+  cc.innerHTML+=`<div class="deriv-box">${m.derivation}</div>`
+ } else if(activeTab==='matlab'){
+  cc.innerHTML=`<div class="matlab-box"><div class="matlab-head">MATLAB — complete runnable code</div><pre class="matlab-code">${m.matlab}</pre></div>`
+ } else if(activeTab==='traps'){
+  cc.innerHTML='<h4>Exam traps — where marks are lost</h4>'
+  m.traps.forEach(t=>{cc.innerHTML+=`<div class="trap-item"><span class="trap-icon">⚠</span><span class="trap-text">${t}</span></div>`})
+ } else if(activeTab==='drill'){
+  cc.innerHTML='<h4>Rapid-fire oral questions — click to reveal</h4>'
+  m.drills.forEach((d,i)=>{
+   const k=`${cur}_${i}`,o=DS[k]
+   cc.innerHTML+=`<div class="drill-item"><button class="drill-q" onclick="td('${k}')"><span class="drill-num">Q${i+1}</span><span class="drill-qtext">${d.q}</span><span class="drill-chev${o?' open':''}">▼</span></button><div class="drill-ans${o?' open':''}">${d.a}</div></div>`
+  })
+ }
+
+ if(cur===M.length-1 && activeTab==='overview'){
+  cc.innerHTML+=`<div class="complete-banner"><div class="title">✓ Chapter 4 complete — all 17 sections · §4.1–§4.17 · pp.159–261</div><div class="summary-grid"><div class="sum-card"><div class="lbl">First 20% · §4.1–§4.3.3</div><div class="val">Linearisation, STM, LS</div></div><div class="sum-card"><div class="lbl">20–40% · §4.3.4–§4.6</div><div class="val">MVE, MLE, Batch processor</div></div><div class="sum-card"><div class="lbl">40–70% · §4.7–§4.9</div><div class="val">Kalman filter, EKF, SNC, DMC</div></div><div class="sum-card"><div class="lbl">Final 30% · §4.10–§4.17</div><div class="val">Info filter, smooth, ellipsoid</div></div><div class="sum-card" style="grid-column:1/-1"><div class="lbl">Master unification result — Eq.4.4.29</div><div class="val">x̂ₖ = (HᵀR⁻¹H + P̄ₖ⁻¹)⁻¹(HᵀR⁻¹y + P̄ₖ⁻¹x̄ₖ)  →  KF via Woodbury  →  MAP via Bayes  →  batch via iteration</div></div></div></div>`
+ }
+
+ cc.innerHTML+=`<div class="nav-row">`
+ if(cur>0) cc.innerHTML+=`<button class="btn" onclick="ns(-1)">← Previous</button>`
+ if(cur<M.length-1) cc.innerHTML+=`<button class="btn primary" onclick="ns(1)">Next section →</button>`
+ else cc.innerHTML+=`<div style="padding:10px 0;font-size:12px;color:#22c55e">✓ Final 30% complete — §4.10 to §4.17 (pp.233–261)</div>`
+ cc.innerHTML+=`</div>`
+}
+
+window.td=function(k){
+ DS[k]=!DS[k]
+ const idx=parseInt(k.split('_')[1])
+ const items=document.querySelectorAll('.drill-item')
+ if(items[idx]){
+  items[idx].querySelector('.drill-chev').classList.toggle('open',DS[k])
+  items[idx].querySelector('.drill-ans').classList.toggle('open',DS[k])
+ }
+}
+window.ns=function(d){cur=Math.max(0,Math.min(M.length-1,cur+d));activeTab='overview';render()}
+function render(){buildSidebar();buildHead();buildTabs();buildContent()}
+render()
+</script>
+</body>
+</html>

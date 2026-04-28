@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TSB Ch.4 — 20–40% · §4.3.4–§4.6</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#e2e8f0;min-height:100vh}
+.shell{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:230px;background:#161b27;border-right:1px solid #1e2a3a;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+.sidebar-head{padding:16px;border-bottom:1px solid #1e2a3a}
+.sidebar-head .t1{font-size:10px;color:#4a6080;font-family:monospace;letter-spacing:.08em;text-transform:uppercase}
+.sidebar-head .t2{font-size:13px;font-weight:600;margin-top:3px;color:#e2e8f0}
+.sidebar-head .t3{font-size:10px;color:#4a6080;margin-top:2px}
+.sidebar-list{overflow-y:auto;flex:1;padding:8px}
+.sitem{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:7px;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background .15s;border-left:3px solid transparent}
+.sitem:hover{background:#1e2a3a}
+.sitem.active{background:#1a2540;border-left-color:#f59e0b}
+.sitem-icon{font-size:15px;flex-shrink:0;width:20px;text-align:center}
+.sitem-text{display:flex;flex-direction:column;min-width:0}
+.sitem-title{font-size:11px;font-weight:600;color:#c8d6e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sitem-pages{font-size:9px;color:#4a6080;font-family:monospace;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar-foot{padding:12px 16px;border-top:1px solid #1e2a3a;font-size:10px;color:#2d3f56}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#0f1117}
+.mhead{padding:16px 22px 12px;border-bottom:1px solid #1a2333;background:#12161f}
+.mhead-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.mhead-icon{font-size:22px}
+.mhead-title{font-size:17px;font-weight:700;color:#e2e8f0}
+.mhead-pages{font-size:10px;color:#3d5a7a;font-family:monospace;margin-left:auto}
+.why-box{border-left:3px solid #f59e0b;padding:8px 12px;background:#1a1200;border-radius:0 6px 6px 0;font-size:12px;color:#fbbf24;line-height:1.55}
+.why-box strong{color:#f59e0b;font-weight:600}
+.tabs{display:flex;gap:2px;padding:8px 22px 0;background:#12161f;border-bottom:1px solid #1a2333;overflow-x:auto}
+.tab{padding:7px 13px;font-size:11px;font-weight:600;border:none;background:none;cursor:pointer;color:#4a6080;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;white-space:nowrap;letter-spacing:.02em}
+.tab:hover{color:#8bb4d8}
+.tab.active{color:#f59e0b;border-bottom-color:#f59e0b}
+.content{flex:1;overflow-y:auto;padding:20px 22px;scrollbar-width:thin;scrollbar-color:#1e2a3a #0f1117}
+.content::-webkit-scrollbar{width:5px}
+.content::-webkit-scrollbar-track{background:#0f1117}
+.content::-webkit-scrollbar-thumb{background:#1e2a3a;border-radius:3px}
+.obj-box{background:#1a1200;border:1px solid #3a2800;border-radius:8px;padding:11px 14px;margin-bottom:14px;font-size:12px;color:#fbbf24;line-height:1.6}
+.obj-box strong{color:#f59e0b;font-weight:600}
+.ov-card{background:#12161f;border:1px solid #1a2333;border-radius:8px;padding:13px 15px;margin-bottom:9px}
+.ov-label{font-size:10px;font-weight:700;color:#f59e0b;margin-bottom:4px;letter-spacing:.06em;text-transform:uppercase}
+.ov-text{font-size:12px;color:#8aaccb;line-height:1.65}
+.eq-box{background:#12161f;border:1px solid #1e2a3a;border-radius:8px;margin-bottom:9px;overflow:hidden}
+.eq-label{padding:5px 13px;background:#0e1929;font-size:9px;color:#4a6080;font-family:monospace;border-bottom:1px solid #1a2333;letter-spacing:.05em}
+.eq-formula{padding:11px 15px;font-family:'Cascadia Code','Fira Code',monospace;font-size:12px;color:#fbbf24;white-space:pre-wrap;line-height:1.8}
+.eq-note{padding:5px 13px;font-size:10px;color:#3d5a7a;border-top:1px solid #1a2333}
+.deriv-box{background:#12161f;border:1px solid #1e2a3a;border-radius:8px;padding:15px;font-family:'Cascadia Code','Fira Code',monospace;font-size:11px;color:#8aaccb;white-space:pre-wrap;line-height:1.85;margin:10px 0}
+.matlab-box{background:#0a1a0f;border:1px solid #1a3a22;border-radius:8px;overflow:hidden}
+.matlab-head{padding:6px 13px;background:#061209;font-size:9px;color:#4ade80;font-family:monospace;border-bottom:1px solid #1a3a22;letter-spacing:.08em;text-transform:uppercase}
+.matlab-code{padding:13px 15px;font-family:'Cascadia Code','Fira Code',monospace;font-size:11px;color:#86efac;white-space:pre-wrap;line-height:1.8;overflow-x:auto}
+.trap-item{display:flex;gap:9px;padding:10px 13px;background:#1a0a0a;border:1px solid #3a1a1a;border-radius:8px;margin-bottom:8px}
+.trap-icon{color:#f87171;flex-shrink:0;font-size:14px;margin-top:1px}
+.trap-text{font-size:12px;color:#f87171;line-height:1.6}
+.drill-item{border:1px solid #1e2a3a;border-radius:8px;margin-bottom:8px;overflow:hidden}
+.drill-q{display:flex;align-items:flex-start;gap:9px;padding:11px 13px;cursor:pointer;background:#12161f;border:none;width:100%;text-align:left;transition:background .15s}
+.drill-q:hover{background:#1a2333}
+.drill-num{font-size:10px;font-weight:700;color:#f59e0b;background:#2a1800;padding:2px 8px;border-radius:999px;flex-shrink:0;letter-spacing:.04em}
+.drill-qtext{font-size:12px;color:#c8d6e8;flex:1;line-height:1.5}
+.drill-chev{color:#3d5a7a;font-size:11px;flex-shrink:0;margin-top:2px;transition:transform .2s}
+.drill-chev.open{transform:rotate(180deg)}
+.drill-ans{padding:11px 13px;background:#0e1929;border-top:1px solid #1e2a3a;font-size:11px;color:#7fa8cc;line-height:1.7;display:none}
+.drill-ans.open{display:block}
+.drill-ans code{font-family:monospace;color:#fbbf24;font-size:10px}
+.nav-row{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+.btn{padding:9px 20px;font-size:12px;font-weight:600;border:1px solid #1e2a3a;border-radius:7px;background:none;cursor:pointer;color:#8aaccb;transition:all .15s;letter-spacing:.02em}
+.btn:hover{background:#1a2333;color:#c8d6e8}
+.btn.primary{background:#2a1800;color:#f59e0b;border-color:#5a3a00}
+.btn.primary:hover{background:#3a2200;color:#fbbf24}
+.svg-wrap{margin:12px 0;border-radius:8px;overflow:hidden;background:#12161f;border:1px solid #1a2333}
+h4{font-size:10px;font-weight:700;color:#3d5a7a;margin:14px 0 7px;letter-spacing:.1em;text-transform:uppercase}
+</style>
+</head>
+<body>
+<div class="shell">
+ <div class="sidebar">
+  <div class="sidebar-head">
+   <div class="t1">Tapley, Schutz &amp; Born</div>
+   <div class="t2">Ch.4 — 20–40%</div>
+   <div class="t3">§4.3.4–§4.6 · pp.178–198</div>
+  </div>
+  <div class="sidebar-list" id="slist"></div>
+  <div class="sidebar-foot">6 sections · Sapienza MSc OD</div>
+ </div>
+ <div class="main">
+  <div class="mhead">
+   <div class="mhead-row">
+    <span class="mhead-icon" id="m-icon"></span>
+    <span class="mhead-title" id="m-title"></span>
+    <span class="mhead-pages" id="m-pages"></span>
+   </div>
+   <div class="why-box" id="m-why"></div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="content" id="content"></div>
+ </div>
+</div>
+<script>
+const MODULES=[
+{id:1,icon:"🔧",title:"Alternate LS — pre-normalisation",badge:"§4.3.4 · pp.178–182",
+why:"<strong>Why?</strong> In practice, different observation types (range, Doppler, angles) have different noise levels and may be correlated. Pre-normalising via Cholesky factorisation of R converts WLS into standard LS on whitened data — and shows WHY W=R⁻¹ is the correct weight.",
+objective:"Show that WLS (W=R⁻¹) equals standard LS applied to pre-normalised observations z=Vε⁻¹y, H′=Vε⁻¹H where R=VεVεᵀ. Introduce Newton-Raphson for nonlinear OD.",
+overview:[
+{label:"Pre-normalisation idea",text:"If E[εεᵀ]=R (correlated/unequal noise), factorise R=VεVεᵀ (Cholesky). Then z=Vε⁻¹y and H′=Vε⁻¹H have E[ε′ε′ᵀ]=I — uncorrelated, unit variance. Standard LS on (z,H′) is equivalent to WLS with W=R⁻¹."},
+{label:"Result: WLS=normalised LS",text:"x̂=(H′ᵀH′)⁻¹H′ᵀz = (HᵀR⁻¹H)⁻¹HᵀR⁻¹y. Proves WHY W=R⁻¹ is optimal: it whitens the observations. For diagonal R, Vε=diag(σ₁,…,σₘ) and normalisation divides each obs by its standard deviation."},
+{label:"Newton-Raphson iteration (Eq.4.3.33)",text:"For nonlinear OD: iterate x̂ₙ₊₁=x̂ₙ−[∂²J/∂x²]⁻¹·(∂J/∂x)|_{x̂ₙ}. The Hessian ∂²J/∂x²=HᵀR⁻¹H is the WLS normal matrix. Newton-Raphson = iterative WLS on updated residuals."},
+{label:"Connection to batch processor",text:"The batch processor (§4.6) IS Newton-Raphson applied to the OD cost function: each iteration updates X*(t₀), recomputes O−C residuals and H, solves the normal equations, and repeats until convergence."},
+],
+equations:[
+{label:"Cholesky factorisation of R (Eq.4.3.27)",eq:"R = Vε Vεᵀ   (R symmetric positive definite)\nVε = chol(R)' in MATLAB  [lower triangular]",note:"Works for any correlated noise model — not just diagonal R"},
+{label:"Pre-normalised transformation (Eq.4.3.28)",eq:"z  = Vε⁻¹ y    [whitened observations]\nH′ = Vε⁻¹ H   [whitened obs matrix]\nε′ = Vε⁻¹ ε  → E[ε′ε′ᵀ] = I",note:"One matrix multiply converts correlated obs to uncorrelated"},
+{label:"Pre-normalised LS = WLS (W=R⁻¹)",eq:"x̂ = (H′ᵀH′)⁻¹H′ᵀz\n  = (HᵀR⁻¹H)⁻¹HᵀR⁻¹y",note:"Identical to WLS with W=R⁻¹ — proves WHY this is the right weight"},
+{label:"Newton-Raphson for nonlinear OD (Eq.4.3.33)",eq:"x̂ₙ₊₁ = x̂ₙ − [HᵀR⁻¹H]⁻¹ · HᵀR⁻¹(y − Hx̂ₙ)\n       = x̂ₙ + [HᵀR⁻¹H]⁻¹ · HᵀR⁻¹ · δy",note:"HᵀR⁻¹H is the normal matrix — same as WLS. Iteration drives δy→0."},
+],
+derivation:`PRE-NORMALISATION DERIVATION:
+
+Given: y = Hx + ε,  E[εεᵀ] = R
+Factorise: R = VεVεᵀ  (Cholesky, Vε lower triangular)
+
+Define transformed system:
+  z  = Vε⁻¹ y = Vε⁻¹Hx + Vε⁻¹ε = H′x + ε′
+  H′ = Vε⁻¹ H
+  ε′ = Vε⁻¹ ε  →  E[ε′ε′ᵀ] = Vε⁻¹E[εεᵀ]Vε⁻ᵀ = Vε⁻¹RVε⁻ᵀ = I ✓
+
+Apply standard LS to (z, H′):
+  x̂ = (H′ᵀH′)⁻¹H′ᵀz
+     = (HᵀVε⁻ᵀVε⁻¹H)⁻¹ HᵀVε⁻ᵀVε⁻¹y
+     = (Hᵀ(VεVεᵀ)⁻¹H)⁻¹ Hᵀ(VεVεᵀ)⁻¹y
+     = (HᵀR⁻¹H)⁻¹ HᵀR⁻¹y  ← WLS with W=R⁻¹ ✓
+
+CONCLUSION: WLS with W=R⁻¹ is equivalent to applying
+standard LS to pre-normalised (whitened) data.
+This is WHY R⁻¹ is the correct weight.`,
+matlab:`function pre_norm_demo()
+% Demonstrate pre-normalisation = WLS(W=R⁻¹)
+  H = [1 2; 3 1; 2 3; 0 1];
+  sigma = [2; 0.5; 1; 3];         % different noise levels
+  R = diag(sigma.^2);              % uncorrelated but unequal
+  x_true = [5; 3];
+  y = H*x_true + sigma.*randn(4,1);
+
+  %% Method 1: WLS with W=R⁻¹
+  W = inv(R);
+  x_wls = (H'*W*H) \\ (H'*W*y);
+
+  %% Method 2: Pre-normalisation
+  Ve     = chol(R)';               % Cholesky: R = Ve*Ve'
+  z      = Ve \\ y;                % z = Ve⁻¹ y
+  Hprime = Ve \\ H;                % H' = Ve⁻¹ H
+  x_norm = (Hprime'*Hprime) \\ (Hprime'*z);
+
+  fprintf('WLS:  [%.6f; %.6f]\\n', x_wls);
+  fprintf('Norm: [%.6f; %.6f]\\n', x_norm);
+  fprintf('Diff: %.2e (should be ~0)\\n', norm(x_wls-x_norm));
+end`,
+traps:["R must be symmetric positive definite for Cholesky. If R has zero or negative eigenvalues, your noise model is wrong.","Pre-normalisation for diagonal R simply divides each obs by its standard deviation σᵢ — physically correct, all obs become unit-variance.","Newton-Raphson Hessian = HᵀR⁻¹H = the WLS normal matrix. This is NOT a coincidence — both minimize the same quadratic cost function."],
+drills:[{q:"Show that pre-normalisation z=Vε⁻¹y, H′=Vε⁻¹H converts WLS(W=R⁻¹) into standard LS with identity weighting.",a:"Apply standard LS to (z,H′): x̂=(H′ᵀH′)⁻¹H′ᵀz = (HᵀVε⁻ᵀVε⁻¹H)⁻¹HᵀVε⁻ᵀVε⁻¹y. Since R=VεVεᵀ → R⁻¹=Vε⁻ᵀVε⁻¹: x̂=(HᵀR⁻¹H)⁻¹HᵀR⁻¹y ✓. This is WLS with W=R⁻¹."}]
+},
+{id:2,icon:"🎯",title:"Minimum Variance Estimate — the BLUB",badge:"§4.4 · pp.183–187",
+why:"<strong>Why MVE?</strong> WLS works, but is it the BEST? MVE proves: among ALL linear unbiased estimators, the one with W=R⁻¹ achieves the minimum possible covariance. The proof uses Lagrange multipliers. The MVE is the Cramér-Rao bound — no linear unbiased estimator can do better.",
+objective:"Derive M* minimising trace(Pₖ) subject to MH=I via Lagrange multipliers. Show x̂ₖ=(HᵀR⁻¹H)⁻¹HᵀR⁻¹y equals WLS(W=R⁻¹). Prove P*ₖ−Pₖ ≥ 0 for any other linear unbiased estimator.",
+overview:[
+{label:"Three requirements",text:"Seek x̂ₖ=My that is: (1) Linear in y; (2) Unbiased: E[x̂ₖ]=xₖ → MH=I; (3) Minimum variance: trace(E[x̃x̃ᵀ]) minimised. These three constraints uniquely determine M."},
+{label:"Lagrange solution",text:"Minimise trace(MRMᵀ) subject to MH=I using matrix Lagrange multipliers. Result: M*=(HᵀR⁻¹H)⁻¹HᵀR⁻¹. The MVE is x̂ₖ=M*y=(HᵀR⁻¹H)⁻¹HᵀR⁻¹y with Pₖ=(HᵀR⁻¹H)⁻¹."},
+{label:"Optimality proof",text:"Any other linear unbiased estimator x̃=(M*+B)y requires BH=0. Its covariance: P*ₖ=Pₖ+BRBᵀ ≥ Pₖ since BRBᵀ ≥ 0. So every variance in P*ₖ ≥ those in Pₖ. MVE achieves the minimum."},
+{label:"Equality with WLS",text:"M*=(HᵀR⁻¹H)⁻¹HᵀR⁻¹ gives x̂ₖ=(HᵀR⁻¹H)⁻¹HᵀR⁻¹y — identical to WLS with W=R⁻¹. Pₖ=(HᵀR⁻¹H)⁻¹ is the Cramér-Rao lower bound for linear unbiased estimators."},
+],
+equations:[
+{label:"Linear estimator (Eq.4.4.5)",eq:"x̂ₖ = M · y   [M is n×m, to be optimised]",note:"General form of any linear estimator"},
+{label:"Unbiasedness constraint (Eq.4.4.6–7)",eq:"E[x̂ₖ] = E[M(Hxₖ+ε)] = MHxₖ = xₖ\n→ M · H = I   (key constraint on M)",note:"Forces estimate to be unbiased for all xₖ"},
+{label:"Covariance under unbiasedness (Eq.4.4.9)",eq:"Pₖ = E[x̃ₖx̃ₖᵀ] = E[MεεᵀMᵀ] = M R Mᵀ",note:"Under MH=I, only noise contributes to estimation error"},
+{label:"Lagrange minimisation (Eq.4.4.10–16)",eq:"Adjoin: Pₖ = MRMᵀ + Λᵀ(I−MH)ᵀ + (I−MH)Λ\nMinimum: MR − ΛᵀHᵀ = 0  and  I−MH = 0\n→ Λᵀ = (HᵀR⁻¹H)⁻¹\n→ M* = (HᵀR⁻¹H)⁻¹HᵀR⁻¹   (Eq.4.4.16)",note:"Λ is an n×n matrix of Lagrange multipliers — NOT a scalar"},
+{label:"MVE estimate + covariance (Eq.4.4.17–18) ★★",eq:"x̂ₖ = (HᵀR⁻¹H)⁻¹ HᵀR⁻¹ y\nPₖ  = (HᵀR⁻¹H)⁻¹",note:"= WLS with W=R⁻¹. Pₖ is the Cramér-Rao lower bound."},
+{label:"Optimality proof (p.187)",eq:"Any other lin. unbiased estimator: x̃ = x̂ₖ + By\nRequires BH=0 (unbiasedness)\nP*ₖ − Pₖ = BRBᵀ ≥ 0  (positive semidefinite)\n→ All variances of P*ₖ ≥ those of Pₖ ✓",note:"Proof uses BH=0 → BRBᵀ ≥ 0 since R positive definite"},
+],
+derivation:`LAGRANGE MULTIPLIER DERIVATION OF MVE (TSB pp.185–186):
+
+PROBLEM: min trace(MRMᵀ) subject to MH = I
+
+1) Adjoin constraint (symmetric form):
+   Pₖ = MRMᵀ + Λᵀ(I−MH)ᵀ + (I−MH)Λ
+
+2) First variation with respect to M:
+   δPₖ = (MR − ΛᵀHᵀ)δMᵀ + δM(RMᵀ − HΛ) = 0
+
+3) For arbitrary δM, need:
+   MR − ΛᵀHᵀ = 0   →   M = ΛᵀHᵀR⁻¹
+
+4) Apply constraint MH = I:
+   ΛᵀHᵀR⁻¹H = I   →   Λᵀ = (HᵀR⁻¹H)⁻¹
+
+5) Optimal M:
+   M* = (HᵀR⁻¹H)⁻¹HᵀR⁻¹   (Eq.4.4.16) ✓
+
+6) Estimate: x̂ₖ = M*y = (HᵀR⁻¹H)⁻¹HᵀR⁻¹y ✓
+
+7) Covariance: Pₖ = M*RM*ᵀ = (HᵀR⁻¹H)⁻¹ ✓
+
+OPTIMALITY PROOF:
+Any other unbiased: x̃=(M*+B)y, BH=0
+P*ₖ = (M*+B)R(M*+B)ᵀ = M*RM*ᵀ + BRM*ᵀ + M*RBᵀ + BRBᵀ
+Cross terms: BRM*ᵀ = BHP = 0  (since BH=0)
+→ P*ₖ = Pₖ + BRBᵀ ≥ Pₖ  (BRBᵀ ≥ 0 for R pos. def.) ✓`,
+matlab:`function mve_demo()
+% MVE estimate and covariance — compare with WLS
+  H = [1 0; 0 1; 1 1; 0.5 1];    % 4 obs, 2 states
+  R = diag([0.01, 0.04, 0.09, 0.25]);
+  x_true = [5; 3];
+  y = H*x_true + sqrt(diag(R)).*randn(4,1);
+
+  %% MVE (Eq.4.4.18) — same as WLS with W=R⁻¹
+  Lambda_info = H' * (R \\ H);     % information matrix HᵀR⁻¹H
+  x_hat = Lambda_info \\ (H'*(R\\y));
+  P_hat = inv(Lambda_info);
+
+  %% Also compute via WLS
+  W = inv(R);
+  x_wls = (H'*W*H) \\ (H'*W*y);
+
+  fprintf('MVE:  [%.4f; %.4f]\\n', x_hat);
+  fprintf('WLS:  [%.4f; %.4f]\\n', x_wls);
+  fprintf('True: [%.4f; %.4f]\\n', x_true);
+  fprintf('Diff: %.2e (should be ~0)\\n', norm(x_hat-x_wls));
+  fprintf('1-sigma: [%.4f; %.4f] m\\n', sqrt(diag(P_hat)));
+
+  %% Plot uncertainty ellipse
+  [V,D] = eig(P_hat); theta=linspace(0,2*pi,200);
+  ell = V*sqrt(D)*[cos(theta);sin(theta)];
+  plot(x_hat(1)+ell(1,:), x_hat(2)+ell(2,:),'b-','LineWidth',2)
+  hold on; plot(x_true(1),x_true(2),'r+','MarkerSize',12)
+  xlabel('x₁'); ylabel('x₂'); title('MVE 1-sigma uncertainty ellipse')
+  legend('Uncertainty ellipse','True state'); axis equal; grid on
+end`,
+traps:["MVE is the BEST among LINEAR UNBIASED estimators. A nonlinear or biased estimator can sometimes achieve smaller MSE — but not within the class of linear unbiased ones.","Pₖ=(HᵀR⁻¹H)⁻¹ is only valid if E[ε]=0. Biased noise → estimate biased → Pₖ is wrong (optimistic).","The Lagrange matrix Λ is n×n, NOT a scalar. Students sometimes treat it as a scalar and get wrong dimensions.","Covariance propagation: Pₖ=Φ·Pⱼ·Φᵀ — Φᵀ on the RIGHT. The #1 single exam error in this chapter."],
+drills:[{q:"State the three MVE properties. Derive M* from the Lagrange condition (TSB pp.185–186).",a:"Properties: (1) Linear: x̂=My; (2) Unbiased: MH=I; (3) Min variance: min trace(MRMᵀ). Lagrange: adjoin Pₖ=MRMᵀ+Λᵀ(I−MH)ᵀ+(I−MH)Λ. δPₖ=0: MR−ΛᵀHᵀ=0 → M=ΛᵀHᵀR⁻¹. Insert in MH=I: Λᵀ=(HᵀR⁻¹H)⁻¹. Then M*=(HᵀR⁻¹H)⁻¹HᵀR⁻¹ ✓"},
+{q:"Show that P*ₖ≥Pₖ for any other linear unbiased estimator (optimality proof, p.187).",a:"Let x̃=(M*+B)y be any other linear unbiased estimator. Unbiasedness: (M*+B)H=I → BH=0. P*ₖ=E[(M*+B)εε^T(M*+B)^T]=M*RM*^T+BRM*^T+M*RB^T+BRB^T. Cross terms: BRM*^T=BHP=0 (BH=0). So P*ₖ=Pₖ+BRBᵀ. Since R>0 and BH=0 (B not full rank), BRBᵀ≥0. Therefore P*ₖ≥Pₖ ✓"}]
+},
+{id:3,icon:"📡",title:"Covariance propagation + MVE with a priori",badge:"§4.4.1–4.4.2 · pp.188–190",
+why:"<strong>Why?</strong> §4.4.1 shows how to propagate (x̂ⱼ,Pⱼ) to a later time. §4.4.2 combines the propagated prior with new observations — producing Eq.4.4.29, THE master formula of Chapter 4. Everything from §4.5 onward is a reformulation of this single equation.",
+objective:"Derive Pₖ=Φ(tₖ,tⱼ)PⱼΦᵀ. Combine propagated prior (x̄ₖ,P̄ₖ) with new obs yₖ=Hₖxₖ+εₖ to get Eq.4.4.29 and Eq.4.4.30.",
+overview:[
+{label:"§4.4.1 Covariance propagation (Eq.4.4.22)",text:"Map estimate: x̄ₖ=Φ(tₖ,tⱼ)x̂ⱼ. Map covariance: P̄ₖ=Φ(tₖ,tⱼ)·Pⱼ·Φᵀ(tₖ,tⱼ). As the orbit propagates without new data, uncertainty grows. Φᵀ on the RIGHT."},
+{label:"§4.4.2 Setup: prior as extra observation",text:"Treat the propagated prior x̄ₖ as an 'observation' of xₖ: x̄ₖ=I·xₖ+ηₖ where E[ηₖηₖᵀ]=P̄ₖ. Stack with new data yₖ=Hₖxₖ+εₖ into augmented system and apply MVE (Eq.4.4.18)."},
+{label:"Result: Eq.4.4.29 — THE master formula",text:"x̂ₖ=(HₖᵀRₖ⁻¹Hₖ+P̄ₖ⁻¹)⁻¹(HₖᵀRₖ⁻¹yₖ+P̄ₖ⁻¹x̄ₖ). This is the Kalman filter measurement update, the batch processor core, and the MAP estimate. All three are Eq.4.4.29."},
+{label:"Information matrix",text:"Λₖ=Pₖ⁻¹=(HₖᵀRₖ⁻¹Hₖ+P̄ₖ⁻¹) — information ADDS. Normal form: Λₖx̂ₖ=HₖᵀRₖ⁻¹yₖ+P̄ₖ⁻¹x̄ₖ (Eq.4.4.32). Each observation contributes HᵀR⁻¹H to the information matrix."},
+],
+equations:[
+{label:"State propagation (Eq.4.4.19)",eq:"x̄ₖ = Φ(tₖ,tⱼ) · x̂ⱼ",note:"Notation: x̄ₖ (overbar) = PREDICTED state at tₖ before new data"},
+{label:"Covariance propagation (Eq.4.4.22) ★★",eq:"P̄ₖ = Φ(tₖ,tⱼ) · Pⱼ · Φᵀ(tₖ,tⱼ)",note:"Φᵀ on the RIGHT. Most common single exam error in Ch.4."},
+{label:"Augmented system (Eq.4.4.24–26)",eq:"ȳ = [yₖ; x̄ₖ],   H̄ = [Hₖ; I],   R̄ = diag(Rₖ, P̄ₖ)\n\nTreat prior x̄ₖ as noisy obs of xₖ with noise P̄ₖ",note:"The prior is literally treated as an extra measurement"},
+{label:"MVE with a priori (Eq.4.4.29) ★★★",eq:"x̂ₖ = (HₖᵀRₖ⁻¹Hₖ + P̄ₖ⁻¹)⁻¹(HₖᵀRₖ⁻¹yₖ + P̄ₖ⁻¹x̄ₖ)",note:"THE master formula — appears as KF update, batch processor, MAP estimate"},
+{label:"A posteriori covariance (Eq.4.4.30) ★",eq:"Pₖ = (HₖᵀRₖ⁻¹Hₖ + P̄ₖ⁻¹)⁻¹\n\nAlways: Pₖ ≤ P̄ₖ  (data reduces uncertainty)",note:"Information matrix: Λₖ=Pₖ⁻¹=HₖᵀRₖ⁻¹Hₖ+P̄ₖ⁻¹ — information ADDS"},
+{label:"Limit cases",eq:"P̄ₖ→∞ (no prior): x̂ₖ→(HᵀR⁻¹H)⁻¹HᵀR⁻¹yₖ  (pure data)\nRₖ→∞ (no obs info): x̂ₖ→x̄ₖ  (trust prior fully)\nP̄ₖ→0  (perfect prior): x̂ₖ→x̄ₖ  (ignore data)",note:"These limits tell you how the formula behaves at extremes"},
+],
+derivation:`DERIVING EQ.4.4.29 (augmented system approach):
+
+Setup:
+  New obs:    yₖ = Hₖxₖ + εₖ,  E[εₖεₖᵀ]=Rₖ
+  Prior obs:  x̄ₖ = I·xₖ + ηₖ,  E[ηₖηₖᵀ]=P̄ₖ
+  Assume: E[εₖηₖᵀ]=0  (obs noise ⊥ prior error)
+
+Augmented system:
+  ȳ = [yₖ; x̄ₖ] = [Hₖ; I]·xₖ + [εₖ; ηₖ]
+  H̄ = [Hₖ; I],   R̄ = diag(Rₖ, P̄ₖ)
+
+Apply MVE formula (Eq.4.4.18) to augmented system:
+  x̂ₖ = (H̄ᵀR̄⁻¹H̄)⁻¹H̄ᵀR̄⁻¹ȳ
+
+Compute H̄ᵀR̄⁻¹H̄:
+  = [Hₖᵀ, I]·diag(Rₖ⁻¹, P̄ₖ⁻¹)·[Hₖ; I]
+  = HₖᵀRₖ⁻¹Hₖ + P̄ₖ⁻¹   ← information ADDS ✓
+
+Compute H̄ᵀR̄⁻¹ȳ:
+  = HₖᵀRₖ⁻¹yₖ + P̄ₖ⁻¹x̄ₖ
+
+Therefore (Eq.4.4.29):
+  x̂ₖ = (HₖᵀRₖ⁻¹Hₖ + P̄ₖ⁻¹)⁻¹(HₖᵀRₖ⁻¹yₖ + P̄ₖ⁻¹x̄ₖ) ✓`,
+matlab:`function mve_prior_demo()
+% MVE with a priori — Eq.4.4.29
+% Compare P̄ₖ vs Pₖ: data always reduces uncertainty
+  n=2; H=[1 0;0 1;1 1]; R=diag([0.01,0.04,0.09]);
+  x_bar=[3;4]; P_bar=2*eye(2);    % a priori
+  x_true=[5;3]; y=H*x_true+sqrt(diag(R)).*randn(3,1);
+
+  %% MVE + a priori (Eq.4.4.29)
+  Lambda = H'*(R\\H) + inv(P_bar);   % information matrix
+  Nu     = H'*(R\\y) + inv(P_bar)*x_bar;
+  x_hat  = Lambda \\ Nu;             % BACKSLASH!
+  P_hat  = inv(Lambda);
+
+  fprintf('A priori x̄:   [%.4f; %.4f]\\n', x_bar);
+  fprintf('Estimated x̂:  [%.4f; %.4f]\\n', x_hat);
+  fprintf('True:          [%.4f; %.4f]\\n', x_true);
+  fprintf('P̄ₖ eigenvals: %.4f, %.4f\\n', eig(P_bar)');
+  fprintf('Pₖ eigenvals: %.4f, %.4f\\n', eig(P_hat)');
+  fprintf('Data reduced uncertainty: Pₖ < P̄ₖ? %d\\n', ...
+          all(eig(P_bar-P_hat)>-1e-10));
+
+  %% Plot ellipses — see uncertainty shrink
+  th=linspace(0,2*pi,200);
+  [V1,D1]=eig(P_bar);  e1=V1*sqrt(D1)*[cos(th);sin(th)];
+  [V2,D2]=eig(P_hat);  e2=V2*sqrt(D2)*[cos(th);sin(th)];
+  plot(x_bar(1)+e1(1,:),x_bar(2)+e1(2,:),'r--','LineWidth',2); hold on
+  plot(x_hat(1)+e2(1,:),x_hat(2)+e2(2,:),'b-','LineWidth',2)
+  legend('A priori P̄ₖ (larger)','A posteriori Pₖ (smaller)')
+  title('MVE with prior — uncertainty ellipse shrinks after data')
+  axis equal; grid on
+end`,
+traps:["P̄ₖ (a priori, overbar) ≠ Pₖ (a posteriori). A priori = BEFORE data; a posteriori = AFTER data. Always Pₖ ≤ P̄ₖ.","The assumption E[εₖηₖᵀ]=0 (obs noise uncorrelated with prior error) is crucial. Violation adds cross-terms.","P̄ₖ⁻¹x̄ₖ on the RIGHT-HAND SIDE of Eq.4.4.29. Students often forget this prior contribution term.","Pₖ=(HᵀR⁻¹H+P̄ₖ⁻¹)⁻¹ ≤ P̄ₖ always. If your computed Pₖ > P̄ₖ, you have a sign error."],
+drills:[{q:"Derive Eq.4.4.29 by applying the MVE formula to the augmented system. Show step by step.",a:"Augmented: H̄=[Hₖ;I], R̄=diag(Rₖ,P̄ₖ). Apply MVE (Eq.4.4.18): x̂=(H̄ᵀR̄⁻¹H̄)⁻¹H̄ᵀR̄⁻¹ȳ. H̄ᵀR̄⁻¹H̄=[Hₖᵀ,I]diag(Rₖ⁻¹,P̄ₖ⁻¹)[Hₖ;I]=HₖᵀRₖ⁻¹Hₖ+P̄ₖ⁻¹. H̄ᵀR̄⁻¹ȳ=HₖᵀRₖ⁻¹yₖ+P̄ₖ⁻¹x̄ₖ. Therefore x̂ₖ=(HₖᵀRₖ⁻¹Hₖ+P̄ₖ⁻¹)⁻¹(HₖᵀRₖ⁻¹yₖ+P̄ₖ⁻¹x̄ₖ) ✓"},
+{q:"What are the limit cases of Eq.4.4.29 when (a) P̄ₖ→∞ and (b) Rₖ→∞?",a:"(a) P̄ₖ→∞: P̄ₖ⁻¹→0, so x̂ₖ→(HᵀR⁻¹H)⁻¹HᵀR⁻¹yₖ — pure data estimate, prior ignored (completely uninformative prior).\n(b) Rₖ→∞: HᵀR⁻¹H→0, so x̂ₖ→(P̄ₖ⁻¹)⁻¹P̄ₖ⁻¹x̄ₖ=x̄ₖ — prior fully trusted, data ignored (completely uninformative observations)."}]
+},
+{id:4,icon:"🔬",title:"Maximum Likelihood and Bayesian estimation",badge:"§4.5 · pp.190–194",
+why:"<strong>Why §4.5?</strong> This section gives Pₖ genuine probabilistic meaning. Under Gaussian noise, MLE = Bayesian MAP = MVE with prior = Eq.4.4.29. Without this result, Pₖ is just a formal formula. With it, the 1-sigma ellipsoid actually contains xₖ with 19.9% probability (n=3).",
+objective:"Show MLE = MVE under Gaussian noise. Derive MAP estimate from Bayes' theorem. Confirm all four methods give identical x̂ₖ=Eq.4.4.29.",
+overview:[
+{label:"MLE definition",text:"Find xₖ maximising f(y|xₖ) — the probability of observing y given xₖ. Under Gaussian εₖ~N(0,Rₖ): maximising the likelihood L = log f(y|x) is equivalent to minimising (y−Hx)ᵀR⁻¹(y−Hx) = WLS cost with W=R⁻¹."},
+{label:"Bayesian MAP",text:"Prior xₖ~N(x̄ₖ,P̄ₖ), likelihood yₖ|xₖ~N(Hₖxₖ,Rₖ). Bayes: f(xₖ|yₖ)∝f(yₖ|xₖ)·f(xₖ). Maximise log posterior → Eq.4.4.29. MAP = mode of posterior."},
+{label:"Grand unification",text:"WLS(W=R⁻¹) = MVE = MLE = MAP. Under Gaussian noise, all four give the same x̂ₖ. Different philosophical approaches, identical numerical answer."},
+{label:"Probabilistic meaning of Pₖ",text:"Under Gaussian noise: Pₖ is the actual covariance of the estimation error x̃ₖ=x̂ₖ−xₖ. The probability ellipsoid x̃ᵀPₖ⁻¹x̃≤c² contains xₖ with probability P(χ²(n)≤c²). For n=3: 1σ ellipsoid → 19.9%."},
+],
+equations:[
+{label:"Gaussian likelihood (Eq.4.5.4)",eq:"L(x) = (2π)^(−m/2)|R|^(−½) exp[−½(y−Hx)ᵀR⁻¹(y−Hx)]",note:""},
+{label:"Log-likelihood",eq:"ln L = const − ½(y−Hx)ᵀR⁻¹(y−Hx)",note:"Maximise ln L ↔ minimise WLS cost with W=R⁻¹"},
+{label:"Bayesian log-posterior (Eq.4.5.27) ★",eq:"ln f(xₖ|yₖ) = const\n   − ½(yₖ−Hₖxₖ)ᵀRₖ⁻¹(yₖ−Hₖxₖ)  [data term]\n   − ½(xₖ−x̄ₖ)ᵀP̄ₖ⁻¹(xₖ−x̄ₖ)       [prior term]",note:"Two Gaussian quadratics — one from likelihood, one from prior"},
+{label:"MAP solution (Eq.4.5.28–30) ★★",eq:"∂ ln f/∂xₖ = −HₖᵀRₖ⁻¹(yₖ−Hₖx̂ₖ) − P̄ₖ⁻¹(x̂ₖ−x̄ₖ) = 0\n→ x̂ₖ = (HₖᵀRₖ⁻¹Hₖ+P̄ₖ⁻¹)⁻¹(HₖᵀRₖ⁻¹yₖ+P̄ₖ⁻¹x̄ₖ)  (Eq.4.5.30)",note:"Identical to Eq.4.4.29 — complete unification of all estimation methods!"},
+],
+derivation:`BAYESIAN MAP DERIVATION (TSB §4.5):
+
+Prior:      xₖ ~ N(x̄ₖ, P̄ₖ)
+Likelihood: yₖ|xₖ ~ N(Hₖxₖ, Rₖ)
+
+By Bayes: f(xₖ|yₖ) ∝ f(yₖ|xₖ)·f(xₖ)
+
+Take logarithm and combine Gaussians:
+  ln f(xₖ|yₖ) = const
+    − ½(yₖ−Hₖxₖ)ᵀRₖ⁻¹(yₖ−Hₖxₖ)   [likelihood]
+    − ½(xₖ−x̄ₖ)ᵀP̄ₖ⁻¹(xₖ−x̄ₖ)       [prior]
+
+Differentiate wrt xₖ, set to zero:
+  HₖᵀRₖ⁻¹(yₖ−Hₖx̂ₖ) − P̄ₖ⁻¹(x̂ₖ−x̄ₖ) = 0
+  (HₖᵀRₖ⁻¹Hₖ + P̄ₖ⁻¹)x̂ₖ = HₖᵀRₖ⁻¹yₖ + P̄ₖ⁻¹x̄ₖ
+  x̂ₖ = (HₖᵀRₖ⁻¹Hₖ + P̄ₖ⁻¹)⁻¹(HₖᵀRₖ⁻¹yₖ + P̄ₖ⁻¹x̄ₖ) ← Eq.4.4.29 ✓
+
+UNIFICATION:
+  WLS (W=R⁻¹): minimise εᵀR⁻¹ε
+  MVE:          minimise trace(E[x̃x̃ᵀ]), MH=I
+  MLE:          maximise f(y|x) under Gaussian
+  MAP:          maximise f(x|y) with Gaussian prior
+  → ALL give Eq.4.4.29 ✓`,
+matlab:`function mle_mve_equivalence()
+% Monte Carlo: verify MLE = MVE numerically
+  H=[1 0;0 1;1 1]; R=diag([0.01,0.04,0.09]);
+  x_true=[5;3]; x_bar=[4;4]; P_bar=2*eye(2);
+  N_mc=5000; x_mle=zeros(2,N_mc); x_mve=zeros(2,N_mc);
+
+  for k=1:N_mc
+    eps=chol(R)'*randn(3,1); y=H*x_true+eps;
+    %% MLE: no prior (P̄ₖ→∞)
+    x_mle(:,k) = (H'*(R\\H)) \\ (H'*(R\\y));
+    %% MVE with prior (Eq.4.4.29)
+    Lambda = H'*(R\\H) + inv(P_bar);
+    x_mve(:,k) = Lambda \\ (H'*(R\\y)+inv(P_bar)*x_bar);
+  end
+
+  fprintf('MLE mean: [%.4f, %.4f] (true: 5, 3)\\n', mean(x_mle,2)');
+  fprintf('MVE mean: [%.4f, %.4f]\\n', mean(x_mve,2)');
+  fprintf('MLE std:  [%.4f, %.4f]\\n', std(x_mle,[],2)');
+  P_theory = inv(H'*(R\\H)+inv(P_bar));
+  fprintf('Theory sigma: [%.4f, %.4f]\\n', sqrt(diag(P_theory))');
+end`,
+traps:["MLE = MVE ONLY under Gaussian noise! Non-Gaussian distributions give different MLE formulas.","Bayesian MAP gives the MODE of the posterior. MMSE gives the MEAN. Equal only when posterior is Gaussian (symmetric, unimodal).","The probabilistic validity of Pₖ requires noise to be TRULY Gaussian. Non-Gaussian → probability ellipsoid interpretation fails."],
+drills:[{q:"Derive Eq.4.5.30 (MAP estimate) from Bayes' theorem with Gaussian prior and Gaussian likelihood. Show it equals Eq.4.4.29.",a:"Prior: xₖ~N(x̄ₖ,P̄ₖ) → f(xₖ)∝exp[−½(xₖ−x̄ₖ)ᵀP̄ₖ⁻¹(xₖ−x̄ₖ)]. Likelihood: yₖ|xₖ~N(Hₖxₖ,Rₖ) → f(yₖ|xₖ)∝exp[−½(yₖ−Hₖxₖ)ᵀRₖ⁻¹(yₖ−Hₖxₖ)]. Log posterior: ln f(xₖ|yₖ)=const−½[(yₖ−Hₖxₖ)ᵀRₖ⁻¹(yₖ−Hₖxₖ)+(xₖ−x̄ₖ)ᵀP̄ₖ⁻¹(xₖ−x̄ₖ)]. Differentiate, set to zero → (HᵀR⁻¹H+P̄⁻¹)x̂=HᵀR⁻¹y+P̄⁻¹x̄ → Eq.4.4.29 ✓"},
+{q:"Name four estimation frameworks that give identical x̂ under Gaussian noise. What is the common formula?",a:"(1) WLS with W=R⁻¹: minimise εᵀR⁻¹ε; (2) MVE: minimise trace(E[x̃x̃ᵀ]) with MH=I; (3) MLE: maximise f(y|x) under Gaussian; (4) Bayesian MAP: maximise f(x|y) with Gaussian prior. All give: x̂ₖ=(HᵀR⁻¹H+P̄ₖ⁻¹)⁻¹(HᵀR⁻¹y+P̄ₖ⁻¹x̄ₖ)  [Eq.4.4.29]."}]
+},
+{id:5,icon:"📦",title:"Batch processor algorithm (TSB Fig.4.6.1)",badge:"§4.6 · pp.194–198",
+why:"<strong>Why the batch processor?</strong> Eq.4.4.29 is the theoretical answer. The batch processor is the practical implementation for nonlinear OD. All data is accumulated into normal matrix Λ and RHS vector N, then solved. JPL's ODP, ESA's MONTE, and every major deep-space navigation system use this algorithm.",
+objective:"Implement TSB Fig.4.6.1: accumulate Λ=ΣHᵢᵀRᵢ⁻¹Hᵢ+P̄₀⁻¹ and N, solve Λx̂₀=N, update X*₀←X*₀+x̂₀, apply Eq.4.6.4, iterate until ‖x̂₀‖<tol.",
+overview:[
+{label:"Algorithm overview (TSB Fig.4.6.1)",text:"INIT: Λ=P̄₀⁻¹, N=P̄₀⁻¹x̄₀, X*(t₀)=X̄₀. FOR each obs i: propagate X*, Φ; compute Hᵢ=H̃ᵢΦ(tᵢ,t₀), yᵢ=Yᵢ−G(Xᵢ*,tᵢ); accumulate Λ+=HᵢᵀRᵢ⁻¹Hᵢ, N+=HᵢᵀRᵢ⁻¹yᵢ. SOLVE Λx̂₀=N. UPDATE."},
+{label:"Iteration rule (Eq.4.6.4)",text:"After solving: update X*₀←X*₀+x̂₀ (move reference to current estimate). Update x̄₀←x̄₀−x̂₀ (Eq.4.6.4 — keeps total a priori consistent). Check ‖x̂₀‖<tol. Iterate 2–5 times typically."},
+{label:"Why must we iterate?",text:"F and G are nonlinear. One pass linearises around X*(t₀) — if this is far from truth, linearisation error makes x̂₀ biased. After updating X*₀, the new O−C residuals are smaller and the new estimate is more accurate. Repeat until x̂₀≈0."},
+{label:"Convergence diagnostics",text:"Monitor ‖x̂₀‖→0 AND weighted RMS = √[Σε̂ᵢᵀRᵢ⁻¹ε̂ᵢ/m]→1. Both must converge. WRMS≈1 indicates noise model is correct. Systematic residuals indicate model error."},
+],
+equations:[
+{label:"Information accumulation (Eq.4.6.2) ★",eq:"Λ = P̄₀⁻¹ + Σᵢ Hᵢᵀ Rᵢ⁻¹ Hᵢ   [n×n normal matrix]",note:"Hᵢ=H̃ᵢΦ(tᵢ,t₀) — STM mapping REQUIRED before accumulating"},
+{label:"RHS accumulation (Eq.4.6.3) ★",eq:"N = P̄₀⁻¹x̄₀ + Σᵢ Hᵢᵀ Rᵢ⁻¹ yᵢ   [n×1]",note:"yᵢ=Yᵢ−G(Xᵢ*,tᵢ) is the O−C residual at each epoch"},
+{label:"Normal equations",eq:"Λ x̂₀ = N   →  x̂₀ = Λ \\ N  (MATLAB backslash)\nP₀ = Λ⁻¹   →  P₀ = inv(Lambda)",note:""},
+{label:"Reference trajectory update",eq:"X*(t₀) ← X*(t₀) + x̂₀   (after each iteration)",note:"Moves reference to current best estimate for next linearisation"},
+{label:"A priori deviation update (Eq.4.6.4) ★★",eq:"(x̄₀)ⁿ = (x̄₀)ⁿ⁻¹ − x̂₀ⁿ⁻¹",note:"CRITICAL — keeps total X*(t₀)+x̄₀ constant across iterations. Forgetting this breaks convergence."},
+],
+derivation:`BATCH PROCESSOR ALGORITHM — TSB Fig.4.6.1:
+
+═══ INITIALISATION ═══
+  Λ   = P̄₀⁻¹            (a priori information)
+  N   = P̄₀⁻¹ · x̄₀      (a priori contribution)
+  X*₀ = X̄₀              (reference = a priori mean)
+
+═══ OBSERVATION LOOP (i = 1 to ℓ) ═══
+  a) Propagate X*(t₀)→X*(tᵢ)   [integrate Ẋ*=F]
+  b) Propagate Φ(tᵢ,t₀)        [integrate Φ̇=AΦ]
+  c) H̃ᵢ = [∂G/∂X]*ᵢ at (Xᵢ*,tᵢ)
+  d) Hᵢ = H̃ᵢ · Φ(tᵢ,t₀)        ← MAP TO EPOCH!
+  e) yᵢ = Yᵢ − G(Xᵢ*,tᵢ)       ← O−C RESIDUAL
+  f) Λ ← Λ + Hᵢᵀ Rᵢ⁻¹ Hᵢ
+     N ← N + Hᵢᵀ Rᵢ⁻¹ yᵢ
+
+═══ SOLVE ═══
+  x̂₀ = Λ\N   (MATLAB backslash — never inv()!)
+  P₀  = inv(Λ)
+
+═══ UPDATE & CHECK ═══
+  X*₀ ← X*₀ + x̂₀         (update reference trajectory)
+  x̄₀  ← x̄₀ − x̂₀          (Eq.4.6.4 — CRITICAL!)
+  if ‖x̂₀‖ < tol → CONVERGED, STOP
+  else → RETURN TO OBSERVATION LOOP`,
+matlab:`function [x_hat, P_hat] = batch_processor(Y, t_obs, X0_star, P0, x_bar0, R, tol)
+% Batch OD processor — TSB Fig.4.6.1
+% Y: [n_obs×p] matrix of observations
+% t_obs: [n_obs×1] observation times
+% X0_star: n-vector initial reference state
+% P0: n×n initial a priori covariance
+% x_bar0: n-vector a priori deviation
+% R: p×p observation noise covariance
+% tol: convergence threshold for |x_hat|
+
+  n      = length(X0_star);
+  n_obs  = length(t_obs);
+  Ri_inv = inv(R);             % pre-compute R⁻¹
+
+  X_star = X0_star;
+  x_bar  = x_bar0;
+
+  for iter = 1:20
+    %% INITIALISE normal equations
+    Lambda = inv(P0);            % Λ = P̄₀⁻¹
+    Nu     = inv(P0) * x_bar;   % N = P̄₀⁻¹x̄₀
+
+    Phi    = eye(n);             % Φ(t₀,t₀) = I
+    X_cur  = X_star;
+    t_prev = 0;
+
+    for i = 1:n_obs
+      %% 1. Propagate orbit + STM to t_obs(i)
+      [X_cur, Phi] = propagate_stm(X_cur, Phi, t_prev, t_obs(i));
+
+      %% 2. Compute obs partials and O-C residual
+      [G_i, H_tilde_i] = obs_model(X_cur, t_obs(i));
+
+      %% 3. MAP TO EPOCH: Hᵢ = H̃ᵢ · Φ(tᵢ,t₀)
+      Hi = H_tilde_i * Phi;     % [p×n]
+
+      %% 4. O-C residual
+      yi = Y(i,:)' - G_i;       % [p×1]
+
+      %% 5. Accumulate normal equations
+      Lambda = Lambda + Hi' * Ri_inv * Hi;
+      Nu     = Nu     + Hi' * Ri_inv * yi;
+
+      t_prev = t_obs(i);
+    end
+
+    %% SOLVE (backslash, not inv()!)
+    x_hat = Lambda \\ Nu;
+    P_hat = inv(Lambda);
+
+    fprintf('Iter %d: |x̂₀| = %.3e\\n', iter, norm(x_hat));
+
+    %% UPDATE reference and a priori deviation
+    X_star = X_star + x_hat;    % update reference trajectory
+    x_bar  = x_bar  - x_hat;   % Eq.4.6.4 — CRITICAL!
+
+    if norm(x_hat) < tol
+      fprintf('Converged at iteration %d\\n', iter); break
+    end
+  end
+end`,
+traps:["MUST iterate — one pass is almost never sufficient for nonlinear OD. Linearisation error accumulates if X*(t₀) is far from truth.","Eq.4.6.4: x̄₀←x̄₀−x̂₀ is CRITICAL. Forgetting this double-counts the prior in subsequent iterations and breaks convergence.","Map BEFORE accumulating: Hᵢ=H̃ᵢΦ(tᵢ,t₀). Never accumulate H̃ᵢ directly — this mixes state vectors at different times.","P̄₀ stays FIXED between iterations. Only X*₀ and x̄₀ change each pass.","MATLAB: use x_hat=Lambda\\Nu (backslash), not x_hat=inv(Lambda)*Nu. The backslash is faster and more stable."],
+drills:[{q:"Describe the batch processor in 7 steps from memory (TSB Fig.4.6.1). What is the a priori update rule?",a:"(1) INIT: Λ=P̄₀⁻¹, N=P̄₀⁻¹x̄₀, X*₀=X̄₀. (2) For each obs i: propagate X*, Φ. (3) H̃ᵢ=[∂G/∂X]*ᵢ. (4) Hᵢ=H̃ᵢΦ(tᵢ,t₀). (5) yᵢ=Yᵢ−G(Xᵢ*,tᵢ). (6) Λ+=HᵢᵀRᵢ⁻¹Hᵢ, N+=HᵢᵀRᵢ⁻¹yᵢ. (7) Solve Λx̂₀=N, update X*₀←X*₀+x̂₀, x̄₀←x̄₀−x̂₀ (Eq.4.6.4), check ‖x̂₀‖<tol."},
+{q:"TSB Exercise 4.19 item (3) connection: how does the batch processor normal equation Λx̂₀=N relate to Eq.4.3.25 (WLS with a priori)?",a:"Eq.4.3.25: (HᵀWH+Wₖ)x̂=(HᵀWy+Wₖx̄ₖ). Batch: Λ=P̄₀⁻¹+ΣHᵢᵀRᵢ⁻¹Hᵢ=Wₖ+HᵀWH. N=P̄₀⁻¹x̄₀+ΣHᵢᵀRᵢ⁻¹yᵢ=Wₖx̄₀+HᵀWy. So batch normal equation Λx̂₀=N is Eq.4.3.25 with W=R⁻¹ and Wₖ=P̄₀⁻¹, applied to all observations simultaneously. The batch processor IS iterative WLS with a priori."},
+{q:"How does the weighted RMS of post-fit residuals help assess convergence and model quality?",a:"WRMS=√[Σε̂ᵢᵀRᵢ⁻¹ε̂ᵢ/m]. At convergence: WRMS≈1 indicates noise model (R) is correct and linearisation has converged. WRMS>>1: either model wrong (missing forces) or Rᵢ underestimated. WRMS<<1: Rᵢ overestimated. Systematic patterns in ε̂ᵢ (not white noise) → unmodelled force or systematic bias — need to add parameter to state."}]
+}
+]
+
+const TABS=[{k:'overview',lbl:'📖 Overview'},{k:'equations',lbl:'⚡ Equations'},{k:'derivation',lbl:'🔬 Derivation'},{k:'matlab',lbl:'💻 MATLAB'},{k:'traps',lbl:'⚠️ Traps'},{k:'drill',lbl:'💪 Drill'}]
+
+let cur=0, activeTab='overview', drillStates={}
+
+function buildSidebar(){
+ const sl=document.getElementById('slist'); sl.innerHTML=''
+ MODULES.forEach((m,i)=>{
+  const b=document.createElement('button')
+  b.className='sitem'+(i===cur?' active':'')
+  b.innerHTML=`<span class="sitem-icon">${m.icon}</span><div class="sitem-text"><div class="sitem-title">${m.title}</div><div class="sitem-pages">${m.badge}</div></div>`
+  b.onclick=()=>{cur=i;activeTab='overview';render()}
+  sl.appendChild(b)
+ })
+}
+
+function buildHead(){
+ const m=MODULES[cur]
+ document.getElementById('m-icon').textContent=m.icon
+ document.getElementById('m-title').textContent=m.title
+ document.getElementById('m-pages').textContent=m.badge
+ document.getElementById('m-why').innerHTML=m.why
+}
+
+function buildTabs(){
+ const tc=document.getElementById('tabs'); tc.innerHTML=''
+ TABS.forEach(t=>{
+  const b=document.createElement('button')
+  b.className='tab'+(activeTab===t.k?' active':'')
+  b.textContent=t.lbl
+  b.onclick=()=>{activeTab=t.k;buildContent()}
+  tc.appendChild(b)
+ })
+}
+
+function buildContent(){
+ document.querySelectorAll('.tab').forEach((b,i)=>{b.className='tab'+(TABS[i].k===activeTab?' active':'')})
+ const cc=document.getElementById('content'); cc.innerHTML=''
+ const m=MODULES[cur]
+
+ if(activeTab==='overview'){
+  cc.innerHTML+=`<div class="obj-box"><strong>🎯 Objective:</strong> ${m.objective}</div>`
+  m.overview.forEach(o=>{
+   cc.innerHTML+=`<div class="ov-card"><div class="ov-label">${o.label}</div><div class="ov-text">${o.text}</div></div>`
+  })
+ } else if(activeTab==='equations'){
+  cc.innerHTML='<h4>Key equations — exact TSB notation</h4>'
+  m.equations.forEach(e=>{
+   cc.innerHTML+=`<div class="eq-box"><div class="eq-label">${e.label}</div><div class="eq-formula">${e.eq}</div>${e.note?`<div class="eq-note">${e.note}</div>`:''}</div>`
+  })
+ } else if(activeTab==='derivation'){
+  cc.innerHTML='<h4>Step-by-step — professor may stop you at any line</h4>'
+  cc.innerHTML+=`<div class="deriv-box">${m.derivation}</div>`
+ } else if(activeTab==='matlab'){
+  cc.innerHTML=`<div class="matlab-box"><div class="matlab-head">MATLAB — complete runnable code</div><pre class="matlab-code">${m.matlab}</pre></div>`
+ } else if(activeTab==='traps'){
+  cc.innerHTML='<h4>Exam traps — where marks are lost</h4>'
+  m.traps.forEach(t=>{
+   cc.innerHTML+=`<div class="trap-item"><span class="trap-icon">⚠</span><span class="trap-text">${t}</span></div>`
+  })
+ } else if(activeTab==='drill'){
+  cc.innerHTML='<h4>Rapid-fire oral questions — click to reveal</h4>'
+  m.drills.forEach((d,i)=>{
+   const key=`${cur}_${i}`, open=drillStates[key]
+   cc.innerHTML+=`<div class="drill-item"><button class="drill-q" onclick="toggleDrill('${key}')"><span class="drill-num">Q${i+1}</span><span class="drill-qtext">${d.q}</span><span class="drill-chev${open?' open':''}">▼</span></button><div class="drill-ans${open?' open':''}">${d.a}</div></div>`
+  })
+ }
+
+ cc.innerHTML+=`<div class="nav-row">`
+ if(cur>0) cc.innerHTML+=`<button class="btn" onclick="navSec(-1)">← Previous</button>`
+ if(cur<MODULES.length-1) cc.innerHTML+=`<button class="btn primary" onclick="navSec(1)">Next section →</button>`
+ else cc.innerHTML+=`<div style="padding:10px 0;font-size:12px;color:#fbbf24">✓ Sections 20–40% complete — §4.3.4 to §4.6 (pp.178–198)</div>`
+ cc.innerHTML+=`</div>`
+}
+
+window.toggleDrill=function(key){
+ drillStates[key]=!drillStates[key]
+ const idx=parseInt(key.split('_')[1])
+ const items=document.querySelectorAll('.drill-item')
+ if(items[idx]){
+  items[idx].querySelector('.drill-chev').classList.toggle('open',drillStates[key])
+  items[idx].querySelector('.drill-ans').classList.toggle('open',drillStates[key])
+ }
+}
+
+window.navSec=function(d){cur=Math.max(0,Math.min(MODULES.length-1,cur+d));activeTab='overview';render()}
+
+function render(){buildSidebar();buildHead();buildTabs();buildContent()}
+render()
+</script>
+</body>
+</html>
