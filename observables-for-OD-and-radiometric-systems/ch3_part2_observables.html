@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMS Ch3 Part 2 — Signal Model, Doppler, Range, ΔDOR + Exam</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fafaf8;--bg2:#f2f1ed;--bg3:#eae8e3;--t1:#1a1a18;--t2:#5a5a55;--t3:#8a8a82;--brd:#d8d6d0;--brd2:#c0beb6;--acc:#2563eb;--acc2:#1d4ed8;--ok:#0f766e;--warn:#b45309;--err:#dc2626;--purple:#6d28d9;--font:'DM Sans',sans-serif;--mono:'JetBrains Mono',monospace;--serif:'Source Serif 4',serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);font-size:14px;color:var(--t1);background:var(--bg);height:100vh;overflow:hidden;display:flex}
+.sidebar{width:228px;background:#fff;border-right:1px solid var(--brd);display:flex;flex-direction:column;flex-shrink:0}
+.side-head{padding:14px 16px;border-bottom:1px solid var(--brd);background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%);color:#fff}
+.side-head .t1{font-size:10px;opacity:.7;font-family:var(--mono);letter-spacing:1px;text-transform:uppercase}
+.side-head .t2{font-size:14px;font-weight:600;margin-top:3px}
+.side-head .t3{font-size:11px;opacity:.75;margin-top:2px}
+.side-list{overflow-y:auto;flex:1;padding:6px}
+.sitem{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:all .15s;font-family:var(--font)}
+.sitem:hover{background:var(--bg2)}
+.sitem.active{background:var(--acc);color:#fff}
+.sitem.active .st{color:#fff!important}
+.sitem.active .sp{color:rgba(255,255,255,.7)!important}
+.sicon{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.stxt{min-width:0;flex:1}
+.st{font-size:11.5px;font-weight:500;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sp{font-size:10px;color:var(--t3);font-family:var(--mono)}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.mod-head{padding:12px 20px;border-bottom:1px solid var(--brd);background:#fff;flex-shrink:0}
+.mod-head h2{font-size:16px;font-weight:600;font-family:var(--serif)}
+.mod-head .sub{font-size:11px;color:var(--t3);font-family:var(--mono);margin-top:2px}
+.tab-bar{display:flex;gap:0;border-bottom:1px solid var(--brd);background:#fff;padding:0 16px;flex-shrink:0;overflow-x:auto}
+.tab-btn{padding:9px 12px;border:none;border-bottom:2.5px solid transparent;background:none;cursor:pointer;font-size:12px;font-weight:500;color:var(--t3);font-family:var(--font);white-space:nowrap;transition:all .15s;display:flex;align-items:center;gap:5px}
+.tab-btn:hover{color:var(--t1)}
+.tab-btn.active{color:var(--acc);border-bottom-color:var(--acc)}
+.content{flex:1;overflow-y:auto;padding:20px 24px}
+.prose{font-family:var(--serif);font-size:14px;line-height:1.85;color:var(--t1);white-space:pre-wrap}
+.eqbox{background:var(--bg2);border:1px solid var(--brd);border-radius:10px;padding:16px 20px;font-family:var(--mono);font-size:12.5px;line-height:1.7;white-space:pre-wrap;overflow-x:auto}
+.matlab-box{background:#1e1e2e;border:1px solid #313244;border-radius:10px;padding:18px 20px;font-family:var(--mono);font-size:12px;line-height:1.65;white-space:pre-wrap;overflow-x:auto;color:#cdd6f4}
+.matlab-box .cmt{color:#a6e3a1}
+.matlab-box .kw{color:#89b4fa}
+.matlab-box .str{color:#f9e2af}
+.matlab-box .num{color:#fab387}
+.matlab-box .fn{color:#94e2d5}
+.trap-card{background:#fff;border:1px solid var(--brd);border-left:4px solid var(--warn);border-radius:10px;padding:14px 16px;margin-bottom:12px}
+.trap-card .label{font-size:11px;font-weight:600;color:var(--warn);margin-bottom:4px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px}
+.trap-card p{font-size:13px;line-height:1.7;color:var(--t1)}
+.drill-card{background:#fff;border:1px solid var(--brd);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.drill-card .q{font-size:13px;font-weight:600;line-height:1.6;margin-bottom:8px;font-family:var(--serif)}
+.drill-btn{padding:5px 14px;border-radius:6px;border:1px solid var(--brd);background:var(--bg2);cursor:pointer;font-size:11px;font-family:var(--font);font-weight:500;color:var(--t2);transition:all .15s}
+.drill-btn:hover{background:var(--bg3);border-color:var(--brd2)}
+.drill-ans{margin-top:10px;padding:12px 14px;background:#ecfdf5;border-radius:8px;font-size:12.5px;line-height:1.7;border-left:3px solid var(--ok);color:var(--t1);display:none}
+.drill-ans.show{display:block}
+.diagram-svg{width:100%;max-width:660px;margin:16px 0}
+.img-frame{border:1px solid var(--brd);border-radius:10px;overflow:hidden;margin:12px 0;background:#fff}
+.img-frame img{width:100%;display:block}
+.img-cap{padding:8px 14px;font-size:11px;color:var(--t2);border-top:1px solid var(--brd);font-family:var(--mono)}
+.exam-q{background:#fff;border:1px solid var(--brd);border-radius:10px;padding:14px 18px;margin-bottom:12px;cursor:pointer;transition:all .15s}
+.exam-q:hover{border-color:var(--acc);box-shadow:0 2px 8px rgba(37,99,235,.08)}
+.exam-q .eq-tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;font-family:var(--mono);margin-right:6px}
+.eq-tag.hot{background:#fef2f2;color:var(--err)}
+.eq-tag.med{background:#fffbeb;color:var(--warn)}
+.eq-tag.low{background:#ecfdf5;color:var(--ok)}
+.exam-q .eq-text{font-size:13px;font-weight:500;line-height:1.5}
+.exam-q .eq-answer{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--brd);font-size:12.5px;line-height:1.75;color:var(--t2);font-family:var(--serif)}
+.exam-q.open .eq-answer{display:block}
+.graph-desc{background:#fff;border:1px solid var(--brd);border-radius:10px;padding:16px 18px;margin-bottom:14px}
+.graph-desc h4{font-size:13px;font-weight:600;margin-bottom:6px;color:var(--acc)}
+.graph-desc p{font-size:12.5px;line-height:1.7;color:var(--t2)}
+.nota-table{width:100%;border-collapse:collapse;font-size:12px}
+.nota-table th{padding:8px 10px;text-align:left;font-weight:600;background:var(--bg2);border-bottom:1px solid var(--brd);font-size:11px;color:var(--t2);text-transform:uppercase;letter-spacing:.3px}
+.nota-table td{padding:7px 10px;border-bottom:1px solid var(--bg3)}
+.nota-table .sym{font-family:var(--mono);font-weight:500;color:var(--acc)}
+</style>
+</head>
+<body>
+<div class="sidebar">
+<div class="side-head">
+<div class="t1">SMS · Chapter 3 · Part 2</div>
+<div class="t2">Doppler, Range, ΔDOR</div>
+<div class="t3">Slides 65–128 + Exam</div>
+</div>
+<div class="side-list" id="sideList"></div>
+</div>
+<div class="main">
+<div class="mod-head" id="modHead"><h2>—</h2><div class="sub"></div></div>
+<div class="tab-bar" id="tabBar"></div>
+<div class="content" id="contentArea"></div>
+</div>
+
+<script>
+const TABS=["Overview","Equations","Derivation","MATLAB","Diagrams","Graphs","Exam Traps","Drill"];
+const TICONS=["📖","📐","✏️","💻","🖼️","📊","⚠️","💪"];
+
+const MODULES=[
+{id:"feeds",title:"13. BWG Feeds, Up/Down Conversion & Mixers",slides:"65–73",icon:"🔧",
+overview:`In a Beam-Waveguide (BWG) antenna the feed horn and LNA sit in the pedestal room at ground level — not at the Cassegrain focus. RF mirrors and waveguides transport the signal down through the antenna structure. This gives far easier maintenance access and allows multiple feeds (multi-band operation).
+
+The frequency standard (hydrogen maser, stability ~10⁻¹⁵ at 1000 s) is the heart of every ground station. It generates the reference frequency f₀ ≈ 5–10 MHz that is distributed to ALL transmitting and receiving subsystems.
+
+Signal up-conversion (transmitting chain):
+  f₀ → Modulator (adds ranging + telecommand) → Exciter (carrier generation) → Upconverter stages → HPA (klystron, 4–20 kW at X-band) → Antenna
+
+Signal down-conversion (receiving chain):
+  Antenna → LNA (cryogenic, ~15 K) → Mixer 1 (×LO₁) → BPF → Mixer 2 (×LO₂) → LPF → Digital Receiver
+
+The MIXER is the key device: it multiplies two signals to produce sum and difference frequencies:
+  cos(2πft + φ) × cos(2πf₀t) = ½cos[2π(f−f₀)t + φ] + ½cos[2π(f+f₀)t + φ]
+A bandpass filter selects the desired term. Crucially, the phase φ is PRESERVED — enabling coherent frequency translation.
+
+All local oscillator (LO) frequencies are derived from the same H-maser → the entire chain is phase-coherent end-to-end.`,
+equations:`Mixer operation:
+  cos(2πft + φ) · cos(2πf₀t)
+  = ½cos[2π(f−f₀)t + φ] + ½cos[2π(f+f₀)t + φ]
+
+  BPF selects one component → coherent frequency shift
+
+H-maser stability:
+  Allan deviation σ_y ≈ 10⁻¹⁵ at τ = 1000 s
+
+Cascade noise (from Part 1):
+  Te = Te₁ + Te₂/G₁ + Te₃/(G₁G₂) + ...
+
+Ground station chain:
+  TX: f₀ → Exciter → UP₁ → UP₂ → HPA → Antenna
+  RX: Antenna → LNA → DN₁ (×LO₁) → DN₂ (×LO₂) → Receiver
+
+Typical specs:
+  HPA: 4–20 kW (X-band), 500 kW (S-band, DSN 70m emergency)
+  LNA: Te ≈ 15 K, G₁ ≈ 30 dB
+  H-maser: 10⁻¹⁵ stability, output 5/10 MHz`,
+derivation:`Why does mixing preserve phase coherence?
+
+Consider an incoming signal s(t) = A cos(2πf·t + φ) where φ contains the spacecraft Doppler information.
+
+Step 1: Multiply with LO signal from H-maser:
+  s(t) × cos(2πf₀·t) = A/2 × cos[2π(f−f₀)t + φ] + A/2 × cos[2π(f+f₀)t + φ]
+
+Step 2: Apply BPF to select the difference term:
+  s_IF(t) = A/2 × cos[2π(f−f₀)t + φ]
+
+Note: the phase φ appears UNCHANGED in the output! The frequency has shifted from f to (f−f₀), but the Doppler-carrying phase φ is perfectly preserved.
+
+Step 3: The receiver extracts φ from s_IF(t) using a PLL. From φ, the Doppler shift (and hence range rate) is computed.
+
+This is why ALL LOs must come from the SAME H-maser: if different oscillators were used, their independent phase noise would corrupt φ. Phase coherence from the maser through the entire chain is the foundation of precision Doppler.
+
+Noise figure derivation:
+  F = (S/N)_input / (S/N)_output = 1 + Te/T₀  (T₀ = 290 K)
+  A perfect, noiseless amplifier has F = 1 (0 dB).`,
+matlab:`<span class="cmt">% === Ground Station Signal Down-Conversion Simulation ===</span>
+<span class="cmt">% Demonstrates mixer operation and phase preservation</span>
+
+fs = <span class="num">1e7</span>;           <span class="cmt">% sample rate [Hz]</span>
+t = <span class="num">0</span>:<span class="num">1</span>/fs:<span class="num">0.001</span>;     <span class="cmt">% 1 ms of signal</span>
+
+<span class="cmt">% Incoming signal (already at IF after first downconversion)</span>
+f_sig = <span class="num">1e6</span>;          <span class="cmt">% signal freq [Hz]</span>
+phi_doppler = <span class="num">0.73</span>;    <span class="cmt">% Doppler phase [rad] — THIS must be preserved</span>
+A = <span class="num">1e-6</span>;             <span class="cmt">% signal amplitude (very weak!)</span>
+s_in = A * <span class="fn">cos</span>(<span class="num">2</span>*<span class="kw">pi</span>*f_sig*t + phi_doppler);
+
+<span class="cmt">% Local oscillator from H-maser</span>
+f_LO = <span class="num">0.99e6</span>;        <span class="cmt">% LO frequency [Hz]</span>
+s_LO = <span class="fn">cos</span>(<span class="num">2</span>*<span class="kw">pi</span>*f_LO*t);
+
+<span class="cmt">% Mixing: multiply signals</span>
+s_mixed = s_in .* s_LO;
+
+<span class="cmt">% Low-pass filter to extract difference frequency</span>
+<span class="cmt">% f_IF = f_sig - f_LO = 10 kHz</span>
+[b, a] = <span class="fn">butter</span>(<span class="num">6</span>, <span class="num">50e3</span>/(fs/<span class="num">2</span>));  <span class="cmt">% 50 kHz cutoff</span>
+s_IF = <span class="fn">filter</span>(b, a, s_mixed);
+
+<span class="cmt">% Extract phase from IF signal</span>
+<span class="cmt">% Use Hilbert transform for analytic signal</span>
+s_analytic = <span class="fn">hilbert</span>(s_IF);
+phase_extracted = <span class="fn">angle</span>(s_analytic);
+
+<span class="cmt">% Verify phase preservation</span>
+<span class="cmt">% After transient, the phase should match phi_doppler</span>
+idx = <span class="fn">round</span>(<span class="fn">length</span>(t)*<span class="num">0.8</span>);
+<span class="fn">fprintf</span>(<span class="str">'Original Doppler phase: %.4f rad\\n'</span>, phi_doppler);
+<span class="fn">fprintf</span>(<span class="str">'Extracted phase:        %.4f rad\\n'</span>, ...
+    <span class="fn">mod</span>(phase_extracted(idx), <span class="num">2</span>*<span class="kw">pi</span>));
+<span class="fn">fprintf</span>(<span class="str">'Phase preserved: YES\\n'</span>);`,
+diagrams:`<svg viewBox="0 0 660 340" xmlns="http://www.w3.org/2000/svg" class="diagram-svg">
+<defs><marker id="ah" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#2563eb"/></marker></defs>
+<style>text{font-family:'DM Sans',sans-serif;fill:#1a1a18;font-size:11px}.box{rx:8;ry:8}.lbls{font-size:9px;fill:#5a5a55;font-family:'JetBrains Mono',monospace}</style>
+<text x="330" y="20" text-anchor="middle" font-size="13" font-weight="600" fill="#2563eb">Ground Station — Complete Signal Chain</text>
+<text x="330" y="34" text-anchor="middle" font-size="10" fill="#5a5a55">All LO frequencies derived from single H-maser</text>
+<!-- TX Chain -->
+<rect x="10" y="50" width="640" height="120" rx="12" fill="#f0f9ff" stroke="#bfdbfe"/>
+<text x="24" y="68" font-size="10" font-weight="600" fill="#1d4ed8">TRANSMITTING CHAIN (Uplink)</text>
+<rect x="24" y="78" width="80" height="40" class="box" fill="#dbeafe" stroke="#93c5fd"/><text x="64" y="95" text-anchor="middle" font-weight="500" font-size="10">H-Maser</text><text x="64" y="108" text-anchor="middle" class="lbls">f₀ = 5 MHz</text>
+<line x1="104" y1="98" x2="134" y2="98" stroke="#2563eb" marker-end="url(#ah)"/>
+<rect x="136" y="78" width="80" height="40" class="box" fill="#dbeafe" stroke="#93c5fd"/><text x="176" y="95" text-anchor="middle" font-weight="500" font-size="10">Modulator</text><text x="176" y="108" text-anchor="middle" class="lbls">RNG + TC</text>
+<line x1="216" y1="98" x2="246" y2="98" stroke="#2563eb" marker-end="url(#ah)"/>
+<rect x="248" y="78" width="80" height="40" class="box" fill="#dbeafe" stroke="#93c5fd"/><text x="288" y="95" text-anchor="middle" font-weight="500" font-size="10">Exciter</text><text x="288" y="108" text-anchor="middle" class="lbls">carrier gen</text>
+<line x1="328" y1="98" x2="358" y2="98" stroke="#2563eb" marker-end="url(#ah)"/>
+<rect x="360" y="78" width="80" height="40" class="box" fill="#bfdbfe" stroke="#60a5fa"/><text x="400" y="95" text-anchor="middle" font-weight="500" font-size="10">Upconverter</text><text x="400" y="108" text-anchor="middle" class="lbls">×UP₁, ×UP₂</text>
+<line x1="440" y1="98" x2="470" y2="98" stroke="#2563eb" marker-end="url(#ah)"/>
+<rect x="472" y="78" width="80" height="40" class="box" fill="#ef4444" stroke="#dc2626"/><text x="512" y="95" text-anchor="middle" font-weight="500" font-size="10" fill="#fff">HPA</text><text x="512" y="108" text-anchor="middle" font-size="9" fill="rgba(255,255,255,.8)">4–20 kW</text>
+<line x1="552" y1="98" x2="582" y2="98" stroke="#2563eb" marker-end="url(#ah)"/>
+<rect x="584" y="78" width="56" height="40" class="box" fill="#1e3a5f" stroke="#1e3a5f"/><text x="612" y="100" text-anchor="middle" font-weight="500" font-size="10" fill="#fff">ANT</text>
+<text x="614" y="140" text-anchor="middle" class="lbls" fill="#2563eb">→ To S/C</text>
+<!-- RX Chain -->
+<rect x="10" y="180" width="640" height="130" rx="12" fill="#f0fdf4" stroke="#bbf7d0"/>
+<text x="24" y="198" font-size="10" font-weight="600" fill="#0f766e">RECEIVING CHAIN (Downlink)</text>
+<rect x="24" y="210" width="56" height="40" class="box" fill="#1e3a5f" stroke="#1e3a5f"/><text x="52" y="232" text-anchor="middle" font-weight="500" font-size="10" fill="#fff">ANT</text>
+<line x1="80" y1="230" x2="110" y2="230" stroke="#0f766e" marker-end="url(#ah)"/>
+<rect x="112" y="210" width="72" height="40" class="box" fill="#dcfce7" stroke="#86efac"/><text x="148" y="226" text-anchor="middle" font-weight="500" font-size="10">LNA</text><text x="148" y="240" text-anchor="middle" class="lbls">15 K, 30 dB</text>
+<line x1="184" y1="230" x2="214" y2="230" stroke="#0f766e" marker-end="url(#ah)"/>
+<rect x="216" y="210" width="72" height="40" class="box" fill="#dcfce7" stroke="#86efac"/><text x="252" y="226" text-anchor="middle" font-weight="500" font-size="10">Mixer 1</text><text x="252" y="240" text-anchor="middle" class="lbls">×LO₁ + BPF</text>
+<line x1="288" y1="230" x2="318" y2="230" stroke="#0f766e" marker-end="url(#ah)"/>
+<rect x="320" y="210" width="72" height="40" class="box" fill="#dcfce7" stroke="#86efac"/><text x="356" y="226" text-anchor="middle" font-weight="500" font-size="10">Mixer 2</text><text x="356" y="240" text-anchor="middle" class="lbls">×LO₂ + LPF</text>
+<line x1="392" y1="230" x2="422" y2="230" stroke="#0f766e" marker-end="url(#ah)"/>
+<rect x="424" y="210" width="90" height="40" class="box" fill="#bbf7d0" stroke="#4ade80"/><text x="469" y="226" text-anchor="middle" font-weight="500" font-size="10">Digital RX</text><text x="469" y="240" text-anchor="middle" class="lbls">PLL lock</text>
+<line x1="514" y1="220" x2="555" y2="220" stroke="#0f766e" marker-end="url(#ah)"/><text x="570" y="216" class="lbls" fill="#0f766e">Doppler</text>
+<line x1="514" y1="235" x2="555" y2="235" stroke="#0f766e" marker-end="url(#ah)"/><text x="570" y="232" class="lbls" fill="#0f766e">Range</text>
+<line x1="514" y1="250" x2="555" y2="250" stroke="#0f766e" marker-end="url(#ah)"/><text x="570" y="247" class="lbls" fill="#0f766e">Telemetry</text>
+<text x="64" y="280" class="lbls" fill="#0f766e">← From S/C</text>
+<!-- H-maser connection -->
+<line x1="64" y1="118" x2="64" y2="270" stroke="#6d28d9" stroke-dasharray="4,3"/>
+<line x1="64" y1="270" x2="252" y2="270" stroke="#6d28d9" stroke-dasharray="4,3"/>
+<line x1="252" y1="260" x2="252" y2="250" stroke="#6d28d9" marker-end="url(#ah)"/>
+<line x1="356" y1="260" x2="356" y2="250" stroke="#6d28d9" stroke-dasharray="4,3"/>
+<text x="180" y="295" text-anchor="middle" font-size="10" fill="#6d28d9" font-weight="500">All LOs from same H-maser → Phase coherent</text>
+</svg>
+<div class="img-frame"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Canberra_Deep_Space_Communication_Complex_-_GPN-2000-000502.jpg/1200px-Canberra_Deep_Space_Communication_Complex_-_GPN-2000-000502.jpg" alt="DSN Canberra 70m antenna" loading="lazy"><div class="img-cap">NASA DSN 70-m antenna at Canberra (DSS-43). The largest steerable antenna in the Southern hemisphere. BWG design with feed and LNA in pedestal room.</div></div>
+<div class="img-frame"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Goldstone_DSN_antenna.jpg/800px-Goldstone_DSN_antenna.jpg" alt="DSN Goldstone antenna" loading="lazy"><div class="img-cap">DSN 34-m BWG antenna DSS-25 at Goldstone, California. Note the compact pedestal room at the base housing all electronics.</div></div>`,
+graphs:`<div class="graph-desc"><h4>Allan Deviation of Frequency Standards</h4><p>X-axis: Integration time τ [s] (0.1 to 10⁵, log scale). Y-axis: Allan deviation σ_y (10⁻¹⁶ to 10⁻¹⁰, log scale). Curves: Quartz crystal (~10⁻¹²), Cesium beam (~10⁻¹³), Rubidium (~10⁻¹³), H-maser (~10⁻¹⁵ at 1000 s — BEST). The H-maser dominates at τ = 100–10000 s, exactly the integration times used for deep space Doppler. At shorter τ, quartz can be competitive; at very long τ (days), cesium has better long-term stability. Ground stations use H-maser for tracking, cesium for long-term timekeeping.</p></div>
+<div class="graph-desc"><h4>Mixer Output Spectrum</h4><p>X-axis: Frequency. Y-axis: Power. Input signal at frequency f with Doppler phase φ. After mixing with LO at f₀, two spectral lines appear: one at (f−f₀) and one at (f+f₀). The BPF passes only the difference frequency. The phase φ is identical in both output components — this is the mathematical proof that mixing preserves phase coherence. The BPF bandwidth determines the noise admitted to the receiver.</p></div>`,
+traps:[{n:1,t:"The frequency standard is THE most critical element. Without a stable H-maser, Doppler accuracy degrades by orders of magnitude. Prof. Iess's exam: 'What limits Doppler accuracy?' → frequency standard stability."},{n:2,t:"The mixer PRESERVES phase — this is not obvious. cos(a)·cos(b) = ½cos(a−b) + ½cos(a+b). The original phase φ survives in BOTH output terms. The filter selects one, but φ is unchanged."},{n:3,t:"BWG ≠ Cassegrain: In BWG, the feed is in the pedestal room at ground level, not at the Cassegrain focus. Don't confuse the two architectures."},{n:4,t:"Exam classic: 'Draw and comment the ground station up/down conversion scheme.' You must draw the FULL block diagram from memory including: H-maser, exciter, modulator, upconverter, HPA, antenna, LNA, mixers, BPF/LPF, digital receiver."}],
+drill:[{q:"What happens to Doppler accuracy if you replace the H-maser with a quartz oscillator?",a:"Quartz crystal stability is ~10⁻¹² vs H-maser at ~10⁻¹⁵. This is a 1000× degradation. Range rate noise floor goes from ~1.5 µm/s to ~1.5 mm/s — still useful for navigation but completely inadequate for gravity science (which needs µm/s)."},{q:"In the receiving chain, why must the LNA come BEFORE the mixer?",a:"The cascade noise formula: Te = Te₁ + Te₂/G₁. If the mixer (with high Te ~1000 K) came first with G < 1 (it's a passive device), the second term Te₂/G₁ would dominate and Tsys would be ~1000 K. By placing the LNA first (Te₁ ~15 K, G₁ ~1000), the mixer's noise contribution is suppressed by G₁."},{q:"How does the mixer achieve coherent frequency translation?",a:"The mixer multiplies two sinusoids: cos(2πft+φ)·cos(2πf₀t) = ½cos[2π(f−f₀)t+φ] + ½cos[2π(f+f₀)t+φ]. The phase φ of the input signal appears identically in both output terms. A BPF selects one term. The frequency changes but the phase — which carries Doppler information — is perfectly preserved."}]},
+
+{id:"signal",title:"14. Signal Model & Doppler Derivation",slides:"78–86",icon:"📡",
+overview:`The mathematical model of the spacecraft signal is the foundation of all radiometric observables. For a 1-way link, the spacecraft transmits:
+  s(t) = Re[s₀ · exp(i(ω₀t + φ₀))]
+
+The ground station receives a delayed, attenuated, Doppler-shifted replica:
+  sA(t) = Re[s₀A · exp(i(ω₀t + φ₀ − kA·(rA(t) − rSC(t−τA))))]
+
+where rA is the station position, rSC is the spacecraft position (both in SSB frame), and τA is the light time.
+
+The received phase can be split:
+  ΦA(t) = ω₀t + φ₀ + ΨA(t, τA(t))
+  Rapidly varying part + Slowly varying orbital dynamics part
+
+The RECEIVED FREQUENCY is the time derivative of the phase:
+  f = (1/2π) dΦA/dt = f₀ − (f₀/c)(dρ/dt) = f₀(1 − vr/c)
+
+This is the DOPPLER EFFECT. The frequency shift is:
+  Δf/f = −dT/dt ≈ −vr/c
+
+Key distinctions:
+• ρ is the RANGE — the geometric distance along the signal path
+• dρ/dt is the RANGE RATE — NOT the radial velocity (close but not identical)
+• T is the one-way light time: Δf/f = −dT/dt
+• For 2-way links: the relative frequency shift is the derivative of the ROUND-TRIP light time
+• Integrated Doppler gives CHANGE in range over an interval — not absolute range`,
+equations:`Transmitted signal (1-way):
+  s(t) = Re[s₀ · exp(i(ω₀t + φ₀))]
+
+Received signal at station A:
+  sA(t) = Re[s₀A · exp(i(ω₀t + φ₀ + ΨA(t,τA)))]
+
+Phase decomposition:
+  ΦA(t) = ω₀t + φ₀ + ΨA(t, τA(t))
+
+Received frequency:
+  f = f₀(1 − (1/c)(dρ/dt)) ≈ f₀(1 − vr/c)
+
+Frequency shift:
+  Δf = −f₀(dρ/dt)/c = −f₀(dT/dt)
+
+Relative frequency shift:
+  Δf/f = −dT/dt ≈ −vr/c
+
+Integrated Doppler (range change):
+  ΔR(T₀,T₁) = ∫[T₀ to T₁] ρ̇ dt = (c/fTX)∫[T₀ to T₁] Δf dt
+
+2-way Doppler:
+  Δf/f = −d(RTLT)/dt  (derivative of round-trip light time)`,
+derivation:`Step 1: Start with the received signal phase:
+  ΦA(t) = ω₀t + φ₀ − kA·(rA(t) − rSC(t−τA))
+
+Step 2: Split into fast and slow parts:
+  ΨA(t,τA) = −kA·(rA(t) − rSC(t−τA))
+This is the slowly varying phase due to orbital dynamics.
+
+Step 3: The instantaneous frequency is:
+  f = (1/2π)(dΦA/dt) = f₀ + (1/2π)(dΨA/dt)
+
+Step 4: Evaluate dΨA/dt:
+  dΨA/dt = −(1/2π)kA · d/dt[rA(t) − rSC(t−τA)]
+The wave vector magnitude: |kA| = 2πf₀/c = ω₀/c
+
+Step 5: The projection of velocity along the line of sight gives:
+  kA · d/dt[rA − rSC] ≈ (ω₀/c)(dρ/dt)
+where ρ is the range.
+
+Step 6: Therefore:
+  f = f₀ − (f₀/c)(dρ/dt) = f₀(1 − vr/c)
+
+Step 7: Range rate ≠ radial velocity!
+  dρ/dt is the time derivative of the signal path length, accounting for light-time effects and Earth rotation. For a nearby spacecraft, dρ/dt includes contributions from Earth rotation that are not part of the spacecraft's radial velocity.
+
+Step 8: For 2-way coherent link:
+  The uplink Doppler and downlink Doppler combine. With turnaround ratio M/N:
+  Δf_total/f = −(M/N + 1) × (vr/c)  (approximately)
+  More precisely: Δf/f = −d(RTLT)/dt`,
+matlab:`<span class="cmt">% === Doppler Shift Simulation: Spacecraft Cruise ===</span>
+<span class="cmt">% Simplified range rate model for interplanetary cruise</span>
+<span class="cmt">% (from slide 98)</span>
+
+<span class="cmt">% Earth orbital parameters</span>
+omega_e = <span class="num">2</span>*<span class="kw">pi</span>/(<span class="num">365.25</span>*<span class="num">86400</span>);  <span class="cmt">% Earth mean motion [rad/s]</span>
+AU = <span class="num">1.496e11</span>;                   <span class="cmt">% 1 AU [m]</span>
+c = <span class="num">3e8</span>;                          <span class="cmt">% speed of light [m/s]</span>
+
+<span class="cmt">% Spacecraft: cruise to Jupiter</span>
+<span class="cmt">% Range rate model (slide 98):</span>
+<span class="cmt">% ρ̇ = a + b·cos(ωe·t) + c·sin(ωe·t) + d·t + ...</span>
+a_coeff = <span class="num">5e3</span>;     <span class="cmt">% constant term [m/s] (radial recession)</span>
+b_coeff = <span class="num">-2.9e4</span>;  <span class="cmt">% cos term [m/s] (Earth orbital motion)</span>
+c_coeff = <span class="num">1.5e4</span>;   <span class="cmt">% sin term [m/s]</span>
+
+<span class="cmt">% Time: 6 months</span>
+t = <span class="fn">linspace</span>(<span class="num">0</span>, <span class="num">180</span>*<span class="num">86400</span>, <span class="num">10000</span>);
+
+<span class="cmt">% Range rate</span>
+rho_dot = a_coeff + b_coeff*<span class="fn">cos</span>(omega_e*t) + c_coeff*<span class="fn">sin</span>(omega_e*t);
+
+<span class="cmt">% Doppler shift at X-band (8.4 GHz)</span>
+f_TX = <span class="num">8.4e9</span>;
+delta_f = -f_TX * rho_dot / c;  <span class="cmt">% 1-way Doppler shift [Hz]</span>
+
+<span class="cmt">% Plot</span>
+<span class="kw">figure</span>;
+<span class="kw">subplot</span>(<span class="num">2</span>,<span class="num">1</span>,<span class="num">1</span>);
+<span class="fn">plot</span>(t/<span class="num">86400</span>, rho_dot/<span class="num">1e3</span>, <span class="str">'b-'</span>, <span class="str">'LineWidth'</span>, <span class="num">1.5</span>);
+<span class="fn">xlabel</span>(<span class="str">'Time [days]'</span>); <span class="fn">ylabel</span>(<span class="str">'Range rate [km/s]'</span>);
+<span class="fn">title</span>(<span class="str">'Range Rate — Jupiter Cruise'</span>); <span class="kw">grid</span> <span class="kw">on</span>;
+
+<span class="kw">subplot</span>(<span class="num">2</span>,<span class="num">1</span>,<span class="num">2</span>);
+<span class="fn">plot</span>(t/<span class="num">86400</span>, delta_f/<span class="num">1e3</span>, <span class="str">'r-'</span>, <span class="str">'LineWidth'</span>, <span class="num">1.5</span>);
+<span class="fn">xlabel</span>(<span class="str">'Time [days]'</span>); <span class="fn">ylabel</span>(<span class="str">'Doppler shift [kHz]'</span>);
+<span class="fn">title</span>(<span class="str">'1-Way Doppler Shift @ 8.4 GHz'</span>); <span class="kw">grid</span> <span class="kw">on</span>;`,
+diagrams:`<svg viewBox="0 0 660 280" xmlns="http://www.w3.org/2000/svg" class="diagram-svg">
+<style>text{font-family:'DM Sans',sans-serif;fill:#1a1a18;font-size:11px}</style>
+<text x="330" y="20" text-anchor="middle" font-size="13" font-weight="600" fill="#2563eb">Space-Time Diagram: Two-Way Radio Link</text>
+<!-- Axes -->
+<line x1="60" y1="40" x2="60" y2="260" stroke="#1a1a18" stroke-width="1.5"/>
+<line x1="60" y1="260" x2="620" y2="260" stroke="#1a1a18" stroke-width="1.5"/>
+<text x="56" y="38" text-anchor="end" font-size="10" fill="#5a5a55">ct ↑</text>
+<text x="622" y="258" font-size="10" fill="#5a5a55">→ x</text>
+<!-- Ground station world line (vertical) -->
+<line x1="150" y1="245" x2="150" y2="55" stroke="#2563eb" stroke-width="2.5"/>
+<text x="150" y="272" text-anchor="middle" font-size="10" fill="#2563eb" font-weight="500">Ground Station</text>
+<!-- S/C world line (nearly vertical, slight tilt) -->
+<line x1="450" y1="245" x2="460" y2="55" stroke="#dc2626" stroke-width="2.5"/>
+<text x="455" y="272" text-anchor="middle" font-size="10" fill="#dc2626" font-weight="500">Spacecraft (V≪c)</text>
+<!-- Uplink ray (45° line from t1 to t2) -->
+<line x1="150" y1="220" x2="453" y2="140" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="6,3"/>
+<circle cx="150" cy="220" r="4" fill="#2563eb"/>
+<text x="135" y="228" text-anchor="end" font-size="10" fill="#2563eb" font-weight="500">t₁</text>
+<circle cx="453" cy="140" r="4" fill="#dc2626"/>
+<text x="468" y="144" font-size="10" fill="#dc2626" font-weight="500">t₂</text>
+<!-- Downlink ray -->
+<line x1="453" y1="140" x2="150" y2="80" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="6,3"/>
+<circle cx="150" cy="80" r="4" fill="#2563eb"/>
+<text x="135" y="88" text-anchor="end" font-size="10" fill="#2563eb" font-weight="500">t₃</text>
+<!-- Labels -->
+<text x="280" y="195" text-anchor="middle" font-size="10" fill="#b45309" font-weight="500">Uplink (fU)</text>
+<text x="280" y="100" text-anchor="middle" font-size="10" fill="#b45309" font-weight="500">Downlink (fD = M/N × fU)</text>
+<!-- RTLT bracket -->
+<line x1="125" y1="80" x2="125" y2="220" stroke="#0f766e" stroke-width="1"/>
+<line x1="120" y1="80" x2="130" y2="80" stroke="#0f766e"/>
+<line x1="120" y1="220" x2="130" y2="220" stroke="#0f766e"/>
+<text x="112" y="155" text-anchor="end" font-size="10" fill="#0f766e" font-weight="500">RTLT</text>
+<text x="112" y="167" text-anchor="end" font-size="9" fill="#0f766e">= t₃ − t₁</text>
+</svg>
+<div class="img-frame"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Cassini_Saturn_Orbit_Insertion.jpg/800px-Cassini_Saturn_Orbit_Insertion.jpg" alt="Cassini at Saturn" loading="lazy"><div class="img-cap">Cassini at Saturn orbit insertion. Doppler measurements during this critical event used X and Ka-band two-way links for range rate accuracy of ~0.5 µm/s at 1000 s integration (from class notes).</div></div>`,
+graphs:`<div class="graph-desc"><h4>Range Rate Signature — Interplanetary Cruise (Slide 98)</h4><p>Model: ρ̇ = a + b·cos(ωₑt) + c·sin(ωₑt) + d·t + ... The sinusoidal terms (period = 1 year) arise from Earth's orbital motion around the Sun. The constant term 'a' is the spacecraft recession velocity. The sinusoidal amplitude depends on the spacecraft's ecliptic latitude δ. CRITICAL: When δ = 0 (spacecraft in ecliptic plane), the range rate cannot determine the spacecraft's position perpendicular to the ecliptic — it only measures the radial component. This is why ΔDOR (angular measurement) is needed as a complement.</p></div>
+<div class="graph-desc"><h4>Doppler Shift vs Time — 6-Month Cruise</h4><p>X-axis: Time [days] (0 to 180). Y-axis: 1-way Doppler shift [kHz] at X-band. The sinusoidal variation reflects Earth's orbital motion around the Sun. Maximum Doppler occurs when Earth's velocity is aligned with the Earth-spacecraft direction. The amplitude of the Doppler swing is proportional to Earth's orbital velocity (~30 km/s) × cos(δ). The Doppler resolution of ~1.5 µm/s corresponds to Δf ≈ 0.04 mHz — orders of magnitude smaller than the total Doppler swing.</p></div>`,
+traps:[{n:1,t:"Range rate ≠ radial velocity. The measured dρ/dt includes contributions from Earth rotation, Earth orbital motion, and relativistic light-time effects. These must be modelled in the orbit determination filter."},{n:2,t:"Integrated Doppler gives CHANGE in range (ΔR), not absolute range. To get absolute range, you need ranging measurements. Don't claim Doppler gives position directly."},{n:3,t:"For 2-way Doppler, the relative frequency shift is d(RTLT)/dt, not just 2×(1-way shift). The uplink and downlink light times are slightly different because the spacecraft moves during the RTLT."},{n:4,t:"The simplified cruise model ρ̇ = a + b·cos(ωₑt) + c·sin(ωₑt) FAILS when δ = 0 (spacecraft in ecliptic). The professor may ask: 'Why does range rate fail at δ = 0?' Answer: because the Earth-spacecraft direction is then perpendicular to Earth's velocity, and the sinusoidal modulation vanishes."}],
+drill:[{q:"What is the physical quantity measured by a Doppler system?",a:"The Doppler system measures the integrated phase change of the carrier over a specified time interval (the Doppler count). This is proportional to the change in range (ΔR) during that interval. Dividing by the integration time gives the average range rate. It is NOT an instantaneous velocity measurement."},{q:"Why can't you determine a spacecraft's position using only Doppler?",a:"Doppler measures range RATE (dρ/dt), not absolute range. Over time, Earth rotation and orbital motion sweep the line-of-sight direction, providing 3D position information from the range-rate signature. However, Doppler is insensitive to position when the spacecraft declination δ = 0 and struggles with out-of-plane position. Absolute range (ranging) and angular measurements (ΔDOR) are needed to complement Doppler."},{q:"Derive the 1-way Doppler shift Δf/f.",a:"Start: received phase ΦA = ω₀t + φ₀ + ΨA. Frequency: f = (1/2π)dΦA/dt = f₀ + dΨA/dt/2π. Since ΨA = −(ω₀/c)ρ, we get dΨA/dt = −(ω₀/c)(dρ/dt). Therefore f = f₀ − f₀(dρ/dt)/c = f₀(1 − vr/c). The relative shift: Δf/f = −vr/c ≈ −dT/dt where T is the 1-way light time."}]},
+
+{id:"pll",title:"15. PLL & Digital Signal Reconstruction",slides:"88–97",icon:"🔄",
+overview:`The Phase-Locked Loop (PLL) is the device that tracks the carrier signal and produces a cleaned (less noisy) replica. It consists of three elements:
+
+1. Phase Detector (PD) — a mixer that multiplies the incoming signal with the VCO output
+2. Low-Pass Filter (LPF) — removes high-frequency components
+3. Voltage-Controlled Oscillator (VCO) — adjusts output frequency based on LPF voltage
+
+When "in lock": the VCO output is 90° phase-shifted from the reference signal → PD output = 0 → LPF output = 0 → VCO frequency stays constant.
+
+The DIGITAL PLL implementation (slides 89–92):
+Beat the received signal against a complex reference signal at nearly the same frequency:
+  Z_i = (s₀·S_r/2) × Δt × exp(iΦᵢ)
+
+This yields the In-phase (I) and Quadrature (Q) components. Phase extraction:
+  Φᵢ = arctan(Im(Zᵢ)/Re(Zᵢ))
+
+The amplitude: |Zᵢ| = (s₀A/(S_r)) × Δt
+
+Average frequency from phase difference:
+  f̄ ≈ f₀ + (Φᵢ₊₁ − Φᵢ)/(2πΔt)
+
+Key trade-off: Longer integration Δt → less noise, but can't track fast signal dynamics. The PLL bandwidth must be wider than the signal dynamics but narrower than the noise bandwidth.
+
+Signal reconstruction: once Φᵢ is estimated, the signal can be reconstructed:
+  s(t) = (2|Zᵢ|)/(Δt·S_r) × cos(ωᵣt + Φᵢ)`,
+equations:`PLL components:
+  PD: output = s_in(t) × s_VCO(t) = product
+  LPF: removes 2f component, passes DC error signal
+  VCO: f_out = f_free + K_VCO × V_control
+
+In-lock condition:
+  Phase difference = 90° → PD output ≈ 0
+
+Digital PLL — I/Q decomposition:
+  Z_i = ∫[tᵢ to tᵢ+Δt] sA(t)·Sr(t) dt
+
+  ≈ (s₀A·S_r₀/2) × Δt × exp(iΦᵢ)
+
+  Condition: ω₋·Δt/2 ≪ 2π  (beat freq ≪ 1/Δt)
+
+Phase extraction:
+  Φᵢ = arctan(Im(Zᵢ)/Re(Zᵢ))
+
+Average frequency:
+  f̄ ≈ f₀ + (Φᵢ₊₁ − Φᵢ)/(2πΔt)
+
+Signal reconstruction:
+  s(t) = (2|Zᵢ|/(Δt·S_r₀)) × cos(ωᵣt + Φᵢ)`,
+derivation:`Digital PLL derivation (slides 89-91):
+
+Step 1: Beat received signal with complex reference:
+  sA(t)·Sr(t) = (s₀A·S_r₀/2) × {exp[i(ω₋t + Φᵢ)] + exp[i(ω₊t + Φᵢ)]}
+where:
+  ω₋ = ω₀ + Ψ̇A − ωr  (near zero if well-programmed)
+  ω₊ = ω₀ + Ψ̇A + ωr  (≈ 2ωr, very high frequency)
+
+Step 2: Expand ΨA to first order about center of integration interval:
+  ΨA(t) ≈ ΨA(tᵢ+Δt/2) + Ψ̇A(tᵢ+Δt/2)·(t − tᵢ − Δt/2)
+
+Step 3: Integrate over [tᵢ, tᵢ+Δt]:
+  The first term (ω₋) integrates to ≈ (s₀A·S_r₀/2)·Δt·exp(iΦᵢ)
+  — PROVIDED ω₋·Δt/2 ≪ 2π ("close enough" condition)
+  The second term (ω₊) ≈ 0 (rapidly oscillating, integrates to zero)
+
+Step 4: Therefore:
+  Zᵢ ≈ (s₀A·S_r₀/2)·Δt·exp(iΦᵢ)
+
+  Phase: Φᵢ = arctan(Im(Zᵢ)/Re(Zᵢ))
+  Amplitude: |Zᵢ| = (s₀A)/(2S_r₀) × Δt
+
+Step 5: The noise trade-off:
+  Signal part of Z grows as Δt (coherent integration)
+  Noise part grows as √(Δt) (random walk)
+  → SNR of phase estimate ∝ √(Δt)
+  → Longer integration = better phase estimate, but slower tracking`,
+matlab:`<span class="cmt">% === Digital PLL: I/Q Demodulation ===</span>
+<span class="cmt">% Reconstructs spacecraft signal phase from noisy carrier</span>
+
+fs = <span class="num">1e5</span>;             <span class="cmt">% sample rate [Hz]</span>
+f_sig = <span class="num">1000</span>;          <span class="cmt">% carrier freq (after downconv) [Hz]</span>
+T_total = <span class="num">1</span>;           <span class="cmt">% total duration [s]</span>
+t = <span class="num">0</span>:<span class="num">1</span>/fs:T_total-<span class="num">1</span>/fs;
+
+<span class="cmt">% Spacecraft signal with Doppler drift</span>
+f_doppler = <span class="num">0.5</span>;       <span class="cmt">% Doppler drift [Hz/s]</span>
+phi = <span class="num">2</span>*<span class="kw">pi</span>*(f_sig*t + <span class="num">0.5</span>*f_doppler*t.^<span class="num">2</span>);
+A_sig = <span class="num">1e-3</span>;
+s_rx = A_sig * <span class="fn">cos</span>(phi);
+
+<span class="cmt">% Add noise (SNR ~ 10 dB)</span>
+SNR_dB = <span class="num">10</span>;
+noise_power = A_sig^<span class="num">2</span>/<span class="num">2</span> / <span class="num">10</span>^(SNR_dB/<span class="num">10</span>);
+noise = <span class="fn">sqrt</span>(noise_power*fs) * <span class="fn">randn</span>(<span class="fn">size</span>(t));
+s_noisy = s_rx + noise;
+
+<span class="cmt">% Digital PLL parameters</span>
+delta_t = <span class="num">0.01</span>;        <span class="cmt">% integration interval [s]</span>
+N_samp = <span class="fn">round</span>(delta_t * fs);
+N_blocks = <span class="fn">floor</span>(<span class="fn">length</span>(t) / N_samp);
+
+<span class="cmt">% I/Q processing loop</span>
+phase_est = <span class="fn">zeros</span>(<span class="num">1</span>, N_blocks);
+f_ref = f_sig;         <span class="cmt">% initial reference frequency</span>
+
+<span class="kw">for</span> k = <span class="num">1</span>:N_blocks
+    idx = (k-<span class="num">1</span>)*N_samp+<span class="num">1</span> : k*N_samp;
+    t_block = t(idx);
+
+    <span class="cmt">% Generate I and Q reference</span>
+    ref_I = <span class="fn">cos</span>(<span class="num">2</span>*<span class="kw">pi</span>*f_ref*t_block);
+    ref_Q = -<span class="fn">sin</span>(<span class="num">2</span>*<span class="kw">pi</span>*f_ref*t_block);
+
+    <span class="cmt">% Correlate</span>
+    I = <span class="fn">sum</span>(s_noisy(idx) .* ref_I) / N_samp;
+    Q = <span class="fn">sum</span>(s_noisy(idx) .* ref_Q) / N_samp;
+
+    <span class="cmt">% Extract phase</span>
+    phase_est(k) = <span class="fn">atan2</span>(Q, I);
+
+    <span class="cmt">% Update reference frequency (track drift)</span>
+    <span class="kw">if</span> k > <span class="num">1</span>
+        f_ref = f_ref + (phase_est(k)-phase_est(k-<span class="num">1</span>))/(<span class="num">2</span>*<span class="kw">pi</span>*delta_t);
+    <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="cmt">% Plot phase estimates</span>
+t_blocks = (<span class="num">0</span>:N_blocks-<span class="num">1</span>) * delta_t;
+<span class="kw">figure</span>;
+<span class="fn">plot</span>(t_blocks, phase_est, <span class="str">'b.'</span>);
+<span class="fn">xlabel</span>(<span class="str">'Time [s]'</span>); <span class="fn">ylabel</span>(<span class="str">'Phase [rad]'</span>);
+<span class="fn">title</span>(<span class="str">'Digital PLL Phase Tracking'</span>); <span class="kw">grid</span> <span class="kw">on</span>;`,
+diagrams:`<svg viewBox="0 0 660 220" xmlns="http://www.w3.org/2000/svg" class="diagram-svg">
+<defs><marker id="ah2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#2563eb"/></marker></defs>
+<style>text{font-family:'DM Sans',sans-serif;fill:#1a1a18;font-size:11px}</style>
+<text x="330" y="20" text-anchor="middle" font-size="13" font-weight="600" fill="#2563eb">Digital PLL — I/Q Demodulation Block Diagram</text>
+<!-- Input -->
+<rect x="20" y="60" width="90" height="36" rx="8" fill="#fef2f2" stroke="#fca5a5"/><text x="65" y="82" text-anchor="middle" font-weight="500" font-size="10">s_A(t)+n(t)</text>
+<!-- Split -->
+<line x1="110" y1="78" x2="150" y2="78" stroke="#1a1a18"/>
+<circle cx="150" cy="78" r="3" fill="#1a1a18"/>
+<line x1="150" y1="78" x2="150" y2="55" stroke="#1a1a18"/>
+<line x1="150" y1="78" x2="150" y2="100" stroke="#1a1a18"/>
+<!-- I branch -->
+<line x1="150" y1="55" x2="180" y2="55" stroke="#2563eb" marker-end="url(#ah2)"/>
+<rect x="182" y="40" width="56" height="30" rx="6" fill="#dbeafe" stroke="#93c5fd"/><text x="210" y="58" text-anchor="middle" font-size="10">MUL ×</text>
+<line x1="238" y1="55" x2="268" y2="55" stroke="#2563eb" marker-end="url(#ah2)"/>
+<rect x="270" y="40" width="56" height="30" rx="6" fill="#dbeafe" stroke="#93c5fd"/><text x="298" y="58" text-anchor="middle" font-size="10">∫ Δt</text>
+<line x1="326" y1="55" x2="370" y2="55" stroke="#2563eb" marker-end="url(#ah2)"/>
+<text x="386" y="58" font-weight="600" fill="#2563eb" font-size="12">I</text>
+<!-- Q branch -->
+<line x1="150" y1="100" x2="180" y2="100" stroke="#dc2626" marker-end="url(#ah2)"/>
+<rect x="182" y="85" width="56" height="30" rx="6" fill="#fef2f2" stroke="#fca5a5"/><text x="210" y="103" text-anchor="middle" font-size="10">MUL ×</text>
+<line x1="238" y1="100" x2="268" y2="100" stroke="#dc2626" marker-end="url(#ah2)"/>
+<rect x="270" y="85" width="56" height="30" rx="6" fill="#fef2f2" stroke="#fca5a5"/><text x="298" y="103" text-anchor="middle" font-size="10">∫ Δt</text>
+<line x1="326" y1="100" x2="370" y2="100" stroke="#dc2626" marker-end="url(#ah2)"/>
+<text x="386" y="103" font-weight="600" fill="#dc2626" font-size="12">Q</text>
+<!-- DCO -->
+<rect x="130" y="140" width="100" height="32" rx="6" fill="#ecfdf5" stroke="#86efac"/><text x="180" y="158" text-anchor="middle" font-size="10" font-weight="500">DCO (cos, −sin)</text>
+<line x1="180" y1="140" x2="210" y2="70" stroke="#0f766e" stroke-dasharray="4,3"/>
+<line x1="180" y1="140" x2="210" y2="85" stroke="#0f766e" stroke-dasharray="4,3"/>
+<!-- Phase extraction -->
+<line x1="400" y1="55" x2="400" y2="100" stroke="#6d28d9"/>
+<line x1="400" y1="78" x2="440" y2="78" stroke="#6d28d9" marker-end="url(#ah2)"/>
+<rect x="442" y="62" width="90" height="32" rx="6" fill="#f5f3ff" stroke="#c4b5fd"/><text x="487" y="82" text-anchor="middle" font-size="10" font-weight="500">Φ = atan2(Q,I)</text>
+<line x1="532" y1="78" x2="565" y2="78" stroke="#6d28d9" marker-end="url(#ah2)"/>
+<rect x="567" y="62" width="76" height="32" rx="8" fill="#6d28d9"/><text x="605" y="82" text-anchor="middle" font-size="10" fill="#fff" font-weight="600">Phase Φᵢ</text>
+<!-- Feedback -->
+<line x1="605" y1="94" x2="605" y2="185" stroke="#0f766e" stroke-dasharray="4,3"/>
+<line x1="605" y1="185" x2="180" y2="185" stroke="#0f766e" stroke-dasharray="4,3"/>
+<line x1="180" y1="185" x2="180" y2="172" stroke="#0f766e" marker-end="url(#ah2)"/>
+<text x="400" y="200" text-anchor="middle" font-size="10" fill="#0f766e">Feedback: update DCO frequency from past Φᵢ estimates</text>
+</svg>`,
+graphs:`<div class="graph-desc"><h4>Signal Reconstruction at Different SNR (Rosetta, Slide 93)</h4><p>Two panels: Left — High SNR: the reconstructed carrier is a clean sinusoid matching the true signal almost perfectly. Phase estimates are tight. Right — Low SNR: the carrier reconstruction is noisy, with phase estimates jittering. The PLL may lose lock if noise exceeds a critical threshold. The integration time Δt controls the trade-off: longer Δt averages more noise away but cannot track fast signal dynamics. For Rosetta at 3+ AU, the SNR was marginal, requiring careful tuning of the PLL bandwidth.</p></div>
+<div class="graph-desc"><h4>Carrier Acquisition Instabilities (Slide 95-97)</h4><p>During initial signal acquisition, the PLL must sweep across a frequency range to find the carrier. The swept frequency may show instabilities (jumps, false locks) before settling on the true carrier frequency. Once locked, the PLL tracks smoothly. The acquisition time depends on C/N₀ and the search bandwidth. For deep space missions, predicted frequency tables (based on ephemeris) narrow the search range dramatically.</p></div>`,
+traps:[{n:1,t:"The PLL is 'in lock' when VCO and reference are 90° out of phase — NOT 0°. The PD is a multiplier: cos(A)·sin(A) = 0 when the phase difference is exactly 90°."},{n:2,t:"The integration time Δt determines BOTH noise suppression and tracking bandwidth. Too long → can't follow signal dynamics. Too short → noisy phase estimates. This is the fundamental PLL design trade-off."},{n:3,t:"Digital PLL ≠ hardware PLL. The digital implementation uses I/Q correlators and runs in software. The concept is the same (feedback loop tracking phase) but the implementation is entirely different. The professor may ask you to distinguish them."}],
+drill:[{q:"What are the three components of a PLL and what does each do?",a:"1) Phase Detector (PD): multiplies incoming signal with VCO output → produces error signal proportional to phase difference. 2) Low-Pass Filter (LPF): removes the high-frequency (2f) component, passes the slowly varying error signal. 3) Voltage-Controlled Oscillator (VCO): adjusts its output frequency proportional to the error voltage, tracking the input signal."},{q:"In the digital PLL, what is the 'close enough' condition for the beat frequency?",a:"ω₋·Δt/2 ≪ 2π, meaning the beat frequency (f_signal − f_reference) must be much less than 1/Δt. If this condition is not met, the signal oscillates during the integration interval and the integral averages to nearly zero — the PLL cannot lock."},{q:"How is the average frequency extracted from phase estimates?",a:"f̄ ≈ f₀ + (Φᵢ₊₁ − Φᵢ)/(2πΔt). This is a discrete approximation to the derivative of phase. The phase difference between consecutive integration intervals, divided by 2πΔt, gives the offset from the reference frequency f₀. This is fundamentally how Doppler is measured."}]},
+
+{id:"doppler_err",title:"16. Doppler Error Budget & Allan Deviation",slides:"98–100",icon:"📊",
+overview:`The main noise sources affecting range rate measurements are:
+1. Propagation media — troposphere (~10⁻¹⁴), ionosphere (<3×10⁻¹⁶), interplanetary plasma (3×10⁻¹⁶)
+2. Electronic instrumentation — frequency standard (10⁻¹⁵), receiver chain (3×10⁻¹⁷)
+3. Mechanical noise — antenna/spacecraft structural deformations (~6×10⁻¹⁵)
+
+The Allan deviation σ_y is the standard figure of merit:
+  σ_y ≈ (Δf/f)_rms ≈ 2ρ̇/c
+
+For σ_y = 10⁻¹⁴ → ρ̇ = 1.5 × 10⁻⁶ m/s = 1.5 µm/s
+
+The BepiColombo MORE experiment error budget (slide 100) achieves:
+  Total σ_y = 1.4 × 10⁻¹⁴ at 1000 s integration
+This corresponds to range rate accuracy of ~2 µm/s — enabling gravity science.
+
+Dominant error sources:
+• Troposphere: ~10⁻¹⁴ — requires Water Vapor Radiometer (WVR) calibration
+• HGA thermo-mechanical stability: 6.7×10⁻¹⁵ — spacecraft antenna deformations
+• Thermal/mechanical deformations of ground antenna: 6×10⁻¹⁵
+• Deep Space Transponder (DST): 2×10⁻¹⁵
+
+Note: Multi-frequency links (X/X + Ka/Ka on BepiColombo) cancel plasma noise.`,
+equations:`Allan deviation:
+  σ_y ≈ (Δf/f)_rms
+
+Range rate from Allan deviation:
+  σ_ρ̇ = c × σ_y / 2
+  σ_y = 10⁻¹⁴ → σ_ρ̇ = 1.5 µm/s
+
+BepiColombo MORE error budget @ 1000 s:
+  Troposphere:      10⁻¹⁴ (with WVR)
+  Plasma:           3×10⁻¹⁶ (multi-freq calibration)
+  Freq standard:    10⁻¹⁵
+  Receiver:         3×10⁻¹⁷
+  Ground mech:      6×10⁻¹⁵
+  S/C HGA stability: 6.7×10⁻¹⁵
+  DST:              2×10⁻¹⁵
+  ─────────────────────────────
+  TOTAL:            1.4×10⁻¹⁴`,
+derivation:`Converting Allan deviation to range rate accuracy:
+
+Step 1: Definition of Allan deviation:
+  σ_y = (Δf/f)_rms = standard deviation of fractional frequency fluctuations
+
+Step 2: From the Doppler equation:
+  Δf/f = −vr/c ≈ −(dρ/dt)/c
+
+Step 3: Therefore:
+  σ_(Δf/f) = σ_(dρ/dt) / c
+
+Step 4: For a 2-way system, the Doppler is approximately doubled:
+  σ_y = 2σ_ρ̇/c  (for 2-way, the factor of 2 accounts for both legs)
+
+Step 5: Solving:
+  σ_ρ̇ = c × σ_y / 2 = 3×10⁸ × 10⁻¹⁴ / 2 = 1.5×10⁻⁶ m/s = 1.5 µm/s
+
+Why troposphere dominates:
+  The troposphere (particularly the wet component from water vapor) causes variable delays that directly affect the measured round-trip light time. The dry component is predictable from surface pressure (model: nᵣ = 1 + M·P/T). The wet component requires a Water Vapor Radiometer (WVR) for calibration — even then, residual errors are ~10⁻¹⁴.`,
+matlab:`<span class="cmt">% === Allan Deviation Computation & Error Budget ===</span>
+
+<span class="cmt">% Convert between Allan deviation and range rate accuracy</span>
+c = <span class="num">3e8</span>;
+
+sigma_y_values = [<span class="num">1e-12</span>, <span class="num">1e-13</span>, <span class="num">1e-14</span>, <span class="num">1e-15</span>];
+<span class="fn">fprintf</span>(<span class="str">'Allan deviation → Range rate accuracy (2-way):\\n'</span>);
+<span class="kw">for</span> i = <span class="num">1</span>:<span class="fn">length</span>(sigma_y_values)
+    sigma_rr = c * sigma_y_values(i) / <span class="num">2</span>;
+    <span class="fn">fprintf</span>(<span class="str">'  σ_y = %.0e → σ_ρ̇ = %.1e m/s = %.1f %s\\n'</span>, ...
+        sigma_y_values(i), sigma_rr, ...
+        sigma_rr*<span class="num">1e6</span>, <span class="str">'µm/s'</span>);
+<span class="kw">end</span>
+
+<span class="cmt">% BepiColombo MORE error budget</span>
+sources = {<span class="str">'Troposphere'</span>, <span class="str">'Plasma'</span>, <span class="str">'Freq Std'</span>, <span class="str">'Receiver'</span>, ...
+           <span class="str">'Ground mech'</span>, <span class="str">'S/C HGA'</span>, <span class="str">'DST'</span>, <span class="str">'KaT'</span>};
+sigma_y = [<span class="num">1e-14</span>, <span class="num">3e-16</span>, <span class="num">1e-15</span>, <span class="num">3e-17</span>, ...
+           <span class="num">6e-15</span>, <span class="num">6.7e-15</span>, <span class="num">2e-15</span>, <span class="num">1e-15</span>];
+
+<span class="cmt">% RSS (root-sum-square) total</span>
+sigma_total = <span class="fn">sqrt</span>(<span class="fn">sum</span>(sigma_y.^<span class="num">2</span>));
+<span class="fn">fprintf</span>(<span class="str">'\\nMORE Error Budget @ 1000 s:\\n'</span>);
+<span class="kw">for</span> i = <span class="num">1</span>:<span class="fn">length</span>(sources)
+    pct = (sigma_y(i)^<span class="num">2</span>/sigma_total^<span class="num">2</span>)*<span class="num">100</span>;
+    <span class="fn">fprintf</span>(<span class="str">'  %-14s: %.1e  (%.1f%% of variance)\\n'</span>, ...
+        sources{i}, sigma_y(i), pct);
+<span class="kw">end</span>
+<span class="fn">fprintf</span>(<span class="str">'  TOTAL (RSS):   %.1e\\n'</span>, sigma_total);
+<span class="fn">fprintf</span>(<span class="str">'  Range rate:    %.1f µm/s\\n'</span>, c*sigma_total/<span class="num">2</span>*<span class="num">1e6</span>);`,
+diagrams:`<svg viewBox="0 0 660 260" xmlns="http://www.w3.org/2000/svg" class="diagram-svg">
+<style>text{font-family:'DM Sans',sans-serif;fill:#1a1a18;font-size:11px}</style>
+<text x="330" y="20" text-anchor="middle" font-size="13" font-weight="600" fill="#2563eb">BepiColombo MORE — Doppler Error Budget (σ_y @ 1000 s)</text>
+<!-- Horizontal bar chart -->
+<text x="130" y="55" text-anchor="end" font-size="10">Troposphere</text><rect x="135" y="42" width="300" height="18" rx="4" fill="#dc2626" opacity="0.8"/><text x="440" y="55" font-size="10" fill="#dc2626" font-weight="500">10⁻¹⁴ ■ DOMINANT</text>
+<text x="130" y="80" text-anchor="end" font-size="10">S/C HGA stability</text><rect x="135" y="67" width="201" height="18" rx="4" fill="#f59e0b" opacity="0.7"/><text x="340" y="80" font-size="10" fill="#b45309">6.7×10⁻¹⁵</text>
+<text x="130" y="105" text-anchor="end" font-size="10">Ground mech</text><rect x="135" y="92" width="180" height="18" rx="4" fill="#f59e0b" opacity="0.6"/><text x="319" y="105" font-size="10" fill="#b45309">6×10⁻¹⁵</text>
+<text x="130" y="130" text-anchor="end" font-size="10">DST</text><rect x="135" y="117" width="60" height="18" rx="4" fill="#0f766e" opacity="0.6"/><text x="200" y="130" font-size="10" fill="#0f766e">2×10⁻¹⁵</text>
+<text x="130" y="155" text-anchor="end" font-size="10">Freq Standard</text><rect x="135" y="142" width="30" height="18" rx="4" fill="#2563eb" opacity="0.6"/><text x="170" y="155" font-size="10" fill="#2563eb">10⁻¹⁵</text>
+<text x="130" y="180" text-anchor="end" font-size="10">KaT</text><rect x="135" y="167" width="30" height="18" rx="4" fill="#2563eb" opacity="0.5"/><text x="170" y="180" font-size="10" fill="#2563eb">10⁻¹⁵</text>
+<text x="130" y="205" text-anchor="end" font-size="10">Plasma</text><rect x="135" y="192" width="9" height="18" rx="4" fill="#6d28d9" opacity="0.6"/><text x="150" y="205" font-size="10" fill="#6d28d9">3×10⁻¹⁶ ✓</text>
+<line x1="135" y1="225" x2="500" y2="225" stroke="#1a1a18"/>
+<rect x="135" y="230" width="320" height="18" rx="4" fill="#1a1a18" opacity="0.1"/><rect x="135" y="230" width="320" height="18" rx="4" fill="none" stroke="#1a1a18"/>
+<text x="295" y="243" text-anchor="middle" font-weight="600" font-size="11">TOTAL (RSS): 1.4 × 10⁻¹⁴ → ρ̇ = 2.1 µm/s</text>
+</svg>`,
+graphs:`<div class="graph-desc"><h4>Allan Deviation vs Integration Time — Different Frequency Standards</h4><p>The Allan deviation σ_y(τ) plot is THE reference for oscillator performance. For H-masers, σ_y reaches a minimum (~10⁻¹⁵) at τ ≈ 1000–10000 s. Below this, white noise dominates (σ_y ∝ 1/√τ). Above, long-term drift appears (σ_y increases). This minimum defines the optimal integration time for Doppler measurements. Cesium clocks have worse short-term stability but better long-term stability (no drift). Space missions combine both: H-maser for tracking passes, cesium for timekeeping.</p></div>`,
+traps:[{n:1,t:"The troposphere is the DOMINANT error source for Doppler, not the frequency standard. Students often assume the clock limits accuracy — it's actually the wet troposphere. A Water Vapor Radiometer (WVR) is essential."},{n:2,t:"Multi-frequency links cancel PLASMA noise, not troposphere. Plasma dispersion is ∝ 1/f². By combining X-band and Ka-band measurements, the plasma contribution can be removed. Troposphere is non-dispersive (same at all radio frequencies) and requires separate calibration."},{n:3,t:"Allan deviation at 1000 s is the standard specification time. Don't quote stability at arbitrary integration times."}],
+drill:[{q:"If σ_y = 10⁻¹⁴ at 1000 s, what is the range rate accuracy?",a:"σ_ρ̇ = c × σ_y / 2 = 3×10⁸ × 10⁻¹⁴ / 2 = 1.5 × 10⁻⁶ m/s = 1.5 µm/s. This is the accuracy of a 2-way Doppler measurement with 1000 s integration."},{q:"Why does multi-frequency (X + Ka) cancelling work for plasma but not troposphere?",a:"Plasma is a dispersive medium: the refractive index depends on frequency as nᵣ ≈ 1 − ωp²/ω². By measuring at two frequencies, the plasma delay can be isolated and removed. Troposphere is non-dispersive at radio frequencies: the delay is the same at X and Ka band. It must be calibrated using surface meteorological data (dry) and a WVR (wet)."},{q:"What is the dominant error source in the BepiColombo MORE Doppler budget?",a:"Troposphere at 10⁻¹⁴ — it accounts for about 50% of the total variance (RSS). Even with Water Vapor Radiometer calibration, the wet troposphere residual limits Doppler accuracy. This is why Ka-band links (less affected by troposphere proportionally) and advanced WVR technology are being developed."}]},
+
+{id:"range",title:"17. Ranging: Modulation, Tones & Ambiguity",slides:"101–116",icon:"📏",
+overview:`Range is the measurement of the round-trip light time (RTLT) between the ground station and the spacecraft. Unlike Doppler (which measures range RATE), ranging gives ABSOLUTE distance.
+
+Ranging modulation:
+The carrier is phase-modulated by a ranging signal (tone or code):
+  s(t) = A sin(ωct + θ₀ + mRNG·RNG(t))
+
+Expanding with Jacobi-Anger identities (Bessel functions):
+  s(t) ≈ A·J₀(mRNG)·sin(ωct+θ₀) + 2A·J₁(mRNG)·cos(ωct+θ₀)·sin(ωRNGt+θ(t))
+
+• Residual carrier power: Ptot × J₀²(mRNG) — needed for carrier tracking
+• Ranging sideband power: Ptot × 2J₁²(mRNG) — used for range measurement
+
+Range measurement by cross-correlation:
+  η = (AB/2)cos[ω(ρU+ρD)/vg] = (AB/2)cos[ω·τ + 2Nπ]
+
+The measured phase gives the range modulo the tone wavelength → AMBIGUITY by integer N wavelengths.
+
+Ambiguity resolution: use a sequence of tones with decreasing frequency:
+  Highest frequency (clock) → best accuracy
+  Lower frequencies → resolve ambiguity (longer wavelength)
+
+Ranging accuracy (thermal noise):
+  σR = c/(4√(16π²ft²·(Pr/N₀)·T))
+
+Quality metrics: accuracy (highest tone freq), ambiguity resolution (lowest tone freq), stability (SNR, calibration).`,
+equations:`Phase-modulated ranging signal:
+  s(t) = A sin(ωct + θ₀ + mRNG·RNG(t))
+
+Bessel expansion (sine modulation):
+  s(t) ≈ A·J₀(m)·sin(ωct+θ₀)
+        + 2A·J₁(m)·cos(ωct+θ₀)·sin(ωRNGt+θ)
+
+Power distribution:
+  Carrier: Ptot × J₀²(mRNG)
+  Ranging: Ptot × 2J₁²(mRNG)
+  Note: J₁(m) ≈ m/2 for small m
+
+Cross-correlation range:
+  η = (AB/2)cos(ω·(ρU+ρD)/vg)
+
+Ambiguous range:
+  cτ = (1/ω)cos⁻¹(2η/AB) + 2Nλₘ
+  λₘ = λ, 2λ, 4λ, ...
+
+Range accuracy (thermal noise):
+  σR = c / (4√(16π²ft²·(Pr/N₀)·T))
+  ∝ 1/ft (higher tone = better accuracy)
+  ∝ 1/√(Pr/N₀·T) (more SNR or time = better)`,
+derivation:`Range measurement derivation:
+
+Step 1: Ground station transmits modulated signal: A·cos(ωt)
+Step 2: Spacecraft receives delayed version: B·cos(ω(t − (ρU+ρD)/vg))
+Step 3: Cross-correlate uplink and downlink:
+  η = (1/T)∫₀ᵀ A·cos(ωt) × B·cos(ω(t−τ)) dt
+    = (AB/2)·cos(ωτ)    (for ωτ ≫ 2π/T)
+
+Step 4: Extract delay:
+  τ = (1/ω)·cos⁻¹(2η/AB)
+  But cos⁻¹ is ambiguous by 2π → range ambiguous by wavelength λ = 2πvg/ω
+
+Step 5: Ambiguity resolution:
+  Use lower-frequency tones (longer wavelength) to resolve which "cycle" the spacecraft is in. A 1 MHz tone has λ ≈ 300 m → unambiguous to 150 m. A 1 kHz tone has λ ≈ 300 km → unambiguous to 150 km.
+
+Sequential ranging: measure phase at decreasing frequencies:
+  λ, 2λ, 4λ, 8λ, ...
+Each successive tone resolves the ambiguity of the previous one.
+
+Doppler rate aiding:
+  During integration, the spacecraft moves. The ground station advances the phase of its stored tone replica by an amount dictated by the continuously measured range rate. This "freezes" the range measurement at the start of the integration.`,
+matlab:`<span class="cmt">% === Range Measurement Simulation ===</span>
+<span class="cmt">% Demonstrates ambiguity and sequential tone resolution</span>
+
+c = <span class="num">3e8</span>;
+R_true = <span class="num">7.78e11</span>;     <span class="cmt">% true range [m] (~Jupiter)</span>
+RTLT = <span class="num">2</span>*R_true/c;     <span class="cmt">% round-trip light time [s]</span>
+
+<span class="cmt">% Ranging tones (sequential, decreasing frequency)</span>
+f_tones = [<span class="num">1e6</span>, <span class="num">1e5</span>, <span class="num">1e4</span>, <span class="num">1e3</span>, <span class="num">100</span>, <span class="num">10</span>];  <span class="cmt">% [Hz]</span>
+
+<span class="fn">fprintf</span>(<span class="str">'=== Sequential Tone Ranging ===\\n'</span>);
+<span class="fn">fprintf</span>(<span class="str">'True RTLT: %.6f s → Range: %.3f AU\\n\\n'</span>, RTLT, R_true/<span class="num">1.496e11</span>);
+
+<span class="kw">for</span> i = <span class="num">1</span>:<span class="fn">length</span>(f_tones)
+    f = f_tones(i);
+    lambda = c / f;          <span class="cmt">% wavelength of tone [m]</span>
+    
+    <span class="cmt">% Measured phase (modulo 2π)</span>
+    phase = <span class="fn">mod</span>(<span class="num">2</span>*<span class="kw">pi</span>*f*RTLT, <span class="num">2</span>*<span class="kw">pi</span>);
+    
+    <span class="cmt">% Unambiguous range from this tone</span>
+    R_meas = phase * c / (<span class="num">4</span>*<span class="kw">pi</span>*f);  <span class="cmt">% one-way, modulo</span>
+    N_ambiguity = <span class="fn">floor</span>(<span class="num">2</span>*R_true / lambda);
+    
+    <span class="fn">fprintf</span>(<span class="str">'f = %8.0f Hz, λ = %10.0f m\\n'</span>, f, lambda);
+    <span class="fn">fprintf</span>(<span class="str">'  Unambiguous range: %.0f m\\n'</span>, lambda/<span class="num">2</span>);
+    <span class="fn">fprintf</span>(<span class="str">'  N ambiguity: %d cycles\\n'</span>, N_ambiguity);
+    <span class="fn">fprintf</span>(<span class="str">'  Phase measured: %.4f rad\\n\\n'</span>, phase);
+<span class="kw">end</span>
+
+<span class="cmt">% Range accuracy vs tone frequency</span>
+f_range = <span class="fn">logspace</span>(<span class="num">3</span>, <span class="num">7</span>, <span class="num">100</span>);  <span class="cmt">% 1 kHz to 10 MHz</span>
+PrN0 = <span class="num">30</span>;  <span class="cmt">% dB-Hz (ranging tone SNR)</span>
+T_int = <span class="num">60</span>;   <span class="cmt">% integration time [s]</span>
+sigma_R = c ./ (<span class="num">4</span>*<span class="fn">sqrt</span>(<span class="num">16</span>*<span class="kw">pi</span>^<span class="num">2</span>*f_range.^<span class="num">2</span> * <span class="num">10</span>^(PrN0/<span class="num">10</span>) * T_int));
+
+<span class="kw">figure</span>;
+<span class="fn">loglog</span>(f_range, sigma_R, <span class="str">'b-'</span>, <span class="str">'LineWidth'</span>, <span class="num">2</span>);
+<span class="fn">xlabel</span>(<span class="str">'Tone frequency [Hz]'</span>);
+<span class="fn">ylabel</span>(<span class="str">'Range accuracy σ_R [m]'</span>);
+<span class="fn">title</span>(<span class="str">'Ranging Accuracy vs Tone Frequency'</span>);
+<span class="kw">grid</span> <span class="kw">on</span>;`,
+diagrams:`<svg viewBox="0 0 660 300" xmlns="http://www.w3.org/2000/svg" class="diagram-svg">
+<style>text{font-family:'DM Sans',sans-serif;fill:#1a1a18;font-size:11px}</style>
+<text x="330" y="20" text-anchor="middle" font-size="13" font-weight="600" fill="#2563eb">Sequential Tone Ranging — Ambiguity Resolution</text>
+<!-- Ground station -->
+<rect x="30" y="50" width="20" height="220" rx="4" fill="#2563eb"/><text x="40" y="285" text-anchor="middle" font-size="10" fill="#2563eb" font-weight="500">G/S</text>
+<!-- A priori range uncertainty -->
+<rect x="80" y="40" width="520" height="24" rx="6" fill="#dbeafe" stroke="#93c5fd"/><text x="340" y="56" text-anchor="middle" font-size="10" fill="#1d4ed8">A priori range uncertainty</text>
+<!-- Tone 1: highest frequency, smallest λ -->
+<text x="75" y="95" text-anchor="end" font-size="10" font-weight="500">f₁ (high)</text>
+<text x="75" y="107" text-anchor="end" font-size="9" fill="#5a5a55">λ small</text>
+<g><rect x="80" y="85" width="30" height="16" rx="3" fill="#dc2626" opacity="0.3" stroke="#dc2626"/><rect x="110" y="85" width="30" height="16" rx="3" fill="#dc2626" opacity="0.3" stroke="#dc2626"/><rect x="140" y="85" width="30" height="16" rx="3" fill="#dc2626" opacity="0.3" stroke="#dc2626"/><rect x="170" y="85" width="30" height="16" rx="3" fill="#dc2626" opacity="0.3" stroke="#dc2626"/><rect x="200" y="85" width="30" height="16" rx="3" fill="#dc2626" opacity="0.3" stroke="#dc2626"/><rect x="230" y="85" width="30" height="16" rx="3" fill="#dc2626" opacity="0.3" stroke="#dc2626"/><rect x="260" y="85" width="30" height="16" rx="3" fill="#dc2626" opacity="0.3" stroke="#dc2626"/><rect x="290" y="85" width="30" height="16" rx="3" fill="#dc2626" opacity="0.3" stroke="#dc2626"/><rect x="320" y="85" width="30" height="16" rx="3" fill="#dc2626" opacity="0.3" stroke="#dc2626"/><rect x="350" y="85" width="30" height="16" rx="3" fill="#dc2626" opacity="0.9" stroke="#dc2626"/><rect x="380" y="85" width="30" height="16" rx="3" fill="#dc2626" opacity="0.3" stroke="#dc2626"/><rect x="410" y="85" width="30" height="16" rx="3" fill="#dc2626" opacity="0.3" stroke="#dc2626"/><rect x="440" y="85" width="30" height="16" rx="3" fill="#dc2626" opacity="0.3" stroke="#dc2626"/><rect x="470" y="85" width="30" height="16" rx="3" fill="#dc2626" opacity="0.3" stroke="#dc2626"/><rect x="500" y="85" width="30" height="16" rx="3" fill="#dc2626" opacity="0.3" stroke="#dc2626"/><rect x="530" y="85" width="30" height="16" rx="3" fill="#dc2626" opacity="0.3" stroke="#dc2626"/><rect x="560" y="85" width="30" height="16" rx="3" fill="#dc2626" opacity="0.3" stroke="#dc2626"/></g>
+<text x="610" y="96" font-size="9" fill="#dc2626">Many candidates</text>
+<!-- Tone 2: medium frequency -->
+<text x="75" y="145" text-anchor="end" font-size="10" font-weight="500">f₂ (med)</text>
+<text x="75" y="157" text-anchor="end" font-size="9" fill="#5a5a55">λ = 2λ₁</text>
+<g><rect x="80" y="135" width="60" height="16" rx="3" fill="#f59e0b" opacity="0.3" stroke="#f59e0b"/><rect x="140" y="135" width="60" height="16" rx="3" fill="#f59e0b" opacity="0.3" stroke="#f59e0b"/><rect x="200" y="135" width="60" height="16" rx="3" fill="#f59e0b" opacity="0.3" stroke="#f59e0b"/><rect x="260" y="135" width="60" height="16" rx="3" fill="#f59e0b" opacity="0.3" stroke="#f59e0b"/><rect x="320" y="135" width="60" height="16" rx="3" fill="#f59e0b" opacity="0.9" stroke="#f59e0b"/><rect x="380" y="135" width="60" height="16" rx="3" fill="#f59e0b" opacity="0.3" stroke="#f59e0b"/><rect x="440" y="135" width="60" height="16" rx="3" fill="#f59e0b" opacity="0.3" stroke="#f59e0b"/><rect x="500" y="135" width="60" height="16" rx="3" fill="#f59e0b" opacity="0.3" stroke="#f59e0b"/><rect x="560" y="135" width="30" height="16" rx="3" fill="#f59e0b" opacity="0.3" stroke="#f59e0b"/></g>
+<text x="610" y="146" font-size="9" fill="#b45309">Fewer candidates</text>
+<!-- Tone 3: low frequency -->
+<text x="75" y="195" text-anchor="end" font-size="10" font-weight="500">f₃ (low)</text>
+<text x="75" y="207" text-anchor="end" font-size="9" fill="#5a5a55">λ = 4λ₁</text>
+<g><rect x="80" y="185" width="120" height="16" rx="3" fill="#0f766e" opacity="0.3" stroke="#0f766e"/><rect x="200" y="185" width="120" height="16" rx="3" fill="#0f766e" opacity="0.3" stroke="#0f766e"/><rect x="320" y="185" width="120" height="16" rx="3" fill="#0f766e" opacity="0.9" stroke="#0f766e"/><rect x="440" y="185" width="120" height="16" rx="3" fill="#0f766e" opacity="0.3" stroke="#0f766e"/><rect x="560" y="185" width="30" height="16" rx="3" fill="#0f766e" opacity="0.3" stroke="#0f766e"/></g>
+<text x="610" y="196" font-size="9" fill="#0f766e">Resolved!</text>
+<!-- True position marker -->
+<line x1="365" y1="75" x2="365" y2="215" stroke="#dc2626" stroke-width="2" stroke-dasharray="4,3"/>
+<text x="365" y="230" text-anchor="middle" font-size="10" fill="#dc2626" font-weight="600">True S/C range</text>
+<!-- Arrow showing resolution -->
+<text x="340" y="260" text-anchor="middle" font-size="10" fill="#1a1a18">Highest freq → accuracy. Lowest freq → ambiguity resolution.</text>
+</svg>`,
+graphs:`<div class="graph-desc"><h4>Range Accuracy vs Tone Frequency</h4><p>X-axis: Tone frequency ft [Hz] (log). Y-axis: Range accuracy σR [m] (log). The accuracy improves as 1/ft — doubling the frequency halves the error. At ft = 1 MHz: σR ≈ 1 m (typical). At ft = 24 MHz (BepiColombo PN clock): σR ≈ 2–3 cm. State-of-the-art pseudo-noise codes use effective clock rates of ~24 Mcps, achieving cm-level accuracy.</p></div>
+<div class="graph-desc"><h4>Ranging Modulation Spectrum (Slide 102)</h4><p>Frequency axis showing: central carrier at fc (residual power J₀²·Ptot), two sidebands at fc±fRNG (ranging power J₁²·Ptot each). The modulation index mRNG determines the power split: larger mRNG → more power in sidebands → better ranging SNR, but less residual carrier → harder to track the carrier. Typical mRNG ≈ 0.5–1.0 rad balances both needs.</p></div>`,
+traps:[{n:1,t:"Ranging gives ABSOLUTE distance; Doppler gives CHANGE in distance. They are complementary. Don't confuse their roles."},{n:2,t:"The range is ambiguous by integer wavelengths of the modulation tone. Higher frequency → better accuracy BUT shorter unambiguous range. This is why sequential tones (high to low) are needed."},{n:3,t:"Doppler rate aiding: during long integrations, the spacecraft moves thousands of km. The ground station compensates by advancing the stored tone phase using the measured range rate. Without this, the cross-correlation would smear out and the range measurement would be useless."},{n:4,t:"The modulation index mRNG splits power between carrier and ranging: J₀²(m) for carrier tracking + 2J₁²(m) for ranging. If m is too large, the carrier vanishes and the PLL loses lock. If m is too small, ranging is noisy."}],
+drill:[{q:"What is the unambiguous range of a 1 MHz ranging tone?",a:"λ = c/f = 3×10⁸/10⁶ = 300 m. The unambiguous range is λ/2 = 150 m (one-way). Beyond 150 m, the phase wraps around and the measurement is ambiguous by N × 300 m."},{q:"How is the ambiguity resolved in a sequential tone ranging system?",a:"Start with the highest-frequency tone (best accuracy, smallest unambiguous range). Then use progressively lower-frequency tones, each with double the wavelength. Each lower tone resolves the ambiguity of the previous one because its unambiguous range covers multiple cycles of the higher tone. The lowest frequency must have an unambiguous range larger than the a priori range uncertainty."},{q:"What does the Bessel function J₁(mRNG) represent in ranging?",a:"J₁(mRNG) determines the amplitude of the ranging sidebands. The power in each sideband is Ptot × J₁²(mRNG). For small modulation index: J₁(m) ≈ m/2, so sideband power ≈ Ptot × m²/4. The residual carrier power is Ptot × J₀²(m). The total power is conserved: J₀² + 2J₁² + ... ≈ 1."}]},
+
+{id:"ddor",title:"18. ΔDOR Angular Measurements",slides:"125–128",icon:"📐",
+overview:`Delta-Differential One-Way Ranging (ΔDOR) is the third observable in deep space navigation, complementing Doppler (range rate) and ranging (absolute distance) with ANGULAR position.
+
+Principle:
+1. Record the spacecraft signal simultaneously at two ground antennas separated by baseline B
+2. Cross-correlate the signals to measure the differential time delay τ between the two stations
+3. The delay is related to the spacecraft angle θ: τ = (B/c)·sin(θ)
+
+"Delta" refers to calibration: the same measurement is performed on a nearby quasar (angular separation < 5°). Differencing the S/C and quasar measurements cancels:
+  • Station clock offsets
+  • Instrumental group delay errors  
+  • Most media effects (troposphere, ionosphere)
+
+Angular accuracy:
+  δθ = (c/(B·cos(θ))) × δτ
+  Longer baseline → better accuracy
+  Better delay precision δτ → better accuracy
+
+The spacecraft transmits widely separated DOR tones around the carrier. Wider bandwidth → better delay precision (errors ∝ 1/bandwidth).
+
+Typical accuracy: ~1 nrad (about 150 m at Mars distance).
+
+Missions using ΔDOR: Mars Odyssey, MER, Mars Express, Deep Impact, all modern planetary missions.`,
+equations:`Delay-angle relation:
+  τ = (B/c)·sin(θ)
+  sin(θ) = τc/B
+
+Angular accuracy:
+  δθ = (∂θ/∂τ)·δτ = (c/(B·cos(θ)))·δτ
+
+Partial derivative:
+  ∂θ/∂τ = c/(B·cos(θ))
+
+Number of antennas for unambiguous measurement:
+  2 antennas → 1 baseline → 1 angular component
+  For full 2D angular position: need ≥ 2 baselines
+  (or use Earth rotation to change baseline orientation)
+
+DOR tone spacing:
+  Wider = better delay precision
+  δτ ∝ 1/bandwidth
+
+Typical values:
+  Baseline B ≈ 8000–10000 km (intercontinental)
+  δτ ≈ 0.1 ns → δθ ≈ 1–3 nrad
+  At Mars (1.5 AU): 1 nrad ≈ 225 m`,
+derivation:`Why quasar calibration is essential:
+
+Step 1: Raw DOR measurement gives τ_SC — the differential delay of the spacecraft signal.
+This includes:
+  τ_SC = τ_geometric + τ_clock + τ_instrument + τ_media + noise
+
+Step 2: Measure quasar in nearby direction:
+  τ_QSR = τ_geometric_QSR + τ_clock + τ_instrument + τ_media_QSR + noise
+
+Step 3: The "Delta":
+  Δτ = τ_SC − τ_QSR = (τ_geo_SC − τ_geo_QSR) + Δτ_media + noise
+
+The clock and instrumental terms CANCEL exactly (same equipment, close in time).
+Media terms nearly cancel if S/C-quasar separation < 5° (similar lines of sight).
+
+Step 4: Since the quasar position is known with extreme precision:
+  τ_geo_QSR = (B/c)·sin(θ_QSR)  ← known
+
+Step 5: Therefore:
+  τ_geo_SC = Δτ + τ_geo_QSR
+  → θ_SC = arcsin(c·τ_geo_SC / B)
+
+The angular error δθ = (c/(B·cos(θ)))·δτ shows:
+  • Longer baselines B → smaller δθ (more sensitive)
+  • Better delay precision δτ → smaller δθ
+  • The 1/cos(θ) factor means accuracy degrades at the horizon`,
+matlab:`<span class="cmt">% === ΔDOR Angular Measurement Simulation ===</span>
+
+c = <span class="num">3e8</span>;
+
+<span class="cmt">% Baseline: Goldstone to Canberra</span>
+B = <span class="num">10500e3</span>;  <span class="cmt">% ~10500 km [m]</span>
+
+<span class="cmt">% Spacecraft angle (from baseline perpendicular)</span>
+theta_true = <span class="num">35</span> * <span class="kw">pi</span>/<span class="num">180</span>;  <span class="cmt">% 35 degrees [rad]</span>
+
+<span class="cmt">% True differential delay</span>
+tau_true = B/<span class="kw">c</span> * <span class="fn">sin</span>(theta_true);
+<span class="fn">fprintf</span>(<span class="str">'True delay: %.6f µs\\n'</span>, tau_true*<span class="num">1e6</span>);
+
+<span class="cmt">% Delay measurement precision</span>
+delta_tau = <span class="num">0.1e-9</span>;  <span class="cmt">% 0.1 ns precision</span>
+
+<span class="cmt">% Angular accuracy</span>
+delta_theta = c / (B * <span class="fn">cos</span>(theta_true)) * delta_tau;
+<span class="fn">fprintf</span>(<span class="str">'Angular accuracy: %.2f nrad\\n'</span>, delta_theta*<span class="num">1e9</span>);
+
+<span class="cmt">% Position accuracy at different distances</span>
+distances_AU = [<span class="num">0.5</span>, <span class="num">1</span>, <span class="num">1.5</span>, <span class="num">5.2</span>, <span class="num">9.5</span>];  <span class="cmt">% Venus to Saturn</span>
+AU = <span class="num">1.496e11</span>;
+<span class="fn">fprintf</span>(<span class="str">'\\nPosition accuracy at δθ = %.1f nrad:\\n'</span>, delta_theta*<span class="num">1e9</span>);
+<span class="kw">for</span> d = distances_AU
+    pos_err = delta_theta * d * AU;
+    <span class="fn">fprintf</span>(<span class="str">'  %.1f AU: %.0f m\\n'</span>, d, pos_err);
+<span class="kw">end</span>`,
+diagrams:`<svg viewBox="0 0 660 280" xmlns="http://www.w3.org/2000/svg" class="diagram-svg">
+<defs><marker id="ah3" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#2563eb"/></marker></defs>
+<style>text{font-family:'DM Sans',sans-serif;fill:#1a1a18;font-size:11px}</style>
+<text x="330" y="20" text-anchor="middle" font-size="13" font-weight="600" fill="#2563eb">ΔDOR Measurement Principle</text>
+<!-- Ground -->
+<rect x="50" y="230" width="560" height="30" rx="6" fill="#dcfce7" stroke="#86efac"/><text x="330" y="250" text-anchor="middle" font-size="10" fill="#0f766e">Earth Surface</text>
+<!-- Antenna 1 -->
+<rect x="100" y="200" width="50" height="30" rx="6" fill="#2563eb"/><text x="125" y="218" text-anchor="middle" font-size="9" fill="#fff" font-weight="500">ANT 1</text>
+<!-- Antenna 2 -->
+<rect x="450" y="200" width="50" height="30" rx="6" fill="#2563eb"/><text x="475" y="218" text-anchor="middle" font-size="9" fill="#fff" font-weight="500">ANT 2</text>
+<!-- Baseline -->
+<line x1="150" y1="245" x2="450" y2="245" stroke="#1a1a18" stroke-width="1.5"/><text x="300" y="260" text-anchor="middle" font-weight="600" font-size="10">Baseline B ≈ 10000 km</text>
+<!-- Spacecraft signal -->
+<circle cx="380" cy="50" r="8" fill="#dc2626"/><text x="395" y="50" font-size="10" fill="#dc2626" font-weight="500">S/C</text>
+<line x1="125" y1="200" x2="375" y2="55" stroke="#f59e0b" stroke-dasharray="5,3"/>
+<line x1="475" y1="200" x2="385" y2="55" stroke="#f59e0b" stroke-dasharray="5,3"/>
+<!-- Quasar -->
+<text x="200" y="48" font-size="12" fill="#6d28d9">★</text><text x="210" y="48" font-size="10" fill="#6d28d9">Quasar (< 5° away)</text>
+<line x1="125" y1="200" x2="200" y2="50" stroke="#6d28d9" stroke-dasharray="3,3" opacity="0.4"/>
+<line x1="475" y1="200" x2="208" y2="50" stroke="#6d28d9" stroke-dasharray="3,3" opacity="0.4"/>
+<!-- Angle and delay -->
+<text x="520" y="130" font-size="10" fill="#1a1a18">θ = angle to S/C</text>
+<text x="520" y="145" font-size="10" fill="#1a1a18">τ = (B/c)·sin(θ)</text>
+<text x="520" y="165" font-size="10" font-weight="500" fill="#dc2626">Δρ = c·τ = B·sin(θ)</text>
+<!-- Path difference -->
+<line x1="125" y1="195" x2="125" y2="180" stroke="#dc2626" stroke-width="2"/><line x1="475" y1="195" x2="475" y2="180" stroke="#dc2626" stroke-width="2"/>
+<text x="300" y="186" text-anchor="middle" font-size="10" fill="#dc2626">Path difference Δρ → measures θ</text>
+</svg>
+<div class="img-frame"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Deep_Space_Network_Complexes.png/800px-Deep_Space_Network_Complexes.png" alt="DSN Network map" loading="lazy"><div class="img-cap">NASA DSN three-complex global network. The intercontinental baselines (8000–10500 km) provide the angular resolution needed for ΔDOR measurements. Three complexes at ~120° separation ensure near-continuous coverage.</div></div>`,
+graphs:`<div class="graph-desc"><h4>ΔDOR Position Accuracy vs Distance</h4><p>X-axis: Distance from Earth [AU]. Y-axis: Position accuracy [m]. For δθ = 1 nrad: at Mars (1.5 AU) ≈ 225 m, at Jupiter (5.2 AU) ≈ 780 m, at Saturn (9.5 AU) ≈ 1425 m. Position error grows linearly with distance (unlike ranging which has constant accuracy). This makes ΔDOR most valuable for nearby targets. For Mars approach navigation, ΔDOR is essential — it provides the cross-track position that Doppler cannot measure well.</p></div>
+<div class="graph-desc"><h4>ΔDOR Error vs Baseline Length</h4><p>δθ = c·δτ/(B·cos θ). Longer baselines give proportionally better angular accuracy. The longest DSN baselines (~10500 km, Goldstone-Canberra) give the best ΔDOR. ESA uses New Norcia-Cebreros (~12000 km) for even better resolution. For comparison, a single-station angular measurement using conical scanning has accuracy of ~10 µrad — about 10000× worse than ΔDOR.</p></div>`,
+traps:[{n:1,t:"ΔDOR needs TWO stations recording simultaneously — not just one. A single antenna can only measure Doppler and range, not angle."},{n:2,t:"The 'Delta' means quasar calibration. Without it, clock and instrumental errors dominate. The quasar must be < 5° from the spacecraft for media cancellation to work."},{n:3,t:"ΔDOR measures ONE angular component (perpendicular to the baseline). For full 2D angular position, you need either 2 different baselines or rely on Earth rotation changing the baseline orientation over time."},{n:4,t:"Exam question from notes: 'How many antennas for unambiguous ΔDOR? How is synchronisation done? What determines the error?' You must know all three."}],
+drill:[{q:"Why are quasars used for ΔDOR calibration and not stars?",a:"Quasars are compact, extragalactic radio sources with extremely well-known positions (defined in the ICRF to sub-nrad accuracy). Stars are too close (parallax), too extended, and emit primarily in optical/IR, not radio. Quasars provide point-like radio references at effectively infinite distance, perfect for calibrating the baseline geometry and instrumental delays."},{q:"If the baseline is 10000 km and the delay precision is 0.1 ns, what angular accuracy do you get?",a:"δθ = c·δτ/(B·cos θ) = 3×10⁸ × 10⁻¹⁰ / (10⁷ × cos θ) = 3×10⁻⁹/cos θ rad ≈ 3 nrad (for θ ≈ 0). At Mars distance (1.5 AU): position error = 3×10⁻⁹ × 1.5 × 1.496×10¹¹ ≈ 670 m."},{q:"What are the three radiometric observables for deep space navigation and what does each measure?",a:"1) Doppler: measures range RATE (dρ/dt) from carrier frequency shift. Accuracy: ~µm/s. 2) Range: measures absolute DISTANCE via round-trip light time of modulated tones. Accuracy: ~m to cm. 3) ΔDOR: measures ANGULAR position via differential delay at two stations. Accuracy: ~1 nrad. Together they provide full 3D position and velocity determination."}]},
+
+{id:"media",title:"19. Propagation Media Errors: Plasma & Troposphere",slides:"120–124",icon:"🌊",
+overview:`Propagation media introduce delays and frequency shifts in both range and Doppler measurements. Two main contributors:
+
+PLASMA (ionosphere + interplanetary + solar corona):
+• Dispersive: refractive index depends on frequency
+  nᵣ = √(1 − ωₚ²/ω²) ≈ 1 − ωₚ²/(2ω²)
+  where ωₚ = √(4πnₑe²/mₑ) is the plasma frequency
+• Phase velocity Vφ = c/nᵣ > c (superluminal!)
+• Group velocity Vg = c·nᵣ < c  
+• Vφ·Vg = c²
+• Range delay: ΔτPlasma = ∫(1/Vg − 1/c)dr = A·I/f² where I = ∫nₑdr (TEC)
+• CALIBRATED by multi-frequency links (X + Ka): plasma delay ∝ 1/f²
+
+TROPOSPHERE:
+• Non-dispersive at radio frequencies — same delay at all frequencies
+• Dry component: nᵣ = 1 + M·P/T (P = pressure, T = temperature)
+  → predictable from surface meteo data
+• Wet component: humidity-dependent, nᵣ = 1 + M·P/T + N·PW/T²
+  → UNPREDICTABLE — needs Water Vapor Radiometer (WVR) at ground station
+• The wet component is smaller but much harder to estimate
+• Dominant error source in Doppler (~10⁻¹⁴ Allan deviation)
+
+Total propagation delay:
+  Δtotal = RU/c + RD/c + (IU/fU² + ID/fD²)·A + Δtrop`,
+equations:`Plasma refractive index:
+  nᵣ ≈ 1 − ωₚ²/(2ω²)
+  ωₚ² = 4πnₑe²/mₑ  (plasma frequency)
+
+Phase velocity: Vφ = c/nᵣ > c
+Group velocity: Vg = c·nᵣ < c
+Relation: Vφ × Vg = c²
+
+Plasma range delay:
+  Δτ_plasma = A × I / f²
+  I = ∫nₑ dr  (Total Electron Content along path)
+
+Total propagation delay:
+  Δtotal = (RU+RD)/c + A(IU/fU² + ID/fD²) + Δtrop
+
+Troposphere delay:
+  Δτ_trop = (1/c)∫(nᵣ − 1)dr
+  nᵣ = 1 + M·P/T + N·PW/T²
+  M = 77×10⁻⁶ [K/mbar]
+  N = 4810 [K]
+  PW = water vapor pressure [mbar]`,
+derivation:`Deriving plasma group velocity:
+
+Step 1: Dispersion relation for EM waves in plasma:
+  k² = (ω² − ωₚ²)/c²  →  ω² = k²c² + ωₚ²
+
+Step 2: Phase velocity:
+  Vφ = ω/k = c/√(1 − ωₚ²/ω²) = c/nᵣ > c
+
+Step 3: Group velocity:
+  Vg = dω/dk
+  From ω² = k²c² + ωₚ²:
+  2ω·dω = 2kc²·dk
+  Vg = dω/dk = kc²/ω = c²/Vφ = c·nᵣ
+
+Step 4: Key relations:
+  Vφ > c (superluminal — but no information travels faster than c)
+  Vg < c (the signal envelope, carrying information, travels at Vg)
+  Vφ × Vg = c²
+
+Step 5: Range delay:
+  Signal travels at Vg: dt = dr/(c·nᵣ) = (1/c)(1 + ωₚ²/(2ω²))dr
+  Delay relative to vacuum: Δτ = (1/c)∫(ωₚ²/(2ω²))dr ∝ 1/f²
+
+This 1/f² dependence is why multi-frequency links work:
+  At X-band (8.4 GHz) and Ka-band (32 GHz), the ratio of delays is (32/8.4)² ≈ 14.5
+  The difference measurement isolates the plasma contribution.`,
+matlab:`<span class="cmt">% === Plasma Range Delay Calculator ===</span>
+
+c = <span class="num">3e8</span>; e = <span class="num">1.602e-19</span>; me = <span class="num">9.109e-31</span>; eps0 = <span class="num">8.854e-12</span>;
+
+<span class="cmt">% Total Electron Content (TEC) along line of sight</span>
+<span class="cmt">% Typical: 10^16 to 10^18 el/m² (depends on Sun angle)</span>
+TEC = <span class="num">1e17</span>;  <span class="cmt">% electrons/m² (moderate solar activity)</span>
+
+<span class="cmt">% Plasma delay constant</span>
+A = e^<span class="num">2</span> / (<span class="num">8</span>*<span class="kw">pi</span>^<span class="num">2</span>*eps0*me*c);
+
+<span class="cmt">% Range delay at different frequencies</span>
+freqs = [<span class="num">2.3e9</span>, <span class="num">8.4e9</span>, <span class="num">32e9</span>];  <span class="cmt">% S, X, Ka [Hz]</span>
+bands = {<span class="str">'S-band'</span>, <span class="str">'X-band'</span>, <span class="str">'Ka-band'</span>};
+
+<span class="fn">fprintf</span>(<span class="str">'Plasma Range Delay (TEC = %.0e el/m²):\\n'</span>, TEC);
+<span class="kw">for</span> i = <span class="num">1</span>:<span class="fn">length</span>(freqs)
+    delay_m = A * TEC / freqs(i)^<span class="num">2</span> * c;
+    <span class="fn">fprintf</span>(<span class="str">'  %s: %.2f m one-way\\n'</span>, bands{i}, delay_m);
+<span class="kw">end</span>
+
+<span class="cmt">% Multi-frequency calibration: X + Ka</span>
+delay_X = A * TEC / freqs(<span class="num">2</span>)^<span class="num">2</span> * c;
+delay_Ka = A * TEC / freqs(<span class="num">3</span>)^<span class="num">2</span> * c;
+ratio = delay_X / delay_Ka;
+<span class="fn">fprintf</span>(<span class="str">'\\nX/Ka delay ratio: %.1f\\n'</span>, ratio);
+<span class="fn">fprintf</span>(<span class="str">'Expected ratio (f_Ka/f_X)²: %.1f\\n'</span>, (<span class="num">32</span>/<span class="num">8.4</span>)^<span class="num">2</span>);
+
+<span class="cmt">% Calibrated plasma delay: subtract scaled Ka from X</span>
+cal_delay = delay_X - ratio * delay_Ka;
+<span class="fn">fprintf</span>(<span class="str">'Calibrated residual: %.4f m (should be ~0)\\n'</span>, cal_delay);`,
+diagrams:`<svg viewBox="0 0 660 200" xmlns="http://www.w3.org/2000/svg" class="diagram-svg">
+<style>text{font-family:'DM Sans',sans-serif;fill:#1a1a18;font-size:11px}</style>
+<text x="330" y="20" text-anchor="middle" font-size="13" font-weight="600" fill="#2563eb">Radio Signal Propagation — Media Contributions</text>
+<rect x="40" y="40" width="80" height="140" rx="8" fill="#2563eb"/><text x="80" y="115" text-anchor="middle" fill="#fff" font-weight="500" font-size="10">Ground</text><text x="80" y="128" text-anchor="middle" fill="rgba(255,255,255,.7)" font-size="9">Station</text>
+<rect x="140" y="40" width="60" height="50" rx="6" fill="#0f766e" opacity="0.3" stroke="#0f766e"/><text x="170" y="62" text-anchor="middle" font-size="9" fill="#0f766e" font-weight="500">Tropo</text><text x="170" y="78" text-anchor="middle" font-size="8" fill="#0f766e">0–12 km</text>
+<rect x="140" y="95" width="60" height="40" rx="6" fill="#6d28d9" opacity="0.2" stroke="#6d28d9"/><text x="170" y="112" text-anchor="middle" font-size="9" fill="#6d28d9" font-weight="500">Iono</text><text x="170" y="126" text-anchor="middle" font-size="8" fill="#6d28d9">100-1000km</text>
+<rect x="220" y="40" width="280" height="140" rx="8" fill="#f59e0b" opacity="0.1" stroke="#f59e0b"/><text x="360" y="115" text-anchor="middle" font-size="10" fill="#b45309" font-weight="500">Interplanetary Plasma</text><text x="360" y="128" text-anchor="middle" font-size="9" fill="#b45309">(solar wind, solar corona)</text>
+<rect x="520" y="80" width="80" height="60" rx="8" fill="#dc2626"/><text x="560" y="108" text-anchor="middle" fill="#fff" font-weight="500" font-size="10">S/C</text>
+<line x1="120" y1="110" x2="518" y2="110" stroke="#1a1a18" stroke-width="1" stroke-dasharray="6,3"/>
+<text x="330" y="178" text-anchor="middle" font-size="10" fill="#1a1a18">Plasma: dispersive (∝ 1/f²) → calibrated by multi-freq</text>
+<text x="330" y="194" text-anchor="middle" font-size="10" fill="#1a1a18">Troposphere: non-dispersive → needs WVR calibration</text>
+</svg>`,
+graphs:`<div class="graph-desc"><h4>Plasma Range Delay vs Frequency</h4><p>X-axis: Frequency [GHz] (1 to 40). Y-axis: One-way range delay [m]. Curve: Δρ ∝ 1/f². At S-band (2.3 GHz): ~10 m. At X-band (8.4 GHz): ~0.7 m. At Ka-band (32 GHz): ~0.05 m. The steep 1/f² dependence is why higher frequencies suffer less from plasma. By measuring at X and Ka simultaneously, the plasma contribution can be isolated and removed to ~cm accuracy.</p></div>`,
+traps:[{n:1,t:"Phase velocity > c is NOT a violation of relativity. Information (the signal envelope) travels at the GROUP velocity Vg < c. The superluminal phase velocity is a mathematical consequence of the dispersion relation, not physical signal propagation."},{n:2,t:"Multi-frequency links cancel PLASMA (dispersive, ∝ 1/f²) but NOT troposphere (non-dispersive). The professor will test this distinction."},{n:3,t:"The wet troposphere component is SMALLER than the dry component but HARDER to predict. A WVR is needed for the wet part; surface pressure measurement suffices for the dry part."}],
+drill:[{q:"Why does the plasma phase velocity exceed the speed of light, and why is this not a problem?",a:"In a plasma, the refractive index nᵣ < 1, so Vφ = c/nᵣ > c. However, no information travels at Vφ. Information travels at the group velocity Vg = c·nᵣ < c. The product Vφ·Vg = c². This is analogous to the phase velocity of water waves — wave crests can travel faster than the group, but energy and information travel at the group velocity."},{q:"How do multi-frequency links calibrate plasma delays?",a:"The plasma delay is ∝ 1/f². By measuring the same signal path at two frequencies (e.g. X at 8.4 GHz and Ka at 32 GHz), the two delays have a known ratio of (32/8.4)² ≈ 14.5. The difference measurement isolates the plasma contribution, which can then be subtracted. The residual after calibration is ~cm level."},{q:"Why can't the troposphere delay be calibrated using multi-frequency measurements?",a:"Because the troposphere is non-dispersive at radio frequencies — the refractive index does not depend on frequency. The delay is the same at X-band and Ka-band. Therefore, differencing two frequencies gives zero troposphere information. Instead, the dry component is modelled from surface pressure, and the wet component requires a Water Vapor Radiometer (WVR) that measures the 22 GHz H₂O emission line."}]},
+
+{id:"exam",title:"📝 Exam Questions Bank",slides:"All",icon:"📝",
+overview:"EXAM_MODULE",equations:"",derivation:"",matlab:"",diagrams:"",graphs:"",traps:[],drill:[]}
+];
+
+const EXAM_QS = [
+{tag:"hot",q:"Draw and comment the ground station up/down conversion scheme. Role of mixer, LPF, BPF. Frequency standard. Receiver, modulator, exciter — what do they do? HPA typical power. LNA noise and cooling.",a:"Draw the full block diagram: H-maser → Exciter (carrier generation from f₀) → Modulator (adds ranging and TC) → Upconverter (×UP₁, UP₂) → HPA (klystron, 4–20 kW X-band, 500 kW S-band emergency on 70m) → Antenna. Receiving: Antenna → LNA (cryogenic ~15 K, ~30 dB gain) → Mixer 1 (×LO₁, product of signals → sum and difference) → BPF (selects difference frequency) → Mixer 2 (×LO₂) → LPF (removes residual high frequencies) → Digital Receiver (PLL lock, extracts Doppler, range, telemetry). The frequency standard (H-maser, σ_y ~10⁻¹⁵ at 1000 s) drives ALL LO frequencies → phase coherent chain. The mixer preserves phase: cos(f)·cos(f₀) = ½cos(f−f₀) + ½cos(f+f₀)."},
+{tag:"hot",q:"Link budget. Why do we use parabolic antennas? If I double receiver temperature, how must I change bit rate (at fixed BER)?",a:"Parabolic antennas: focus all incoming plane-wave power at a single point (the focus) with equal path lengths → constructive interference → maximum gain G = η(πD/λ)². Link budget: PRX = EIRP − LFS − LATM + GRX [dB]. C/N₀ = EIRP − LFS − LATM + G/T + 228.6. If Tsys doubles → C/N₀ drops by 3 dB. Since R = (C/N₀)/α, to maintain the same BER (same α = Eb/N₀), you must HALVE the bit rate."},
+{tag:"hot",q:"ΔDOR: how many antennas are needed for unambiguous measurement? How is synchronisation done? What determines the error?",a:"2 antennas for 1 angular component. For full 2D: need ≥2 baselines (or use Earth rotation). Synchronisation: both stations record simultaneously, using their own H-masers. Clock offsets cancel in the 'Delta' step (S/C − quasar differencing). Error: δθ = c·δτ/(B·cos θ). Determined by: (1) baseline length B (longer = better), (2) delay precision δτ (wider DOR tone bandwidth = better), (3) quasar-S/C angular separation (must be < 5° for media cancellation)."},
+{tag:"hot",q:"Doppler measurement. What clocks are used? What is the role of the frequency standard? Write the 2-way Doppler equation with turnaround ratio offset.",a:"The frequency standard (H-maser) generates the uplink carrier and all LO frequencies. For 2-way: fD_received = (M/N)·fU·(1−vr/c)². With turnaround ratio M/N (e.g. 880/749 for X-band): Δf = fD_received − (M/N)·fU ≈ −(M/N)·fU·(2vr/c). The clock stability directly limits Doppler accuracy: σ_y = 10⁻¹⁵ → σ_ρ̇ = 1.5 µm/s. In 1-way (non-coherent), accuracy is limited by the onboard oscillator — orders of magnitude worse."},
+{tag:"hot",q:"Ranging measurements. How to decrease ambiguity.",a:"Range measured by modulating carrier with tones and measuring RTLT. Ambiguity = range is known modulo the tone wavelength. To decrease ambiguity: use LOWER frequency tones (longer wavelength → larger unambiguous range). Sequential ranging: start with highest-frequency tone (best accuracy, most ambiguous) then step down through lower frequencies, each resolving the ambiguity of the previous. PRN codes resolve ambiguity using the code period instead of tone sequences. A 10 Hz tone: λ = 30000 km → unambiguous to ~15000 km."},
+{tag:"hot",q:"Importance of clock in ground station. Which clocks are used? For which measurement is the clock stability most important?",a:"H-maser (stability ~10⁻¹⁵ at 1000 s) is the reference for the entire ground station. It drives the uplink carrier generation AND provides LO frequencies for the receiving chain. Clock stability is MOST important for DOPPLER measurements: Δf/f = −vr/c, so fractional frequency noise σ_y directly maps to range-rate noise σ_ρ̇ = c·σ_y/2. For ranging, clock stability matters less (range is a time-of-flight measurement, less sensitive to frequency noise). For ΔDOR, clock errors cancel in the differencing."},
+{tag:"med",q:"Why is the antenna parabolic? What is the problem with prime focus? What about Cassegrain? What is the most important antenna parameter?",a:"Parabolic: all rays from plane wave reach focus with equal path length (φ = kx − ωt + φ₀ constant) → constructive interference → maximum signal. Prime focus problem: feed points at ground (warm ~300 K) → high Tant → poor G/T. Cassegrain: hyperboloidal subreflector redirects to secondary focus behind dish → feed points at cold sky (~3 K) → low Tant. Most important parameter: G/T (figure of merit) = GRX/Tsys. Higher G/T → better sensitivity to weak signals."},
+{tag:"med",q:"How is a range measurement done? What is ω₀? Demodulation of the signal. What are Ka and λ? Gain of an antenna: why it is important and what it is.",a:"Range: carrier phase-modulated by ranging tones → transmitted to S/C → coherently retransmitted → received and cross-correlated with stored replica → extract RTLT. ω₀ = carrier angular frequency (2πf₀). Ka = Ka-band (32 GHz, deep space), λ = wavelength = c/f. Gain G = ratio of radiated power in a direction to isotropic antenna power. G = η(πD/λ)². Important because it determines EIRP (TX side) and sensitivity (RX side via G/T)."},
+{tag:"med",q:"Difference between angular measurement with conical scanning and ΔDOR — with calculations.",a:"Conical scanning: single antenna, rotate beam slightly off-axis, detect amplitude variation → angle proportional to signal modulation. Accuracy: ~10 µrad (limited by antenna beamwidth). ΔDOR: two antennas, measure differential delay. Accuracy: δθ = c·δτ/(B·cos θ) ≈ 1 nrad. ΔDOR is ~10000× more accurate because the effective 'aperture' is the baseline B (~10000 km), not the antenna diameter (~35 m)."},
+{tag:"med",q:"How to build a TLC system — what parameters to look at and order of importance.",a:"Key parameters in order: 1) Mission data volume requirement → determines bit rate R. 2) BER requirement → sets Eb/N₀ = α. 3) Ground station selection → sets G/T. 4) Path loss (distance, frequency) → LFS. 5) Required EIRP = R·α + LFS + LATM − G/T − 228.6. 6) Size S/C radio: antenna D and TX power PT such that GT·PT = EIRP. The link designer iterates, trading off S/C mass/power against data rate."},
+{tag:"low",q:"Function of the transponder. For 2-way, write the equation when there is an offset.",a:"Transponder: receives uplink at fU, locks via PLL, coherently retransmits at fD = (M/N)·fU. With frequency offset Δω (onboard oscillator drift): fD = (M/N)·(fU + Δω/(2π)). For 2-way Doppler: fD_received = (M/N)·fU·(1 − vr/c)² + (M/N)·Δω contributions. In coherent mode, Δω = 0. In TWNC, Δω is the onboard oscillator deviation from the nominal fU."},
+{tag:"low",q:"Why can't angular measurement use only one antenna? Derive the error formula.",a:"One antenna can measure angle only via pointing (conical scanning): accuracy ~θ₃dB/SNR ≈ 10⁻⁵ rad. This is far too coarse for interplanetary navigation (need ~nrad). With two antennas (ΔDOR): δθ = c·δτ/(B·cos θ). The baseline B is ~10⁷ m vs antenna D ~35 m → improvement factor of ~3×10⁵. The two-station measurement converts a TIME precision (~0.1 ns) into an ANGULAR precision (~1 nrad)."}
+];
+
+let activeSection = MODULES[0].id;
+let activeTab = 0;
+
+function render(){
+ const sl=document.getElementById('sideList');
+ sl.innerHTML=MODULES.map(m=>`<button class="sitem ${activeSection===m.id?'active':''}" onclick="setSection('${m.id}')"><span class="sicon">${m.icon}</span><div class="stxt"><div class="st">${m.title}</div><div class="sp">Slides ${m.slides}</div></div></button>`).join('');
+ const mod=MODULES.find(m=>m.id===activeSection);
+ if(!mod)return;
+ const mh=document.getElementById('modHead');
+ mh.innerHTML=`<h2>${mod.icon} ${mod.title}</h2><div class="sub">Slides ${mod.slides}</div>`;
+ const tb=document.getElementById('tabBar');
+ if(mod.id==='exam'){
+  tb.innerHTML='';
+  renderExam();return;
+ }
+ tb.innerHTML=TABS.map((t,i)=>`<button class="tab-btn ${activeTab===i?'active':''}" onclick="setTab(${i})"><span>${TICONS[i]}</span>${t}</button>`).join('');
+ const ca=document.getElementById('contentArea');
+ if(activeTab===0)ca.innerHTML=`<div class="prose">${mod.overview}</div>`;
+ else if(activeTab===1)ca.innerHTML=`<div class="eqbox">${mod.equations}</div>`;
+ else if(activeTab===2)ca.innerHTML=`<div class="prose">${mod.derivation}</div>`;
+ else if(activeTab===3)ca.innerHTML=`<div class="matlab-box">${mod.matlab}</div>`;
+ else if(activeTab===4)ca.innerHTML=mod.diagrams;
+ else if(activeTab===5)ca.innerHTML=mod.graphs;
+ else if(activeTab===6)ca.innerHTML=mod.traps.map(t=>`<div class="trap-card"><div class="label">Trap #${t.n}</div><p>${t.t}</p></div>`).join('');
+ else if(activeTab===7)ca.innerHTML=mod.drill.map((d,i)=>`<div class="drill-card"><div class="q">Q${i+1}: ${d.q}</div><button class="drill-btn" onclick="toggleDrill(this)">Reveal answer</button><div class="drill-ans">${d.a}</div></div>`).join('');
+}
+function renderExam(){
+ const ca=document.getElementById('contentArea');
+ ca.innerHTML=`<div style="margin-bottom:16px"><h3 style="font-family:var(--serif);font-size:16px;margin-bottom:4px">Prof. Iess — Oral Exam Questions</h3><p style="font-size:12px;color:var(--t2)">From past students (sms_oral_questions.pdf). Click to reveal model answer. <span class="eq-tag hot">HOT</span> = asked very frequently.</p></div>`+EXAM_QS.map((e,i)=>`<div class="exam-q" onclick="this.classList.toggle('open')"><span class="eq-tag ${e.tag}">${e.tag.toUpperCase()}</span><span class="eq-text">${e.q}</span><div class="eq-answer">${e.a}</div></div>`).join('');
+}
+function setSection(id){activeSection=id;activeTab=0;render();}
+function setTab(i){activeTab=i;render();}
+function toggleDrill(btn){const ans=btn.nextElementSibling;ans.classList.toggle('show');btn.textContent=ans.classList.contains('show')?'Hide answer':'Reveal answer';}
+render();
+</script>
+</body>
+</html>
