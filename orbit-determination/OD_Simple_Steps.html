@@ -13,7 +13,6 @@
             --panel-alt: #f8fafc;
             --primary: #2563eb;
             --primary-hover: #1d4ed8;
-            --secondary: #0f766e;
             --warning: #b45309;
             --danger: #dc2626;
             --success: #16a34a;
@@ -22,16 +21,14 @@
             --border: #e5e7eb;
             --true-orbit: #3b82f6;
             --comp-orbit: #ef4444;
-            --cov-ellipse: rgba(34, 197, 94, 0.25);
             --shadow: 0 10px 25px -10px rgba(15, 23, 42, 0.2);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { width: 100%; overflow-x: hidden; }
         body {
             font-family: 'Segoe UI', system-ui, sans-serif;
-            background:
-                radial-gradient(circle at top, rgba(37, 99, 235, 0.10), transparent 30%),
-                linear-gradient(180deg, #f8fafc 0%, var(--bg-color) 100%);
+            background: radial-gradient(circle at top, rgba(37, 99, 235, 0.10), transparent 30%), linear-gradient(180deg, #f8fafc 0%, var(--bg-color) 100%);
             color: var(--text-main);
             line-height: 1.6;
             padding: 20px;
@@ -45,6 +42,7 @@
             gap: 20px;
         }
 
+        header, .panel, .visual-section { border: 1px solid rgba(229, 231, 235, 0.7); }
         header {
             display: flex;
             justify-content: space-between;
@@ -53,51 +51,26 @@
             padding: 18px 24px;
             border-radius: 16px;
             box-shadow: var(--shadow);
-            border: 1px solid rgba(229, 231, 235, 0.7);
             gap: 16px;
         }
         header h1 { font-size: 1.45rem; }
         header p { color: var(--text-muted); font-size: 0.92rem; margin-top: 2px; }
 
         .nav-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
-        .nav-btns button,
-        .action-btn,
-        .ghost-btn {
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: 700;
+        .nav-btns button, .action-btn, .ghost-btn {
+            border: none; border-radius: 10px; cursor: pointer; font-weight: 700;
             transition: transform 0.18s ease, background 0.2s ease, opacity 0.2s ease;
         }
-        .nav-btns button,
-        .action-btn {
-            background: var(--primary);
-            color: white;
-            padding: 10px 16px;
-        }
-        .ghost-btn {
-            background: #e2e8f0;
-            color: #0f172a;
-            padding: 10px 16px;
-        }
-        .nav-btns button:hover:not(:disabled),
-        .action-btn:hover:not(:disabled),
-        .ghost-btn:hover:not(:disabled) { transform: translateY(-1px); }
-        .nav-btns button:disabled,
-        .action-btn:disabled,
-        .ghost-btn:disabled { background: #9ca3af; cursor: not-allowed; opacity: 0.8; }
+        .nav-btns button, .action-btn { background: var(--primary); color: white; padding: 10px 16px; }
+        .ghost-btn { background: #e2e8f0; color: #0f172a; padding: 10px 16px; }
+        .nav-btns button:hover:not(:disabled), .action-btn:hover:not(:disabled), .ghost-btn:hover:not(:disabled) { transform: translateY(-1px); }
+        .nav-btns button:disabled, .action-btn:disabled, .ghost-btn:disabled { background: #9ca3af; cursor: not-allowed; opacity: 0.8; }
 
-        .grid-top {
-            display: grid;
-            grid-template-columns: 1.2fr 0.8fr;
-            gap: 20px;
-        }
-
-        .panel, .visual-section, .info-card {
+        .grid-top { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; align-items: start; }
+        .panel, .visual-section {
             background: var(--panel-bg);
             border-radius: 16px;
             box-shadow: var(--shadow);
-            border: 1px solid rgba(229, 231, 235, 0.7);
         }
         .panel { padding: 24px; }
         .panel-header { margin-bottom: 14px; }
@@ -106,7 +79,7 @@
 
         .story-path {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
+            grid-template-columns: repeat(5, minmax(0, 1fr));
             gap: 10px;
             margin: 16px 0 4px;
         }
@@ -119,16 +92,9 @@
             color: var(--text-muted);
             text-align: center;
             min-height: 58px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
         }
-        .story-step.active {
-            border-color: rgba(37, 99, 235, 0.35);
-            background: rgba(37, 99, 235, 0.08);
-            color: #1e40af;
-            font-weight: 700;
-        }
+        .story-step.active { border-color: rgba(37, 99, 235, 0.35); background: rgba(37, 99, 235, 0.08); color: #1e40af; font-weight: 700; }
 
         .formula-card {
             background: linear-gradient(180deg, #f8fafc, #ffffff);
@@ -146,15 +112,10 @@
             border-top: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            align-items: stretch;
             gap: 14px;
         }
 
-        .control-row {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 14px;
-        }
+        .control-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
         .control-group {
             background: var(--panel-alt);
             border: 1px solid var(--border);
@@ -163,23 +124,11 @@
         }
         .control-group h4 { margin-bottom: 10px; font-size: 0.95rem; }
         .control-group label { display: block; font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px; }
-        .control-group input[type="range"],
-        .control-group select { width: 100%; }
-        .control-group select,
-        .control-group input[type="number"] {
-            padding: 10px 12px;
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            background: white;
+        .control-group input[type="range"], .control-group select { width: 100%; }
+        .control-group select, .control-group input[type="number"] {
+            padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: white;
         }
-        .checkbox-label {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 700;
-            cursor: pointer;
-            user-select: none;
-        }
+        .checkbox-label { display: flex; align-items: center; gap: 10px; font-weight: 700; cursor: pointer; user-select: none; }
         .checkbox-label input { width: 18px; height: 18px; }
 
         .alert {
@@ -193,64 +142,62 @@
         .alert.danger { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
         .alert.success { background: #ecfdf5; border-color: #bbf7d0; color: #166534; }
 
-        .visual-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 20px;
-        }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .visual-section {
             padding: 18px;
             display: flex;
             flex-direction: column;
             gap: 12px;
+            overflow: hidden;
+            min-width: 0;
         }
 
-        .legend {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 16px;
-            font-size: 0.9rem;
-            font-weight: 700;
-            color: var(--text-muted);
-        }
+        .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.9rem; font-weight: 700; color: var(--text-muted); }
         .legend-item { display: flex; align-items: center; gap: 7px; }
         .dot { width: 12px; height: 12px; border-radius: 50%; }
 
-        canvas#orbitCanvas {
-            background: radial-gradient(circle at center, #334155 0%, #0f172a 70%);
-            border-radius: 12px;
+        .canvas-wrap {
+            position: relative;
             width: 100%;
-            max-width: 100%;
-            height: 420px;
-            border: 1px solid rgba(148, 163, 184, 0.25);
-        }
-        canvas#chartCanvas { width: 100%; height: 280px; }
-
-        .metrics {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 12px;
-        }
-        .metric {
-            background: var(--panel-alt);
-            border: 1px solid var(--border);
+            overflow: hidden;
             border-radius: 12px;
-            padding: 12px 14px;
+        }
+        canvas#orbitCanvas {
+            display: block;
+            width: 100%;
+            height: clamp(320px, 40vw, 420px);
+            background: radial-gradient(circle at center, #334155 0%, #0f172a 70%);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            border-radius: 12px;
+        }
+        .chart-box {
+            position: relative;
+            width: 100%;
+            height: 320px;
+            overflow: hidden;
+            border-radius: 12px;
+        }
+        canvas#chartCanvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+        .metric {
+            background: var(--panel-alt); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px;
         }
         .metric .label { font-size: 0.82rem; color: var(--text-muted); }
         .metric .value { font-size: 1.15rem; font-weight: 800; margin-top: 2px; }
 
-        .two-col {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
+        .two-col .visual-section:last-child { min-height: 0; }
 
         @media (max-width: 980px) {
             .grid-top, .two-col, .metrics, .control-row, .story-path { grid-template-columns: 1fr; }
             header { flex-direction: column; align-items: stretch; }
             .nav-btns { justify-content: stretch; }
             .nav-btns button { flex: 1; }
+            .chart-box { height: 260px; }
         }
     </style>
 </head>
@@ -273,13 +220,9 @@
                 <h2 id="phase-title">Phase 1: Initial Guess</h2>
                 <p id="phase-desc">Loading description...</p>
             </div>
-
             <div class="story-path" id="story-path"></div>
-
             <div class="formula-card" id="formula-container"></div>
-
             <div id="status-alert" class="alert info">Ready to begin the orbit-determination sequence.</div>
-
             <div class="interactive-zone" id="interaction-container"></div>
         </div>
 
@@ -289,14 +232,16 @@
                 <div class="legend-item"><div class="dot" style="background: var(--comp-orbit);"></div> Estimated / Computed</div>
                 <div class="legend-item"><div class="dot" style="background: #22c55e;"></div> 3σ Covariance</div>
             </div>
-            <canvas id="orbitCanvas" width="900" height="420"></canvas>
+            <div class="canvas-wrap">
+                <canvas id="orbitCanvas" width="900" height="420"></canvas>
+            </div>
         </div>
     </div>
 
     <div class="two-col">
         <div class="visual-section">
             <h3>Measurement Residuals</h3>
-            <canvas id="chartCanvas"></canvas>
+            <div class="chart-box"><canvas id="chartCanvas"></canvas></div>
         </div>
         <div class="visual-section">
             <h3>Estimation Diagnostics</h3>
@@ -316,6 +261,7 @@ let currentStep = 0;
 const TOLERANCE = 0.75;
 const MAX_ITER = 12;
 const dataPoints = 96;
+let chartResizeQueued = false;
 
 let simState = {
     guessGenerated: false,
@@ -341,7 +287,7 @@ const phases = [
         key: 'guess',
         title: 'Phase 1: Initial Guess',
         desc: 'You cannot see the truth directly, so the process begins with a physically plausible reference trajectory X* built from preliminary orbit knowledge or Lambert-type initialization.',
-        formula: '$$ X_0^{(0)} = X^* \qquad \text{and} \qquad \text{the estimate starts only after a reference exists} $$',
+        formula: '$$ X_0^{(0)} = X^* \\qquad \\text{and} \\qquad \\text{the estimate starts only after a reference exists} $$',
         renderHTML: `
             <div class="control-row">
                 <div class="control-group">
@@ -382,7 +328,7 @@ const phases = [
         key: 'stm',
         title: 'Phase 2: State Transition Matrix',
         desc: 'STM is computed early because it propagates both the state and the partial derivatives to every observation epoch. That means the sensitivity model exists before the estimator is solved.',
-        formula: '$$ \delta x(t) = \Phi(t,t_0)\,\delta x(t_0), \qquad P(t)=\Phi(t,t_0)\,P_0\,\Phi^T(t,t_0) $$',
+        formula: '$$ \\delta x(t) = \\Phi(t,t_0)\\,\\delta x(t_0), \\qquad P(t)=\\Phi(t,t_0)\\,P_0\\,\\Phi^T(t,t_0) $$',
         renderHTML: `
             <div class="control-row">
                 <div class="control-group">
@@ -417,7 +363,7 @@ const phases = [
         key: 'residuals',
         title: 'Phase 3: Residual Formation and Whitening',
         desc: 'The measured-minus-computed gap is the residual y. In colored-noise cases, prewhitening stabilizes the weighting by removing memory and bias from the observation error model.',
-        formula: '$$ y = z_{obs} - z_{comp}, \qquad \epsilon' = V_\epsilon^{-1}\epsilon, \qquad E[\epsilon'\epsilon'^T]=I $$',
+        formula: '$$ y = z_{obs} - z_{comp}, \\qquad \\epsilon\' = V_\\epsilon^{-1}\\epsilon, \\qquad E[\\epsilon\'\\epsilon\'^T]=I $$',
         renderHTML: `
             <div class="control-row">
                 <div class="control-group">
@@ -454,7 +400,7 @@ const phases = [
         key: 'estimate',
         title: 'Phase 4: Estimation, Covariance, and Update',
         desc: 'LSE / WLS / MVE / Kalman uses the residual and the STM to solve for the deviation x̂. The inverse normal or information matrix gives the covariance P, which measures uncertainty.',
-        formula: '$$ \hat{x} = (H^T W H)^{-1}H^T W y, \qquad P=(H^TWH)^{-1} $$',
+        formula: '$$ \\hat{x} = (H^T W H)^{-1}H^T W y, \\qquad P=(H^TWH)^{-1} $$',
         renderHTML: `
             <div class="control-row">
                 <div class="control-group">
@@ -499,7 +445,7 @@ const phases = [
         key: 'convergence',
         title: 'Phase 5: Convergence and Validation',
         desc: 'The loop stops when the correction norm falls below tolerance. If any prerequisite was violated, the tool issues a scientific warning so the user knows the estimate may be formally invalid.',
-        formula: '$$ \lVert \hat{x} \rVert < \tau \quad \Rightarrow \quad X^{\hat{}} \text{ is accepted and can be propagated with } \Phi \text{ and } P $$',
+        formula: '$$ \\lVert \\hat{x} \\rVert < \\tau \\quad \\Rightarrow \\quad X^{\\hat{}} \\text{ is accepted and can be propagated with } \\Phi \\text{ and } P $$',
         renderHTML: `
             <div class="control-group">
                 <label class="checkbox-label"><input type="checkbox" id="confirm-btn-toggle" ${simState.confirmed ? 'checked' : ''}> Validate that the residuals behave like noise</label>
@@ -520,8 +466,6 @@ const phases = [
         }
     }
 ];
-
-function stepNameForIndex(i) { return phases[i]?.title ?? ''; }
 
 function changeStep(dir) {
     currentStep = Math.max(0, Math.min(phases.length - 1, currentStep + dir));
@@ -739,16 +683,25 @@ function initChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            resizeDelay: 50,
+            animation: false,
             interaction: { mode: 'index', intersect: false },
             scales: {
                 y: { min: -10, max: 10, title: { display: true, text: 'Error Magnitude' }, grid: { color: 'rgba(148,163,184,0.18)' } },
                 x: { display: false, grid: { display: false } }
             },
-            plugins: {
-                legend: { display: false },
-                tooltip: { enabled: true }
-            }
+            plugins: { legend: { display: false }, tooltip: { enabled: true } }
         }
+    });
+}
+
+function resizeChartSafe() {
+    if (!resChart) return;
+    if (chartResizeQueued) return;
+    chartResizeQueued = true;
+    requestAnimationFrame(() => {
+        resChart.resize();
+        chartResizeQueued = false;
     });
 }
 
@@ -787,28 +740,29 @@ function updateMetricsAndWarnings() {
 }
 
 function updateResiduals() {
+    if (!resChart) return;
     resChart.data.datasets[0].data = generateResidualData();
-    resChart.update();
-}
-
-function updateOrbitModel() {
-    morphOrbit();
-    updateResiduals();
-    updateMetricsAndWarnings();
+    resChart.update('none');
+    resizeChartSafe();
 }
 
 function updateSystem() {
-    if (document.getElementById('formula-container')) {
-        updateResiduals();
-        updateMetricsAndWarnings();
-    }
+    morphOrbit();
+    updateResiduals();
+    updateMetricsAndWarnings();
+    resizeChartSafe();
 }
+
+window.addEventListener('resize', () => {
+    resizeChartSafe();
+});
 
 window.onload = () => {
     initChart();
     changeStep(0);
     animateOrbit();
     updateMetricsAndWarnings();
+    setTimeout(resizeChartSafe, 200);
 };
 </script>
 </body>
