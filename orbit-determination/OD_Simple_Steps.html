@@ -4,35 +4,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Orbit Determination Simulator</title>
-    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script id="MathJax-script" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js"></script>
-
     <style>
         :root {
             --bg-color: #f4f7f6;
             --panel-bg: #ffffff;
+            --panel-alt: #f8fafc;
             --primary: #2563eb;
             --primary-hover: #1d4ed8;
+            --secondary: #0f766e;
+            --warning: #b45309;
+            --danger: #dc2626;
+            --success: #16a34a;
             --text-main: #1f2937;
             --text-muted: #4b5563;
             --border: #e5e7eb;
             --true-orbit: #3b82f6;
             --comp-orbit: #ef4444;
+            --cov-ellipse: rgba(34, 197, 94, 0.25);
+            --shadow: 0 10px 25px -10px rgba(15, 23, 42, 0.2);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
-
         body {
             font-family: 'Segoe UI', system-ui, sans-serif;
-            background-color: var(--bg-color);
+            background:
+                radial-gradient(circle at top, rgba(37, 99, 235, 0.10), transparent 30%),
+                linear-gradient(180deg, #f8fafc 0%, var(--bg-color) 100%);
             color: var(--text-main);
             line-height: 1.6;
             padding: 20px;
         }
 
         .container {
-            max-width: 900px;
+            max-width: 1180px;
             margin: 0 auto;
             display: flex;
             flex-direction: column;
@@ -44,420 +50,766 @@
             justify-content: space-between;
             align-items: center;
             background: var(--panel-bg);
-            padding: 15px 25px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            padding: 18px 24px;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(229, 231, 235, 0.7);
+            gap: 16px;
         }
+        header h1 { font-size: 1.45rem; }
+        header p { color: var(--text-muted); font-size: 0.92rem; margin-top: 2px; }
 
-        header h1 { font-size: 1.4rem; }
-
-        .nav-btns button {
+        .nav-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+        .nav-btns button,
+        .action-btn,
+        .ghost-btn {
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: transform 0.18s ease, background 0.2s ease, opacity 0.2s ease;
+        }
+        .nav-btns button,
+        .action-btn {
             background: var(--primary);
             color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: 0.2s;
+            padding: 10px 16px;
         }
-        .nav-btns button:disabled { background: #9ca3af; cursor: not-allowed; }
-        .nav-btns button:hover:not(:disabled) { background: var(--primary-hover); }
+        .ghost-btn {
+            background: #e2e8f0;
+            color: #0f172a;
+            padding: 10px 16px;
+        }
+        .nav-btns button:hover:not(:disabled),
+        .action-btn:hover:not(:disabled),
+        .ghost-btn:hover:not(:disabled) { transform: translateY(-1px); }
+        .nav-btns button:disabled,
+        .action-btn:disabled,
+        .ghost-btn:disabled { background: #9ca3af; cursor: not-allowed; opacity: 0.8; }
 
-        .panel {
+        .grid-top {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 20px;
+        }
+
+        .panel, .visual-section, .info-card {
             background: var(--panel-bg);
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(229, 231, 235, 0.7);
         }
+        .panel { padding: 24px; }
+        .panel-header { margin-bottom: 14px; }
+        .panel-header h2 { color: var(--primary); margin-bottom: 8px; }
+        .panel-header p { color: var(--text-muted); }
 
-        .panel-header { margin-bottom: 15px; }
-        .panel-header h2 { color: var(--primary); margin-bottom: 10px; }
+        .story-path {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin: 16px 0 4px;
+        }
+        .story-step {
+            background: var(--panel-alt);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            text-align: center;
+            min-height: 58px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .story-step.active {
+            border-color: rgba(37, 99, 235, 0.35);
+            background: rgba(37, 99, 235, 0.08);
+            color: #1e40af;
+            font-weight: 700;
+        }
 
         .formula-card {
-            background: #f8fafc;
-            border-left: 4px solid var(--primary);
-            padding: 15px;
-            margin: 15px 0;
-            font-size: 1.1rem;
+            background: linear-gradient(180deg, #f8fafc, #ffffff);
+            border-left: 5px solid var(--primary);
+            padding: 16px 18px;
+            margin: 16px 0;
+            font-size: 1.02rem;
             overflow-x: auto;
+            border-radius: 12px;
         }
 
         .interactive-zone {
-            margin-top: 20px;
-            padding-top: 20px;
+            margin-top: 18px;
+            padding-top: 18px;
             border-top: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 15px;
+            align-items: stretch;
+            gap: 14px;
         }
 
-        /* Controls styling */
-        .interactive-zone button {
-            padding: 10px 20px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 1rem;
-            cursor: pointer;
+        .control-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
         }
-        .interactive-zone input[type="range"] { width: 100%; max-width: 400px; }
-        .checkbox-label { display: flex; align-items: center; gap: 10px; font-weight: bold; cursor: pointer; }
-        .checkbox-label input { width: 20px; height: 20px; }
-
-        .visual-section {
-            background: var(--panel-bg);
-            padding: 20px;
+        .control-group {
+            background: var(--panel-alt);
+            border: 1px solid var(--border);
             border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            padding: 14px;
+        }
+        .control-group h4 { margin-bottom: 10px; font-size: 0.95rem; }
+        .control-group label { display: block; font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px; }
+        .control-group input[type="range"],
+        .control-group select { width: 100%; }
+        .control-group select,
+        .control-group input[type="number"] {
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: white;
+        }
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            user-select: none;
+        }
+        .checkbox-label input { width: 18px; height: 18px; }
+
+        .alert {
+            padding: 14px 16px;
+            border-radius: 12px;
+            border: 1px solid transparent;
+            font-size: 0.95rem;
+        }
+        .alert.info { background: #eff6ff; border-color: #bfdbfe; color: #1e3a8a; }
+        .alert.warning { background: #fff7ed; border-color: #fdba74; color: #9a3412; }
+        .alert.danger { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+        .alert.success { background: #ecfdf5; border-color: #bbf7d0; color: #166534; }
+
+        .visual-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        .visual-section {
+            padding: 18px;
             display: flex;
             flex-direction: column;
-            align-items: center;
+            gap: 12px;
         }
 
         .legend {
             display: flex;
-            gap: 20px;
-            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 16px;
             font-size: 0.9rem;
-            font-weight: 600;
+            font-weight: 700;
+            color: var(--text-muted);
         }
-        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .legend-item { display: flex; align-items: center; gap: 7px; }
         .dot { width: 12px; height: 12px; border-radius: 50%; }
 
         canvas#orbitCanvas {
-            background: #1e293b; /* Dark space background */
-            border-radius: 8px;
+            background: radial-gradient(circle at center, #334155 0%, #0f172a 70%);
+            border-radius: 12px;
             width: 100%;
-            max-width: 600px;
-            height: 300px;
+            max-width: 100%;
+            height: 420px;
+            border: 1px solid rgba(148, 163, 184, 0.25);
+        }
+        canvas#chartCanvas { width: 100%; height: 280px; }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+        }
+        .metric {
+            background: var(--panel-alt);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 14px;
+        }
+        .metric .label { font-size: 0.82rem; color: var(--text-muted); }
+        .metric .value { font-size: 1.15rem; font-weight: 800; margin-top: 2px; }
+
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
         }
 
-        canvas#chartCanvas {
-            width: 100%;
-            max-height: 250px;
+        @media (max-width: 980px) {
+            .grid-top, .two-col, .metrics, .control-row, .story-path { grid-template-columns: 1fr; }
+            header { flex-direction: column; align-items: stretch; }
+            .nav-btns { justify-content: stretch; }
+            .nav-btns button { flex: 1; }
         }
     </style>
 </head>
 <body>
-
 <div class="container">
     <header>
-        <h1>Orbit Determination Simulator</h1>
+        <div>
+            <h1>Orbit Determination Simulator</h1>
+            <p>Scientific workflow: initial guess → STM propagation → residual formation → estimation → covariance → convergence</p>
+        </div>
         <div class="nav-btns">
             <button id="btn-prev" onclick="changeStep(-1)">&#8592; Previous Phase</button>
             <button id="btn-next" onclick="changeStep(1)">Next Phase &#8594;</button>
         </div>
     </header>
 
-    <div class="panel" id="instruction-panel">
-        <div class="panel-header">
-            <h2 id="phase-title">Phase 1: Initial Guess</h2>
-            <p id="phase-desc">Loading description...</p>
+    <div class="grid-top">
+        <div class="panel" id="instruction-panel">
+            <div class="panel-header">
+                <h2 id="phase-title">Phase 1: Initial Guess</h2>
+                <p id="phase-desc">Loading description...</p>
+            </div>
+
+            <div class="story-path" id="story-path"></div>
+
+            <div class="formula-card" id="formula-container"></div>
+
+            <div id="status-alert" class="alert info">Ready to begin the orbit-determination sequence.</div>
+
+            <div class="interactive-zone" id="interaction-container"></div>
         </div>
-        <div class="formula-card" id="formula-container">
+
+        <div class="visual-section">
+            <div class="legend">
+                <div class="legend-item"><div class="dot" style="background: var(--true-orbit);"></div> Truth / Reference</div>
+                <div class="legend-item"><div class="dot" style="background: var(--comp-orbit);"></div> Estimated / Computed</div>
+                <div class="legend-item"><div class="dot" style="background: #22c55e;"></div> 3σ Covariance</div>
             </div>
-        <div class="interactive-zone" id="interaction-container">
-            </div>
+            <canvas id="orbitCanvas" width="900" height="420"></canvas>
+        </div>
     </div>
 
-    <div class="visual-section">
-        <div class="legend">
-            <div class="legend-item"><div class="dot" style="background: var(--true-orbit);"></div> True Orbit</div>
-            <div class="legend-item"><div class="dot" style="background: var(--comp-orbit);"></div> Computed Orbit</div>
+    <div class="two-col">
+        <div class="visual-section">
+            <h3>Measurement Residuals</h3>
+            <canvas id="chartCanvas"></canvas>
         </div>
-        <canvas id="orbitCanvas" width="600" height="300"></canvas>
-    </div>
-
-    <div class="visual-section">
-        <h3 style="margin-bottom: 10px; font-size: 1rem;">Measurement Residuals (Observed - Computed)</h3>
-        <canvas id="chartCanvas"></canvas>
+        <div class="visual-section">
+            <h3>Estimation Diagnostics</h3>
+            <div class="metrics">
+                <div class="metric"><div class="label">Iteration</div><div class="value" id="metric-iter">0</div></div>
+                <div class="metric"><div class="label">‖x̂‖</div><div class="value" id="metric-dx">—</div></div>
+                <div class="metric"><div class="label">Trace(P)</div><div class="value" id="metric-trace">—</div></div>
+                <div class="metric"><div class="label">Convergence</div><div class="value" id="metric-conv">Pending</div></div>
+            </div>
+            <div id="diagnostic-box" class="alert info">Use the controls to explore how the estimate, covariance, and residuals evolve.</div>
+        </div>
     </div>
 </div>
 
 <script>
-    // --- STATE MANAGEMENT ---
-    let currentStep = 0;
-    
-    // Simulation state variables modified by interactives
-    let simState = {
-        guessGenerated: false,
-        timeProp: 0,
-        prewhitened: false,
-        lseIterations: 0,
-        confirmed: false
+let currentStep = 0;
+const TOLERANCE = 0.75;
+const MAX_ITER = 12;
+const dataPoints = 96;
+
+let simState = {
+    guessGenerated: false,
+    timeProp: 0,
+    prewhitened: false,
+    lseIterations: 0,
+    confirmed: false,
+    selectedMethod: 'WLS',
+    covarianceStrict: true,
+    wrongOrder: false,
+    noiseModel: 'white',
+    tolerance: TOLERANCE,
+    useIncorrectResidualSign: false
+};
+
+const trueOrbit = { cx: 450, cy: 210, rx: 250, ry: 135, angle: -0.18 };
+let compOrbit = { cx: 380, cy: 230, rx: 155, ry: 215, angle: 0.78 };
+let covarianceScale = 1.0;
+let xhatNorm = 999;
+
+const phases = [
+    {
+        key: 'guess',
+        title: 'Phase 1: Initial Guess',
+        desc: 'You cannot see the truth directly, so the process begins with a physically plausible reference trajectory X* built from preliminary orbit knowledge or Lambert-type initialization.',
+        formula: '$$ X_0^{(0)} = X^* \qquad \text{and} \qquad \text{the estimate starts only after a reference exists} $$',
+        renderHTML: `
+            <div class="control-row">
+                <div class="control-group">
+                    <h4>Initialization Quality</h4>
+                    <label for="guess-quality">Guess quality</label>
+                    <input type="range" id="guess-quality" min="0" max="100" value="34">
+                    <small style="color: var(--text-muted);">Lower values represent a rough first guess; higher values approximate a good Lambert seed.</small>
+                </div>
+                <div class="control-group">
+                    <h4>Workflow Validation</h4>
+                    <label class="checkbox-label"><input type="checkbox" id="guess-check" ${simState.guessGenerated ? 'checked' : ''}> Confirm that a reference guess exists before estimation</label>
+                    <label class="checkbox-label"><input type="checkbox" id="order-check" ${!simState.wrongOrder ? 'checked' : ''}> STM is computed before estimation</label>
+                </div>
+            </div>
+            <button class="action-btn" id="action-btn" onclick="triggerGuess()">Generate Lambert-style Reference Orbit</button>
+        `,
+        setup: () => {
+            document.getElementById('guess-quality').addEventListener('input', (e) => {
+                const q = Number(e.target.value) / 100;
+                compOrbit.cx = 330 + 90 * q;
+                compOrbit.cy = 250 - 70 * q;
+                compOrbit.rx = 120 + 55 * q;
+                compOrbit.ry = 210 - 80 * q;
+                compOrbit.angle = 0.85 - 0.75 * q;
+                updateSystem();
+            });
+            document.getElementById('guess-check').addEventListener('change', (e) => {
+                simState.guessGenerated = e.target.checked;
+                updateSystem();
+            });
+            document.getElementById('order-check').addEventListener('change', (e) => {
+                simState.wrongOrder = !e.target.checked;
+                updateSystem();
+            });
+        }
+    },
+    {
+        key: 'stm',
+        title: 'Phase 2: State Transition Matrix',
+        desc: 'STM is computed early because it propagates both the state and the partial derivatives to every observation epoch. That means the sensitivity model exists before the estimator is solved.',
+        formula: '$$ \delta x(t) = \Phi(t,t_0)\,\delta x(t_0), \qquad P(t)=\Phi(t,t_0)\,P_0\,\Phi^T(t,t_0) $$',
+        renderHTML: `
+            <div class="control-row">
+                <div class="control-group">
+                    <h4>Propagation Time</h4>
+                    <label for="time-slider">STM propagation time</label>
+                    <input type="range" id="time-slider" min="0" max="100" value="${simState.timeProp}">
+                    <small style="color: var(--text-muted);">Shifts the measurement geometry and the spacecraft phase.</small>
+                </div>
+                <div class="control-group">
+                    <h4>State / Sensitivity Check</h4>
+                    <label class="checkbox-label"><input type="checkbox" id="stm-before-estimator" checked> Confirm STM is available before LSE/WLS/Kalman</label>
+                    <label class="checkbox-label"><input type="checkbox" id="wrong-order-flag"> Deliberately violate the sequence for warning demo</label>
+                </div>
+            </div>
+        `,
+        setup: () => {
+            document.getElementById('time-slider').addEventListener('input', (e) => {
+                simState.timeProp = Number(e.target.value);
+                updateSystem();
+            });
+            document.getElementById('stm-before-estimator').addEventListener('change', (e) => {
+                simState.wrongOrder = !e.target.checked;
+                updateSystem();
+            });
+            document.getElementById('wrong-order-flag').addEventListener('change', (e) => {
+                simState.wrongOrder = e.target.checked;
+                updateSystem();
+            });
+        }
+    },
+    {
+        key: 'residuals',
+        title: 'Phase 3: Residual Formation and Whitening',
+        desc: 'The measured-minus-computed gap is the residual y. In colored-noise cases, prewhitening stabilizes the weighting by removing memory and bias from the observation error model.',
+        formula: '$$ y = z_{obs} - z_{comp}, \qquad \epsilon' = V_\epsilon^{-1}\epsilon, \qquad E[\epsilon'\epsilon'^T]=I $$',
+        renderHTML: `
+            <div class="control-row">
+                <div class="control-group">
+                    <h4>Noise Model</h4>
+                    <label for="noise-model">Observation error type</label>
+                    <select id="noise-model">
+                        <option value="white" ${simState.noiseModel === 'white' ? 'selected' : ''}>White noise</option>
+                        <option value="colored" ${simState.noiseModel === 'colored' ? 'selected' : ''}>Colored noise</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <h4>Prewhitening</h4>
+                    <label class="checkbox-label"><input type="checkbox" id="prewhiten-toggle" ${simState.prewhitened ? 'checked' : ''}> Apply inverse covariance prewhitening</label>
+                    <label class="checkbox-label"><input type="checkbox" id="residual-sign-toggle" ${!simState.useIncorrectResidualSign ? 'checked' : ''}> Use observed − computed residual sign</label>
+                </div>
+            </div>
+        `,
+        setup: () => {
+            document.getElementById('noise-model').addEventListener('change', (e) => {
+                simState.noiseModel = e.target.value;
+                updateSystem();
+            });
+            document.getElementById('prewhiten-toggle').addEventListener('change', (e) => {
+                simState.prewhitened = e.target.checked;
+                updateSystem();
+            });
+            document.getElementById('residual-sign-toggle').addEventListener('change', (e) => {
+                simState.useIncorrectResidualSign = !e.target.checked;
+                updateSystem();
+            });
+        }
+    },
+    {
+        key: 'estimate',
+        title: 'Phase 4: Estimation, Covariance, and Update',
+        desc: 'LSE / WLS / MVE / Kalman uses the residual and the STM to solve for the deviation x̂. The inverse normal or information matrix gives the covariance P, which measures uncertainty.',
+        formula: '$$ \hat{x} = (H^T W H)^{-1}H^T W y, \qquad P=(H^TWH)^{-1} $$',
+        renderHTML: `
+            <div class="control-row">
+                <div class="control-group">
+                    <h4>Estimator Selection</h4>
+                    <label for="method-select">Solve using</label>
+                    <select id="method-select">
+                        <option value="WLS" ${simState.selectedMethod === 'WLS' ? 'selected' : ''}>WLS</option>
+                        <option value="LSE" ${simState.selectedMethod === 'LSE' ? 'selected' : ''}>LSE</option>
+                        <option value="Kalman" ${simState.selectedMethod === 'Kalman' ? 'selected' : ''}>Kalman filter view</option>
+                        <option value="MVE" ${simState.selectedMethod === 'MVE' ? 'selected' : ''}>MVE robust view</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <h4>Iteration Control</h4>
+                    <label for="iter-slider">Filter iterations: <span id="iter-val">${simState.lseIterations}</span></label>
+                    <input type="range" id="iter-slider" min="0" max="${MAX_ITER}" value="${simState.lseIterations}">
+                    <small style="color: var(--text-muted);">Each iteration should reduce the correction norm and the residual structure.</small>
+                </div>
+            </div>
+            <div class="control-group">
+                <label class="checkbox-label"><input type="checkbox" id="covariance-strict" ${simState.covarianceStrict ? 'checked' : ''}> Show covariance as a strict uncertainty report tied to the selected weighting model</label>
+            </div>
+            <button class="action-btn" id="iterate-btn" onclick="iterateSolve()">Run Estimation Update</button>
+        `,
+        setup: () => {
+            document.getElementById('method-select').addEventListener('change', (e) => {
+                simState.selectedMethod = e.target.value;
+                updateSystem();
+            });
+            document.getElementById('iter-slider').addEventListener('input', (e) => {
+                simState.lseIterations = Number(e.target.value);
+                document.getElementById('iter-val').innerText = simState.lseIterations;
+                updateSystem();
+            });
+            document.getElementById('covariance-strict').addEventListener('change', (e) => {
+                simState.covarianceStrict = e.target.checked;
+                updateSystem();
+            });
+        }
+    },
+    {
+        key: 'convergence',
+        title: 'Phase 5: Convergence and Validation',
+        desc: 'The loop stops when the correction norm falls below tolerance. If any prerequisite was violated, the tool issues a scientific warning so the user knows the estimate may be formally invalid.',
+        formula: '$$ \lVert \hat{x} \rVert < \tau \quad \Rightarrow \quad X^{\hat{}} \text{ is accepted and can be propagated with } \Phi \text{ and } P $$',
+        renderHTML: `
+            <div class="control-group">
+                <label class="checkbox-label"><input type="checkbox" id="confirm-btn-toggle" ${simState.confirmed ? 'checked' : ''}> Validate that the residuals behave like noise</label>
+            </div>
+            <button class="action-btn" id="confirm-btn" onclick="triggerConfirm()">Confirm Convergence</button>
+            <button class="ghost-btn" onclick="resetWorkflow()">Reset Workflow</button>
+        `,
+        setup: () => {
+            const btn = document.getElementById('confirm-btn');
+            if(simState.confirmed) {
+                btn.innerText = 'Convergence Verified!';
+                btn.style.background = 'var(--success)';
+            }
+            document.getElementById('confirm-btn-toggle').addEventListener('change', (e) => {
+                simState.confirmed = e.target.checked;
+                updateSystem();
+            });
+        }
+    }
+];
+
+function stepNameForIndex(i) { return phases[i]?.title ?? ''; }
+
+function changeStep(dir) {
+    currentStep = Math.max(0, Math.min(phases.length - 1, currentStep + dir));
+    document.getElementById('btn-prev').disabled = currentStep === 0;
+    document.getElementById('btn-next').disabled = currentStep === phases.length - 1;
+    loadPhase(currentStep);
+}
+
+function loadPhase(index) {
+    const phase = phases[index];
+    document.getElementById('phase-title').innerText = phase.title;
+    document.getElementById('phase-desc').innerText = phase.desc;
+    document.getElementById('formula-container').innerHTML = phase.formula;
+    if (window.MathJax) MathJax.typesetPromise([document.getElementById('formula-container')]);
+    document.getElementById('interaction-container').innerHTML = phase.renderHTML;
+    phase.setup();
+    renderStoryPath();
+    updateSystem();
+}
+
+function renderStoryPath() {
+    const el = document.getElementById('story-path');
+    const steps = ['Guess X*', 'Compute STM', 'Form residual y', 'Solve x̂ & P', 'Converge X̂'];
+    el.innerHTML = steps.map((label, i) => `<div class="story-step ${i === currentStep ? 'active' : ''}">${label}</div>`).join('');
+}
+
+function triggerGuess() {
+    simState.guessGenerated = true;
+    compOrbit = { cx: 375, cy: 225, rx: 170, ry: 190, angle: 0.45 };
+    updateSystem();
+}
+
+function iterateSolve() {
+    simState.lseIterations = Math.min(MAX_ITER, simState.lseIterations + 1);
+    const slider = document.getElementById('iter-slider');
+    if (slider) slider.value = simState.lseIterations;
+    const iterVal = document.getElementById('iter-val');
+    if (iterVal) iterVal.innerText = simState.lseIterations;
+    updateSystem();
+}
+
+function triggerConfirm() {
+    simState.confirmed = true;
+    updateSystem();
+}
+
+function resetWorkflow() {
+    simState = {
+        guessGenerated: false, timeProp: 0, prewhitened: false, lseIterations: 0,
+        confirmed: false, selectedMethod: 'WLS', covarianceStrict: true,
+        wrongOrder: false, noiseModel: 'white', tolerance: TOLERANCE,
+        useIncorrectResidualSign: false
     };
+    compOrbit = { cx: 380, cy: 230, rx: 155, ry: 215, angle: 0.78 };
+    loadPhase(currentStep);
+}
 
-    // Orbit parameters
-    const trueOrbit = { cx: 300, cy: 150, rx: 200, ry: 100, angle: 0 };
-    let compOrbit = { cx: 300, cy: 150, rx: 120, ry: 180, angle: Math.PI / 4 }; // Initial bad guess
+function computeDiagnostics() {
+    const guessPenalty = simState.guessGenerated ? 1 : 2.7;
+    const orderPenalty = simState.wrongOrder ? 2.0 : 1.0;
+    const noisePenalty = simState.noiseModel === 'colored' && !simState.prewhitened ? 1.7 : 1.0;
+    const signPenalty = simState.useIncorrectResidualSign ? 1.8 : 1.0;
+    const methodFactor = ({WLS: 1.0, LSE: 1.05, Kalman: 0.92, MVE: 0.98})[simState.selectedMethod] || 1.0;
+    const iterFactor = Math.max(0.04, 1 - simState.lseIterations / MAX_ITER);
+    xhatNorm = +(guessPenalty * orderPenalty * noisePenalty * signPenalty * methodFactor * iterFactor * 12).toFixed(2);
+    covarianceScale = +(Math.max(0.25, xhatNorm / 8)).toFixed(2);
 
-    // --- PHASE DEFINITIONS ---
-    const phases = [
-        {
-            title: "Phase 1: Initial Guess",
-            desc: "We start with a nominal trajectory. A deterministic baseline is found using a Lambert solution, then iteratively corrected using the Newton-Raphson method to match initial observations.",
-            formula: "$$ X_0^{n+1} = X_0^n + \\left[ \\frac{\\partial \\mathbf{G}}{\\partial X_0} \\right]^{-1} (\\mathbf{Y}_{obs} - \\mathbf{G}) $$",
-            renderHTML: `<button id="action-btn" onclick="triggerGuess()">Generate Lambert Guess</button>`,
-            setup: () => {
-                const btn = document.getElementById('action-btn');
-                if(simState.guessGenerated) {
-                    btn.innerText = "Guess Generated";
-                    btn.disabled = true;
-                }
-            }
+    const converged = xhatNorm < simState.tolerance && simState.guessGenerated && !simState.wrongOrder && !simState.useIncorrectResidualSign;
+    const warn = [];
+    if (!simState.guessGenerated) warn.push('No reference guess has been confirmed.');
+    if (simState.wrongOrder) warn.push('Workflow order is invalid: STM must be available before estimation.');
+    if (simState.noiseModel === 'colored' && !simState.prewhitened) warn.push('Colored-noise data should be prewhitened before WLS/Kalman interpretation.');
+    if (simState.useIncorrectResidualSign) warn.push('Residual sign is reversed; observed − computed is expected.');
+    if (simState.lseIterations > 0 && xhatNorm > 2.5 && simState.lseIterations > 4) warn.push('Iterations are not reducing the norm fast enough; inspect model/weights.');
+
+    return { converged, warn };
+}
+
+function generateResidualData() {
+    const data = [];
+    const iterDamping = Math.max(0.05, 1 - (simState.lseIterations / MAX_ITER));
+    const baseAmp = simState.noiseModel === 'colored' ? 5.5 : 3.0;
+    const waveAmp = simState.prewhitened ? 0.7 : baseAmp;
+    const sign = simState.useIncorrectResidualSign ? -1 : 1;
+    for (let i = 0; i < dataPoints; i++) {
+        let drift = Math.sin(i / 9) * waveAmp + Math.cos(i / 21) * 0.8;
+        let white = (Math.random() - 0.5) * (simState.prewhitened ? 1.2 : 3.2);
+        if (!simState.guessGenerated) drift += 3.5;
+        if (simState.wrongOrder) drift += 1.2;
+        let val = sign * (drift + white) * iterDamping;
+        if (simState.lseIterations >= MAX_ITER) val = (Math.random() - 0.5) * (simState.prewhitened ? 0.8 : 1.6);
+        data.push(val);
+    }
+    return data;
+}
+
+function morphOrbit() {
+    const t = simState.lseIterations / MAX_ITER;
+    const guessCx = simState.guessGenerated ? 375 : 380;
+    const guessCy = simState.guessGenerated ? 225 : 230;
+    const guessRx = simState.guessGenerated ? 170 : 155;
+    const guessRy = simState.guessGenerated ? 190 : 215;
+    const guessAng = simState.guessGenerated ? 0.45 : 0.78;
+    compOrbit.cx = guessCx + (trueOrbit.cx - guessCx) * t;
+    compOrbit.cy = guessCy + (trueOrbit.cy - guessCy) * t;
+    compOrbit.rx = guessRx + (trueOrbit.rx - guessRx) * t;
+    compOrbit.ry = guessRy + (trueOrbit.ry - guessRy) * t;
+    compOrbit.angle = guessAng + (trueOrbit.angle - guessAng) * t;
+}
+
+const canvas = document.getElementById('orbitCanvas');
+const ctx = canvas.getContext('2d');
+let animationTime = 0;
+
+function drawArrow(x1, y1, x2, y2, color) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - 10 * Math.cos(angle - Math.PI / 6), y2 - 10 * Math.sin(angle - Math.PI / 6));
+    ctx.lineTo(x2 - 10 * Math.cos(angle + Math.PI / 6), y2 - 10 * Math.sin(angle + Math.PI / 6));
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+}
+
+function drawEllipse(orbit, color, drawSat, dashed=false) {
+    ctx.save();
+    if (dashed) ctx.setLineDash([7, 6]);
+    ctx.beginPath();
+    ctx.ellipse(orbit.cx, orbit.cy, orbit.rx, orbit.ry, orbit.angle, 0, 2 * Math.PI);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.restore();
+
+    if (drawSat) {
+        const phaseShift = (simState.timeProp / 100) * Math.PI * 2;
+        const t = animationTime + phaseShift;
+        const x = orbit.cx + orbit.rx * Math.cos(t) * Math.cos(orbit.angle) - orbit.ry * Math.sin(t) * Math.sin(orbit.angle);
+        const y = orbit.cy + orbit.rx * Math.cos(t) * Math.sin(orbit.angle) + orbit.ry * Math.sin(t) * Math.cos(orbit.angle);
+        ctx.beginPath(); ctx.arc(x, y, 6.5, 0, 2 * Math.PI); ctx.fillStyle = '#ffffff'; ctx.fill();
+        ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+        drawArrow(orbit.cx, orbit.cy, x, y, color);
+    }
+}
+
+function drawCovarianceEllipse() {
+    const scaleX = 55 * covarianceScale;
+    const scaleY = 30 * covarianceScale;
+    ctx.save();
+    ctx.setLineDash([4, 5]);
+    ctx.strokeStyle = '#22c55e';
+    ctx.fillStyle = 'rgba(34,197,94,0.08)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(compOrbit.cx, compOrbit.cy, scaleX, scaleY, compOrbit.angle + 0.2, 0, 2 * Math.PI);
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
+}
+
+function animateOrbit() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    for (let i = 0; i < 40; i++) {
+        const x = (i * 137) % canvas.width;
+        const y = (i * 83) % canvas.height;
+        ctx.beginPath(); ctx.arc(x, y, i % 3 === 0 ? 1.6 : 1, 0, 2 * Math.PI); ctx.fill();
+    }
+    ctx.restore();
+
+    ctx.beginPath();
+    ctx.arc(trueOrbit.cx, trueOrbit.cy, 22, 0, 2 * Math.PI);
+    ctx.fillStyle = '#f59e0b';
+    ctx.fill();
+    ctx.strokeStyle = '#fde68a';
+    ctx.stroke();
+
+    drawEllipse(trueOrbit, '#3b82f6', true, false);
+    drawEllipse(compOrbit, '#ef4444', true, true);
+    drawCovarianceEllipse();
+
+    animationTime += 0.02;
+    requestAnimationFrame(animateOrbit);
+}
+
+const ctxChart = document.getElementById('chartCanvas').getContext('2d');
+let resChart;
+
+function initChart() {
+    const labels = Array.from({length: dataPoints}, (_, i) => i + 1);
+    resChart = new Chart(ctxChart, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Residual (Observed − Computed)',
+                data: generateResidualData(),
+                borderColor: '#10b981',
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.2,
+                fill: true,
+                backgroundColor: 'rgba(16,185,129,0.10)'
+            }]
         },
-        {
-            title: "Phase 2: State Transition Matrix",
-            desc: "The State Transition Matrix (STM) acts as a mathematical time machine. It maps the physical state and errors from any current time straight back to our starting epoch.",
-            formula: "$$ x(t) = \\Phi(t, t_0)x_0 $$",
-            renderHTML: `
-                <label style="font-weight:bold;">Propagate Time (STM)</label>
-                <input type="range" id="time-slider" min="0" max="100" value="${simState.timeProp}">
-            `,
-            setup: () => {
-                document.getElementById('time-slider').addEventListener('input', (e) => {
-                    simState.timeProp = e.target.value;
-                });
-            }
-        },
-        {
-            title: "Phase 3: Normalization (Prewhitening)",
-            desc: "If tracking noise is 'colored' (has memory/bias), the filter gets confused. We multiply observations by the inverse noise covariance to mathematically strip the memory, creating white noise.",
-            formula: "$$ z = V_\\epsilon^{-1} y \\implies E[\\epsilon' \\epsilon'^T] = I $$",
-            renderHTML: `
-                <label class="checkbox-label">
-                    <input type="checkbox" id="prewhiten-toggle" ${simState.prewhitened ? 'checked' : ''}> 
-                    Apply Prewhitening Matrix (Inverse Covariance)
-                </label>
-            `,
-            setup: () => {
-                document.getElementById('prewhiten-toggle').addEventListener('change', (e) => {
-                    simState.prewhitened = e.target.checked;
-                    updateResiduals();
-                });
-            }
-        },
-        {
-            title: "Phase 4: Least Squares Estimation (LSE)",
-            desc: "The filter compares real data to predictions, finding the State Deviation. We iterate this process, updating our guess until the Computed Orbit perfectly overlaps the True Orbit.",
-            formula: "$$ \\hat{x} = (H^T W H)^{-1} H^T W y $$",
-            renderHTML: `
-                <label style="font-weight:bold;">Filter Iterations: <span id="iter-val">${simState.lseIterations}</span></label>
-                <input type="range" id="iter-slider" min="0" max="10" value="${simState.lseIterations}">
-            `,
-            setup: () => {
-                document.getElementById('iter-slider').addEventListener('input', (e) => {
-                    simState.lseIterations = parseInt(e.target.value);
-                    document.getElementById('iter-val').innerText = simState.lseIterations;
-                    morphOrbit();
-                    updateResiduals();
-                });
-            }
-        },
-        {
-            title: "Phase 5: Convergence",
-            desc: "When the state deviation hits zero, we have converged. The residuals look like pure white noise, meaning we have successfully accounted for all the physics acting on the spacecraft.",
-            formula: "$$ \\Delta X \\approx 0 \\quad \\text{(Converged)} $$",
-            renderHTML: `<button id="confirm-btn" onclick="triggerConfirm()">Confirm White Noise Residuals</button>`,
-            setup: () => {
-                const btn = document.getElementById('confirm-btn');
-                if(simState.confirmed) {
-                    btn.innerText = "Convergence Verified!";
-                    btn.style.background = "#10b981"; // Green
-                }
-            }
-        }
-    ];
-
-    // --- UI UPDATES ---
-    function changeStep(dir) {
-        currentStep += dir;
-        if (currentStep < 0) currentStep = 0;
-        if (currentStep >= phases.length) currentStep = phases.length - 1;
-        
-        document.getElementById('btn-prev').disabled = currentStep === 0;
-        document.getElementById('btn-next').disabled = currentStep === phases.length - 1;
-
-        loadPhase(currentStep);
-    }
-
-    function loadPhase(index) {
-        const phase = phases[index];
-        document.getElementById('phase-title').innerText = phase.title;
-        document.getElementById('phase-desc').innerText = phase.desc;
-        
-        // Render MathJax
-        const formulaContainer = document.getElementById('formula-container');
-        formulaContainer.innerHTML = phase.formula;
-        if (window.MathJax) { MathJax.typesetPromise([formulaContainer]); }
-
-        // Render Controls
-        const controlContainer = document.getElementById('interaction-container');
-        controlContainer.innerHTML = phase.renderHTML;
-        phase.setup();
-
-        updateResiduals();
-    }
-
-    // --- INTERACTIVE ACTIONS ---
-    function triggerGuess() {
-        simState.guessGenerated = true;
-        const btn = document.getElementById('action-btn');
-        btn.innerText = "Guess Generated";
-        btn.disabled = true;
-        
-        // Morph the horribly wrong orbit to a "better but offset" guess
-        compOrbit.rx = 180; compOrbit.ry = 120; compOrbit.angle = 0.1;
-        compOrbit.cx = 320; compOrbit.cy = 140; 
-        updateResiduals();
-    }
-
-    function morphOrbit() {
-        // Interpolate between the offset guess and the true orbit based on iterations
-        const t = simState.lseIterations / 10; 
-        const baseCx = simState.guessGenerated ? 320 : 300;
-        const baseCy = simState.guessGenerated ? 140 : 150;
-        const baseRx = simState.guessGenerated ? 180 : 120;
-        const baseRy = simState.guessGenerated ? 120 : 180;
-        const baseAng = simState.guessGenerated ? 0.1 : Math.PI/4;
-
-        compOrbit.cx = baseCx + (trueOrbit.cx - baseCx) * t;
-        compOrbit.cy = baseCy + (trueOrbit.cy - baseCy) * t;
-        compOrbit.rx = baseRx + (trueOrbit.rx - baseRx) * t;
-        compOrbit.ry = baseRy + (trueOrbit.ry - baseRy) * t;
-        compOrbit.angle = baseAng + (trueOrbit.angle - baseAng) * t;
-    }
-
-    function triggerConfirm() {
-        simState.confirmed = true;
-        const btn = document.getElementById('confirm-btn');
-        btn.innerText = "Convergence Verified!";
-        btn.style.background = "#10b981"; // Green
-    }
-
-    // --- ORBIT CANVAS ANIMATION ---
-    const canvas = document.getElementById('orbitCanvas');
-    const ctx = canvas.getContext('2d');
-    let animationTime = 0;
-
-    function drawEllipse(orbit, color, drawSat) {
-        ctx.beginPath();
-        ctx.ellipse(orbit.cx, orbit.cy, orbit.rx, orbit.ry, orbit.angle, 0, 2 * Math.PI);
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        if (drawSat) {
-            // Apply the Time Propagator from Phase 2 to shift the satellite position
-            const phaseShift = (simState.timeProp / 100) * Math.PI * 2;
-            const t = animationTime + phaseShift;
-            
-            // Calculate satellite position
-            const x = orbit.cx + orbit.rx * Math.cos(t) * Math.cos(orbit.angle) - orbit.ry * Math.sin(t) * Math.sin(orbit.angle);
-            const y = orbit.cy + orbit.rx * Math.cos(t) * Math.sin(orbit.angle) + orbit.ry * Math.sin(t) * Math.cos(orbit.angle);
-            
-            ctx.beginPath();
-            ctx.arc(x, y, 6, 0, 2 * Math.PI);
-            ctx.fillStyle = '#ffffff';
-            ctx.fill();
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 2;
-            ctx.stroke();
-        }
-    }
-
-    function animateOrbit() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Draw Central Planet
-        ctx.beginPath();
-        ctx.arc(trueOrbit.cx, trueOrbit.cy, 20, 0, 2 * Math.PI);
-        ctx.fillStyle = '#eab308'; // Sun/Planet color
-        ctx.fill();
-
-        drawEllipse(trueOrbit, '#3b82f6', true); // True Blue
-        drawEllipse(compOrbit, '#ef4444', true); // Computed Red
-        
-        animationTime += 0.02; // Speed of orbit
-        requestAnimationFrame(animateOrbit);
-    }
-
-    // --- CHART.JS RESIDUALS ---
-    const ctxChart = document.getElementById('chartCanvas').getContext('2d');
-    let resChart;
-    const dataPoints = 100;
-
-    function initChart() {
-        const labels = Array.from({length: dataPoints}, (_, i) => i);
-        resChart = new Chart(ctxChart, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Residual (Observed - Computed)',
-                    data: generateResidualData(),
-                    borderColor: '#10b981',
-                    borderWidth: 2,
-                    pointRadius: 0,
-                    tension: 0.2
-                }]
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                y: { min: -10, max: 10, title: { display: true, text: 'Error Magnitude' }, grid: { color: 'rgba(148,163,184,0.18)' } },
+                x: { display: false, grid: { display: false } }
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { min: -10, max: 10, title: { display: true, text: 'Error Magnitude' } },
-                    x: { display: false }
-                },
-                plugins: {
-                    legend: { display: false }
-                }
+            plugins: {
+                legend: { display: false },
+                tooltip: { enabled: true }
             }
-        });
-    }
-
-    function generateResidualData() {
-        let data = [];
-        // Math to simulate the transition from Colored to White noise
-        // lseIterations (0 to 10) flattens the amplitude.
-        // prewhitening removes the underlying sine wave drift.
-        
-        const iterDamping = 1 - (simState.lseIterations / 10); 
-        const waveAmp = simState.prewhitened ? 0.5 : 5; // Prewhitening kills the colored drift
-        
-        for (let i = 0; i < dataPoints; i++) {
-            let coloredDrift = Math.sin(i / 10) * waveAmp; 
-            let randomWhiteNoise = (Math.random() - 0.5) * 4; 
-            
-            // If completely untrained, huge error.
-            if(!simState.guessGenerated) coloredDrift += 3; 
-
-            // Combine and damp based on LSE iterations
-            let val = (coloredDrift + randomWhiteNoise) * iterDamping;
-            
-            // If fully converged (10 iter), leave ONLY tiny white noise
-            if(simState.lseIterations === 10) val = (Math.random() - 0.5) * 1.5;
-
-            data.push(val);
         }
-        return data;
+    });
+}
+
+function updateMetricsAndWarnings() {
+    const { converged, warn } = computeDiagnostics();
+    document.getElementById('metric-iter').innerText = simState.lseIterations;
+    document.getElementById('metric-dx').innerText = xhatNorm.toFixed(2);
+    document.getElementById('metric-trace').innerText = (covarianceScale * 12.0).toFixed(2);
+    document.getElementById('metric-conv').innerText = converged ? 'Converged' : 'Iterating';
+
+    const alert = document.getElementById('status-alert');
+    const diag = document.getElementById('diagnostic-box');
+    if (!simState.guessGenerated) {
+        alert.className = 'alert warning';
+        alert.innerText = 'A reference trajectory has not been confirmed yet. Start with a guess before estimation.';
+    } else if (simState.wrongOrder) {
+        alert.className = 'alert danger';
+        alert.innerText = 'Warning: STM/estimation order is invalid. The workflow is formally inconsistent and should be corrected.';
+    } else if (converged) {
+        alert.className = 'alert success';
+        alert.innerText = 'Convergence achieved. The residuals are noise-like and the estimated trajectory can be propagated with STM and covariance.';
+    } else if (warn.length) {
+        alert.className = 'alert warning';
+        alert.innerText = warn[0];
+    } else {
+        alert.className = 'alert info';
+        alert.innerText = `Estimator running (${simState.selectedMethod}). The correction norm is decreasing toward tolerance.`;
     }
 
-    function updateResiduals() {
-        resChart.data.datasets[0].data = generateResidualData();
-        resChart.update();
+    diag.className = warn.length ? 'alert warning' : (converged ? 'alert success' : 'alert info');
+    diag.innerHTML = warn.length
+        ? `<strong>Diagnostics:</strong><br>${warn.map(w => `• ${w}`).join('<br>')}<br><br><strong>Suggested action:</strong> Verify the sequence, weighting, and residual definition before accepting convergence.`
+        : converged
+            ? '<strong>Diagnostics:</strong> The solution is consistent with the selected model and the residuals are near white noise.'
+            : `<strong>Diagnostics:</strong> Estimated correction norm is ${xhatNorm.toFixed(2)}. Continue iterating or refine the observation model.`;
+}
+
+function updateResiduals() {
+    resChart.data.datasets[0].data = generateResidualData();
+    resChart.update();
+}
+
+function updateOrbitModel() {
+    morphOrbit();
+    updateResiduals();
+    updateMetricsAndWarnings();
+}
+
+function updateSystem() {
+    if (document.getElementById('formula-container')) {
+        updateResiduals();
+        updateMetricsAndWarnings();
     }
+}
 
-   // --- INITIALIZATION ---
-    window.onload = () => {
-        initChart();      // 1. Build the empty chart first!
-        changeStep(0);    // 2. Then load Phase 1 (which updates the chart)
-        animateOrbit();   // 3. Finally, start the continuous orbit animation
-    };
-
+window.onload = () => {
+    initChart();
+    changeStep(0);
+    animateOrbit();
+    updateMetricsAndWarnings();
+};
 </script>
 </body>
 </html>
