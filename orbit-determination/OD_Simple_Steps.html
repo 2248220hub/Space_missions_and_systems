@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orbit Determination Simulator</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script id="MathJax-script" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --panel-bg: #ffffff;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --text-main: #1f2937;
+            --text-muted: #4b5563;
+            --border: #e5e7eb;
+            --true-orbit: #3b82f6;
+            --comp-orbit: #ef4444;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--panel-bg);
+            padding: 15px 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        header h1 { font-size: 1.4rem; }
+
+        .nav-btns button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.2s;
+        }
+        .nav-btns button:disabled { background: #9ca3af; cursor: not-allowed; }
+        .nav-btns button:hover:not(:disabled) { background: var(--primary-hover); }
+
+        .panel {
+            background: var(--panel-bg);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .panel-header { margin-bottom: 15px; }
+        .panel-header h2 { color: var(--primary); margin-bottom: 10px; }
+
+        .formula-card {
+            background: #f8fafc;
+            border-left: 4px solid var(--primary);
+            padding: 15px;
+            margin: 15px 0;
+            font-size: 1.1rem;
+            overflow-x: auto;
+        }
+
+        .interactive-zone {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        /* Controls styling */
+        .interactive-zone button {
+            padding: 10px 20px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        .interactive-zone input[type="range"] { width: 100%; max-width: 400px; }
+        .checkbox-label { display: flex; align-items: center; gap: 10px; font-weight: bold; cursor: pointer; }
+        .checkbox-label input { width: 20px; height: 20px; }
+
+        .visual-section {
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; }
+
+        canvas#orbitCanvas {
+            background: #1e293b; /* Dark space background */
+            border-radius: 8px;
+            width: 100%;
+            max-width: 600px;
+            height: 300px;
+        }
+
+        canvas#chartCanvas {
+            width: 100%;
+            max-height: 250px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Orbit Determination Simulator</h1>
+        <div class="nav-btns">
+            <button id="btn-prev" onclick="changeStep(-1)">&#8592; Previous Phase</button>
+            <button id="btn-next" onclick="changeStep(1)">Next Phase &#8594;</button>
+        </div>
+    </header>
+
+    <div class="panel" id="instruction-panel">
+        <div class="panel-header">
+            <h2 id="phase-title">Phase 1: Initial Guess</h2>
+            <p id="phase-desc">Loading description...</p>
+        </div>
+        <div class="formula-card" id="formula-container">
+            </div>
+        <div class="interactive-zone" id="interaction-container">
+            </div>
+    </div>
+
+    <div class="visual-section">
+        <div class="legend">
+            <div class="legend-item"><div class="dot" style="background: var(--true-orbit);"></div> True Orbit</div>
+            <div class="legend-item"><div class="dot" style="background: var(--comp-orbit);"></div> Computed Orbit</div>
+        </div>
+        <canvas id="orbitCanvas" width="600" height="300"></canvas>
+    </div>
+
+    <div class="visual-section">
+        <h3 style="margin-bottom: 10px; font-size: 1rem;">Measurement Residuals (Observed - Computed)</h3>
+        <canvas id="chartCanvas"></canvas>
+    </div>
+</div>
+
+<script>
+    // --- STATE MANAGEMENT ---
+    let currentStep = 0;
+    
+    // Simulation state variables modified by interactives
+    let simState = {
+        guessGenerated: false,
+        timeProp: 0,
+        prewhitened: false,
+        lseIterations: 0,
+        confirmed: false
+    };
+
+    // Orbit parameters
+    const trueOrbit = { cx: 300, cy: 150, rx: 200, ry: 100, angle: 0 };
+    let compOrbit = { cx: 300, cy: 150, rx: 120, ry: 180, angle: Math.PI / 4 }; // Initial bad guess
+
+    // --- PHASE DEFINITIONS ---
+    const phases = [
+        {
+            title: "Phase 1: Initial Guess",
+            desc: "We start with a nominal trajectory. A deterministic baseline is found using a Lambert solution, then iteratively corrected using the Newton-Raphson method to match initial observations.",
+            formula: "$$ X_0^{n+1} = X_0^n + \\left[ \\frac{\\partial \\mathbf{G}}{\\partial X_0} \\right]^{-1} (\\mathbf{Y}_{obs} - \\mathbf{G}) $$",
+            renderHTML: `<button id="action-btn" onclick="triggerGuess()">Generate Lambert Guess</button>`,
+            setup: () => {
+                const btn = document.getElementById('action-btn');
+                if(simState.guessGenerated) {
+                    btn.innerText = "Guess Generated";
+                    btn.disabled = true;
+                }
+            }
+        },
+        {
+            title: "Phase 2: State Transition Matrix",
+            desc: "The State Transition Matrix (STM) acts as a mathematical time machine. It maps the physical state and errors from any current time straight back to our starting epoch.",
+            formula: "$$ x(t) = \\Phi(t, t_0)x_0 $$",
+            renderHTML: `
+                <label style="font-weight:bold;">Propagate Time (STM)</label>
+                <input type="range" id="time-slider" min="0" max="100" value="${simState.timeProp}">
+            `,
+            setup: () => {
+                document.getElementById('time-slider').addEventListener('input', (e) => {
+                    simState.timeProp = e.target.value;
+                });
+            }
+        },
+        {
+            title: "Phase 3: Normalization (Prewhitening)",
+            desc: "If tracking noise is 'colored' (has memory/bias), the filter gets confused. We multiply observations by the inverse noise covariance to mathematically strip the memory, creating white noise.",
+            formula: "$$ z = V_\\epsilon^{-1} y \\implies E[\\epsilon' \\epsilon'^T] = I $$",
+            renderHTML: `
+                <label class="checkbox-label">
+                    <input type="checkbox" id="prewhiten-toggle" ${simState.prewhitened ? 'checked' : ''}> 
+                    Apply Prewhitening Matrix (Inverse Covariance)
+                </label>
+            `,
+            setup: () => {
+                document.getElementById('prewhiten-toggle').addEventListener('change', (e) => {
+                    simState.prewhitened = e.target.checked;
+                    updateResiduals();
+                });
+            }
+        },
+        {
+            title: "Phase 4: Least Squares Estimation (LSE)",
+            desc: "The filter compares real data to predictions, finding the State Deviation. We iterate this process, updating our guess until the Computed Orbit perfectly overlaps the True Orbit.",
+            formula: "$$ \\hat{x} = (H^T W H)^{-1} H^T W y $$",
+            renderHTML: `
+                <label style="font-weight:bold;">Filter Iterations: <span id="iter-val">${simState.lseIterations}</span></label>
+                <input type="range" id="iter-slider" min="0" max="10" value="${simState.lseIterations}">
+            `,
+            setup: () => {
+                document.getElementById('iter-slider').addEventListener('input', (e) => {
+                    simState.lseIterations = parseInt(e.target.value);
+                    document.getElementById('iter-val').innerText = simState.lseIterations;
+                    morphOrbit();
+                    updateResiduals();
+                });
+            }
+        },
+        {
+            title: "Phase 5: Convergence",
+            desc: "When the state deviation hits zero, we have converged. The residuals look like pure white noise, meaning we have successfully accounted for all the physics acting on the spacecraft.",
+            formula: "$$ \\Delta X \\approx 0 \\quad \\text{(Converged)} $$",
+            renderHTML: `<button id="confirm-btn" onclick="triggerConfirm()">Confirm White Noise Residuals</button>`,
+            setup: () => {
+                const btn = document.getElementById('confirm-btn');
+                if(simState.confirmed) {
+                    btn.innerText = "Convergence Verified!";
+                    btn.style.background = "#10b981"; // Green
+                }
+            }
+        }
+    ];
+
+    // --- UI UPDATES ---
+    function changeStep(dir) {
+        currentStep += dir;
+        if (currentStep < 0) currentStep = 0;
+        if (currentStep >= phases.length) currentStep = phases.length - 1;
+        
+        document.getElementById('btn-prev').disabled = currentStep === 0;
+        document.getElementById('btn-next').disabled = currentStep === phases.length - 1;
+
+        loadPhase(currentStep);
+    }
+
+    function loadPhase(index) {
+        const phase = phases[index];
+        document.getElementById('phase-title').innerText = phase.title;
+        document.getElementById('phase-desc').innerText = phase.desc;
+        
+        // Render MathJax
+        const formulaContainer = document.getElementById('formula-container');
+        formulaContainer.innerHTML = phase.formula;
+        if (window.MathJax) { MathJax.typesetPromise([formulaContainer]); }
+
+        // Render Controls
+        const controlContainer = document.getElementById('interaction-container');
+        controlContainer.innerHTML = phase.renderHTML;
+        phase.setup();
+
+        updateResiduals();
+    }
+
+    // --- INTERACTIVE ACTIONS ---
+    function triggerGuess() {
+        simState.guessGenerated = true;
+        const btn = document.getElementById('action-btn');
+        btn.innerText = "Guess Generated";
+        btn.disabled = true;
+        
+        // Morph the horribly wrong orbit to a "better but offset" guess
+        compOrbit.rx = 180; compOrbit.ry = 120; compOrbit.angle = 0.1;
+        compOrbit.cx = 320; compOrbit.cy = 140; 
+        updateResiduals();
+    }
+
+    function morphOrbit() {
+        // Interpolate between the offset guess and the true orbit based on iterations
+        const t = simState.lseIterations / 10; 
+        const baseCx = simState.guessGenerated ? 320 : 300;
+        const baseCy = simState.guessGenerated ? 140 : 150;
+        const baseRx = simState.guessGenerated ? 180 : 120;
+        const baseRy = simState.guessGenerated ? 120 : 180;
+        const baseAng = simState.guessGenerated ? 0.1 : Math.PI/4;
+
+        compOrbit.cx = baseCx + (trueOrbit.cx - baseCx) * t;
+        compOrbit.cy = baseCy + (trueOrbit.cy - baseCy) * t;
+        compOrbit.rx = baseRx + (trueOrbit.rx - baseRx) * t;
+        compOrbit.ry = baseRy + (trueOrbit.ry - baseRy) * t;
+        compOrbit.angle = baseAng + (trueOrbit.angle - baseAng) * t;
+    }
+
+    function triggerConfirm() {
+        simState.confirmed = true;
+        const btn = document.getElementById('confirm-btn');
+        btn.innerText = "Convergence Verified!";
+        btn.style.background = "#10b981"; // Green
+    }
+
+    // --- ORBIT CANVAS ANIMATION ---
+    const canvas = document.getElementById('orbitCanvas');
+    const ctx = canvas.getContext('2d');
+    let animationTime = 0;
+
+    function drawEllipse(orbit, color, drawSat) {
+        ctx.beginPath();
+        ctx.ellipse(orbit.cx, orbit.cy, orbit.rx, orbit.ry, orbit.angle, 0, 2 * Math.PI);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        if (drawSat) {
+            // Apply the Time Propagator from Phase 2 to shift the satellite position
+            const phaseShift = (simState.timeProp / 100) * Math.PI * 2;
+            const t = animationTime + phaseShift;
+            
+            // Calculate satellite position
+            const x = orbit.cx + orbit.rx * Math.cos(t) * Math.cos(orbit.angle) - orbit.ry * Math.sin(t) * Math.sin(orbit.angle);
+            const y = orbit.cy + orbit.rx * Math.cos(t) * Math.sin(orbit.angle) + orbit.ry * Math.sin(t) * Math.cos(orbit.angle);
+            
+            ctx.beginPath();
+            ctx.arc(x, y, 6, 0, 2 * Math.PI);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+    }
+
+    function animateOrbit() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw Central Planet
+        ctx.beginPath();
+        ctx.arc(trueOrbit.cx, trueOrbit.cy, 20, 0, 2 * Math.PI);
+        ctx.fillStyle = '#eab308'; // Sun/Planet color
+        ctx.fill();
+
+        drawEllipse(trueOrbit, '#3b82f6', true); // True Blue
+        drawEllipse(compOrbit, '#ef4444', true); // Computed Red
+        
+        animationTime += 0.02; // Speed of orbit
+        requestAnimationFrame(animateOrbit);
+    }
+
+    // --- CHART.JS RESIDUALS ---
+    const ctxChart = document.getElementById('chartCanvas').getContext('2d');
+    let resChart;
+    const dataPoints = 100;
+
+    function initChart() {
+        const labels = Array.from({length: dataPoints}, (_, i) => i);
+        resChart = new Chart(ctxChart, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Residual (Observed - Computed)',
+                    data: generateResidualData(),
+                    borderColor: '#10b981',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { min: -10, max: 10, title: { display: true, text: 'Error Magnitude' } },
+                    x: { display: false }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    function generateResidualData() {
+        let data = [];
+        // Math to simulate the transition from Colored to White noise
+        // lseIterations (0 to 10) flattens the amplitude.
+        // prewhitening removes the underlying sine wave drift.
+        
+        const iterDamping = 1 - (simState.lseIterations / 10); 
+        const waveAmp = simState.prewhitened ? 0.5 : 5; // Prewhitening kills the colored drift
+        
+        for (let i = 0; i < dataPoints; i++) {
+            let coloredDrift = Math.sin(i / 10) * waveAmp; 
+            let randomWhiteNoise = (Math.random() - 0.5) * 4; 
+            
+            // If completely untrained, huge error.
+            if(!simState.guessGenerated) coloredDrift += 3; 
+
+            // Combine and damp based on LSE iterations
+            let val = (coloredDrift + randomWhiteNoise) * iterDamping;
+            
+            // If fully converged (10 iter), leave ONLY tiny white noise
+            if(simState.lseIterations === 10) val = (Math.random() - 0.5) * 1.5;
+
+            data.push(val);
+        }
+        return data;
+    }
+
+    function updateResiduals() {
+        resChart.data.datasets[0].data = generateResidualData();
+        resChart.update();
+    }
+
+   // --- INITIALIZATION ---
+    window.onload = () => {
+        initChart();      // 1. Build the empty chart first!
+        changeStep(0);    // 2. Then load Phase 1 (which updates the chart)
+        animateOrbit();   // 3. Finally, start the continuous orbit animation
+    };
+
+</script>
+</body>
+</html>
